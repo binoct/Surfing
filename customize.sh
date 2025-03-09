@@ -84,7 +84,7 @@ if [ -d /data/adb/box_bll ]; then
   ui_print "- 正在初始化服务..."
   /data/adb/box_bll/scripts/box.service stop > /dev/null 2>&1
   sleep 1.5
-  
+  installapk
   if [ -d /data/adb/box_bll/mihomo ]; then
     mv /data/adb/box_bll/mihomo /data/adb/box_bll/clash
   fi
