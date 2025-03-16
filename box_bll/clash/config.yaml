@@ -2,6 +2,7 @@
 mixed-port: 7890
 redir-port: 7891
 tproxy-port: 1536
+ipv6: true
 mode: Rule
 allow-lan: true
 geo-auto-update: true
@@ -15,7 +16,7 @@ find-process-mode: always
 global-client-fingerprint: chrome
 external-controller: 0.0.0.0:9090
 #面板默认 Meta 可选 Yacd / Zash 重启模块即可加载
-external-ui: /data/adb/box_bll/panel/Meta/
+external-ui: /data/adb/box_bll/panel/Zash/ # 主推zash
 secret: ""
 # —————————
 #####################
@@ -34,7 +35,7 @@ p: &p
 
 # 订阅地址相关
 A: &A
-  filter: "^(?!.*(套餐|重置|剩余|到期|订阅|群|账户|流量|有效期|时间|官网)).*$"
+  filter: "^(?!.*(套餐|重置|剩余|到期|订阅|群|账户|流量|有效期|时间|官网|失联|余额)).*$"
   use:
   - 1.主要地址
   - 2.备用地址
@@ -50,15 +51,22 @@ All: &All
 proxy-providers: # ← 此函数位置请勿变动！此为模块更新时备份恢复订阅变量范围 ↓
   1.主要地址:
     <<: *p
+    override:
+      additional-prefix: "Main："
     url: "引入您的Clash订阅链接地址"
-    
+
   2.备用地址:
     <<: *p
+    override:
+      additional-prefix: "Minor："
     url: "引入您的Clash订阅链接地址"
-  
+
   3.额外地址:
     <<: *p
+    override:
+      additional-prefix: "Additi："
     url: "引入您的Clash订阅链接地址"
+
 # —————————
 
 # 节点记忆
@@ -104,6 +112,19 @@ tun:
   - fc00::/7
   exclude-package: # 游戏卡顿可添加包名 仅Android
     #- com.tencent.tmgp.sgame
+    # _____________________# 三星专供 ↓ 范围
+#    - com.samsung.android.messaging
+#    - com.samsung.android.app.telephonyui
+#    - com.samsung.android.dialer
+#    - com.samsung.android.incallui
+#    - com.samsung.android.smartcallprovider
+#    - com.samsung.android.intellivoiceservice
+#    - com.android.settings
+#    - com.qti.qcc
+#    - com.sec.epdg
+#    - com.sec.imsservice # 三星专供 ↑ 范围
+    # 如果你不是不必理会
+    
 # —————————
 
 # DNS模块
@@ -120,23 +141,21 @@ dns:
     - "connect.rom.miui.com"
     - "localhost.ptlogin2.qq.com"
     - "+.market.xiaomi.com"
+  default-nameserver:
+    - 120.53.53.53
+    - 119.29.29.29
+    - 1.12.12.12
+    - 223.5.5.5
+    - 223.6.6.6
   direct-nameserver:
-    - 119.29.29.29
-    - 1.12.12.12
-    - 223.5.5.5
-    - 223.6.6.6
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
   proxy-server-nameserver:
-    - 119.29.29.29
-    - 1.12.12.12
-    - 223.5.5.5
-    - 223.6.6.6
-  nameserver-policy:
-    "RULE-SET:CN_域名,CN_IP":
-      - https://doh.pub/dns-query#🌎 全球直连
-      - https://dns.alidns.com/dns-query#🌎 全球直连
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
   nameserver:
-    - https://dns.google/dns-query#🌐 DNS解析
-    - https://cloudflare-dns.com/dns-query#🌐 DNS解析
+    - https://dns.google/dns-query#DNS解析
+    - https://cloudflare-dns.com/dns-query#DNS解析
 # —————————
 
 proxies:
@@ -147,86 +166,99 @@ proxies:
 proxy_groups: &proxy_groups
     type: select
     proxies:
-      - 🎯 总模式
+      - 总模式
       - ⛔️ 拒绝连接
-      - ♻️ 延迟最低
-      - ♻️ 故障转移
-      - ♻️ 负载均衡
-      - 🇭🇰 香港节点
-      - 🇨🇳 台湾节点
-      - 🇸🇬 狮城节点
-      - 🇯🇵 日本节点
-      - 🇺🇲 美国节点
-      - 🌍 其它地区
+      - 延迟最低
+      - 故障转移
+      - 负载均衡
+      - 香港节点
+      - 台湾节点
+      - 狮城节点
+      - 日本节点
+      - 美国节点
+      - 其它地区
       - 🌎 全球直连
     <<: *A
 # —————————
 proxy-groups:
-  - name: 🎯 总模式
+  - name: 总模式
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/All.svg"
     type: select
     proxies:
-      - ♻️ 延迟最低
-      - ♻️ 故障转移
-      - ♻️ 负载均衡
-      - 🇭🇰 香港节点
-      - 🇨🇳 台湾节点
-      - 🇸🇬 狮城节点
-      - 🇯🇵 日本节点
-      - 🇺🇲 美国节点
-      - 🌍 其它地区
+      - 延迟最低
+      - 故障转移
+      - 负载均衡
+      - 香港节点
+      - 台湾节点
+      - 狮城节点
+      - 日本节点
+      - 美国节点
+      - 其它地区
       - 🌎 全球直连
 # —————————
 
-  - name: ♻️ 延迟最低
-    type: url-test
-    <<: *A
-
-  - name: ♻️ 故障转移
-    type: fallback
-    <<: *A
-
-  - name: ♻️ 负载均衡
-    type: load-balance
-    strategy: round-robin
-    <<: *A
-
-  - name: 🌐 DNS解析
+  - name: Telegram
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Telegram.svg"
+    <<: *proxy_groups
+    
+  - name: Apple
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Apple.svg"
+    <<: *proxy_groups
+    
+  - name: Microsoft
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Microsoft.svg"
     <<: *proxy_groups
 
-  - name: 📲 电报信息
+  - name: OpenAI
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/OpenAI.svg"
     <<: *proxy_groups
 
-  - name: 🤖 OpenAI
+  - name: Discord
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Discord.svg"
     <<: *proxy_groups
 
-  - name: 🎮 Discord
+  - name: TikTok
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/TikTok.svg"
     <<: *proxy_groups
 
-  - name: 📸 TikTok
+  - name: YouTube
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/YouTube.svg"
     <<: *proxy_groups
 
-  - name: 🎬 油管媒体
+  - name: Netflix
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Netflix.svg"
     <<: *proxy_groups
 
-  - name: 📹 奈飞媒体
+  - name: Facebook
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Facebook.svg"
     <<: *proxy_groups
 
-  - name: 📱 脸书社交
+  - name: Google
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Google.svg"
     <<: *proxy_groups
 
-  - name: 📣 谷歌推送
+  - name: GoogleFCM
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/GoogleFCM.svg"
     <<: *proxy_groups
 
-  - name: 📢 谷歌服务
+  - name: GitHub
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/GitHub.svg"
     <<: *proxy_groups
 
-  - name: Ⓜ️ 微软服务
+  - name: Twitter(X)
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Twitter.svg"
     <<: *proxy_groups
 
-  - name: 🍎 苹果服务
+  - name: DNS解析
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/DNS.svg"
     <<: *proxy_groups
 
-  - name: 🛑 广告拦截
+  - name: 漏网之鱼
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/HBASE-copy.svg"
+    <<: *proxy_groups
+
+  - name: 广告拦截
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/No-ads-all.svg"
     type: select
     proxies:
       - ⛔️ 拒绝连接
@@ -234,30 +266,49 @@ proxy-groups:
       - REJECT-DROP
       - PASS #匹配规则
 
-  - name: 🐋 漏网之鱼
-    <<: *proxy_groups
+  - name: 延迟最低
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Return.svg"
+    type: url-test
+    <<: *A
 
-  - name: 🇭🇰 香港节点
-    filter: "^(?=.*(港|HK|hk|Hong Kong|HongKong|hongkong)).*$"
-    <<: *All
+  - name: 故障转移
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Return.svg"
+    type: fallback
+    <<: *A
 
-  - name: 🇯🇵 日本节点
-    filter: "^(?=.*(日本|川日|东京|大阪|泉日|埼玉|沪日|深日|[^-]日|JP|Japan)).*$"
-    <<: *All
+  - name: 负载均衡
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Return.svg"
+    type: load-balance
+    strategy: round-robin
+    <<: *A
 
-  - name: 🇺🇲 美国节点
-    filter: "^(?=.*(美|波特兰|达拉斯|俄勒冈|凤凰城|费利蒙|硅谷|拉斯维加斯|洛杉矶|圣何塞|圣克拉拉|西雅图|芝加哥|US|United States)).*$"
-    <<: *All
-
-  - name: 🇨🇳 台湾节点
+  - name: 台湾节点
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/CN.svg"
     filter: "^(?=.*(台|新北|彰化|TW|Taiwan)).*$"
     <<: *All
 
-  - name: 🇸🇬 狮城节点
+  - name: 香港节点
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/HK.svg"
+    filter: "^(?=.*(港|HK|hk|Hong Kong|HongKong|hongkong)).*$"
+    <<: *All
+
+  - name: 日本节点
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/JP.svg"
+    filter: "^(?=.*(日本|川日|东京|大阪|泉日|埼玉|沪日|深日|[^-]日|JP|Japan)).*$"
+    <<: *All
+
+  - name: 美国节点
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/US.svg"
+    filter: "^(?=.*(美|波特兰|达拉斯|俄勒冈|凤凰城|费利蒙|硅谷|拉斯维加斯|洛杉矶|圣何塞|圣克拉拉|西雅图|芝加哥|US|United States)).*$"
+    <<: *All
+
+  - name: 狮城节点
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Singapore.svg"
     filter: "^(?=.*(新加坡|坡|狮城|SG|Singapore)).*$"
     <<: *All
 
-  - name: 🌍 其它地区
+  - name: 其它地区
+    icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Globe.svg"
     filter: "^(?!.*(港|HK|hk|Hong Kong|HongKong|hongkong|日本|川日|东京|大阪|泉日|埼玉|沪日|深日|[^-]日|JP|Japan|美|波特兰|达拉斯|俄勒冈|凤凰城|费利蒙|硅谷|拉斯维加斯|洛杉矶|圣何塞|圣克拉拉|西雅图|芝加哥|US|United States|台|新北|彰化|TW|Taiwan|新加坡|坡|狮城|SG|Singapore|灾|网易|Netease|套餐|重置|剩余|到期|订阅|群|账户|流量|有效期|时间|官网)).*$"
     <<: *All
 # —————————
@@ -280,9 +331,9 @@ rule-providers:
     <<: *RuleDefault
     url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/classical/cn.list"
 
-  anti-ads-all:
+  No-ads-all:
     <<: *RuleDefault
-    url: "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-surge.txt"
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/classical/category-ads-all.list"
 
   TikTok:
     <<: *RuleDefault
@@ -327,24 +378,34 @@ rule-providers:
   Discord:
     <<: *RuleDefault
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Discord/Discord.list"
+
+  GitHub:
+    <<: *RuleDefault
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/GitHub/GitHub.list"
+
+  Twitter:
+    <<: *RuleDefault
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Twitter/Twitter.list"
 # —————————
 
 rules:
   - DST-PORT,53,🌐 DNS_Hijack
-  - RULE-SET,anti-ads-all,🛑 广告拦截
-  - RULE-SET,Discord,🎮 Discord
-  - RULE-SET,TikTok,📸 TikTok
-  - RULE-SET,YouTube,🎬 油管媒体
-  - RULE-SET,Netflix,📹 奈飞媒体
-  - RULE-SET,Facebook,📱 脸书社交
-  - RULE-SET,OpenAI,🤖 OpenAI
-  - RULE-SET,GoogleFCM,📣 谷歌推送
-  - RULE-SET,Google,📢 谷歌服务
-  - RULE-SET,Apple,🍎 苹果服务
-  - RULE-SET,Microsoft,Ⓜ️ 微软服务
-  - RULE-SET,Telegram,📲 电报信息
+  - RULE-SET,No-ads-all,广告拦截
+  - RULE-SET,Twitter,Twitter(X)
+  - RULE-SET,GitHub,GitHub
+  - RULE-SET,Discord,Discord
+  - RULE-SET,TikTok,TikTok
+  - RULE-SET,YouTube,YouTube
+  - RULE-SET,Netflix,Netflix
+  - RULE-SET,Facebook,Facebook
+  - RULE-SET,OpenAI,OpenAI
+  - RULE-SET,GoogleFCM,GoogleFCM
+  - RULE-SET,Google,Google
+  - RULE-SET,Apple,Apple
+  - RULE-SET,Microsoft,Microsoft
+  - RULE-SET,Telegram,Telegram
   - RULE-SET,CN_域名,🌎 全球直连
   - RULE-SET,CN_IP,🌎 全球直连
   - RULE-SET,private_Lan,🌎 全球直连,no-resolve
-  - MATCH,🐋 漏网之鱼
+  - MATCH,漏网之鱼
 # —————————
