@@ -11,9 +11,9 @@
     <a href="https://github.com/MoGuangYu/Surfing/releases/tag/Prerelease-Alpha">
         <img alt="Android" src="https://img.shields.io/badge/Module Latestsnapshot-F05033.svg?logo=android&logoColor=white">
     </a>
-    <a href="https://github.com/MoGuangYu/Surfing/releases/tag/v7.3.7">
-        <img alt="Downloads" src="https://img.shields.io/github/downloads/MoGuangYu/Surfing/v7.3.7/total?label=Download@v7.3.7&labelColor=00b56a&logo=git&logoColor=white">
-    </a>
+    <a href="https://github.com/MoGuangYu/Surfing/releases">
+    <img alt="Downloads" src="https://img.shields.io/github/downloads/MoGuangYu/Surfing/total?label=Module%20Download&labelColor=00b56a&logo=git&logoColor=white">
+</a>
 </div>
 <br>
 <div align="center">

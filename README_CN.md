@@ -11,9 +11,9 @@
     <a href="https://github.com/MoGuangYu/Surfing/releases/tag/Prerelease-Alpha">
         <img alt="Android" src="https://img.shields.io/badge/Module Latestsnapshot-F05033.svg?logo=android&logoColor=white">
     </a>
-    <a href="https://github.com/MoGuangYu/Surfing/releases/tag/v7.3.7">
-        <img alt="Downloads" src="https://img.shields.io/github/downloads/MoGuangYu/Surfing/v7.3.7/total?label=Download@v7.3.7&labelColor=00b56a&logo=git&logoColor=white">
-    </a>
+    <a href="https://github.com/MoGuangYu/Surfing/releases">
+    <img alt="Downloads" src="https://img.shields.io/github/downloads/MoGuangYu/Surfing/total?label=Module%20Download&labelColor=00b56a&logo=git&logoColor=white">
+</a>
 </div>
 <br>
 <div align="center">
@@ -86,6 +86,8 @@
 - Web App：
   - 仅为图形辅助工具，用于便携浏览及管理后台路由数据，并无其它多余用途
 
+<img src="./folder/Webapk.png" alt="Web UI" width="300">
+
 > 模块已内置 Gui 可通过浏览器本地访问使用，亦或者使用 App 在线访问使用，两者本质上并无差异
 
 </details>
@@ -98,7 +100,7 @@
 - 可通过 **WiFi SDID** 网络控制启停
 - 可通过模块开关进行 关闭/开启 控制运行服务实时生效
 - 可向系统状态栏添加模块的控制开关  
-  
+
 <img src="./folder/KAKJFS.jpg" alt="KJFS" width="300">
 
 [下载Apk](https://www.coolapk.com/apk/com.coolapk.market) | [复制URL](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/KJFSURL.md)
