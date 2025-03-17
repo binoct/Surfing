@@ -76,12 +76,13 @@ Please decide whether to use the Surfing module only after clearly understanding
 <details>
 <summary>1. First Use</summary>
 
-- After installing the module, no need to restart the device. You can use `Toolbox` to integrate and refresh the client update status.
-- After installation is complete, add your subscription address to `config.yaml` and restart the module service via the switch.
-- Due to network reasons, all **rules**/**subscriptions** may not be downloaded automatically. Please manually refresh in the panel.
-  - If the above fails, ensure your network environment is normal.
-- Web App:
-  - It is only a graphical auxiliary tool used for portable browsing and managing the backend route data, with no other unnecessary uses.
+- After installing the module for the first time, please add your subscription address to `/data/adb/box_bll/clash/config.yaml`, then manually restart your device once.  
+- Due to network issues, **rules**/**subscriptions** may not be fully downloaded automatically. Please refresh them manually via the panel.  
+  - If the above fails, ensure your network is working properly.  
+
+- **Web App:**  
+  - This is only a graphical auxiliary tool for convenient browsing and backend route management, with no other extra functions.  
+  - If you encounter **"Request resource failed, loading local panel"**, or if proxy group icons are not displayed, try toggling your network connection on/off or check whether is accessible. `raw.githubusercontent.com`
 
 > The module has a built-in GUI that can be accessed locally via a browser or used online via the app. There is essentially no difference between the two.
 
