@@ -48,7 +48,6 @@ clean_old_logs() {
     current_time=$(date +%s)
     if [ -f "$log_file" ]; then
         > "$temp_log_file"
-        
         while IFS= read -r line; do
             log_date=$(echo "$line" | awk '{print $1, $2}')
             log_time=$(date -d "$log_date" +%s 2>/dev/null)
@@ -127,27 +126,62 @@ check_module_service() {
                     fi
                 else
                     if [ "$use_ssid_matching" = "true" ]; then
-                        log_msg "白名单模式：启用"
-                        log_msg "白名单列表: ${allowed_wifi_ssids}"
-                        if is_allowed_wifi "$ssid" "$allowed_wifi_ssids"; then
+                        if [ "$use_wifi_list_mode" = "blacklist" ]; then
+                            log_msg "黑名单模式：启用"
+                            log_msg "黑名单列表: ${blacklist_wifi_ssids}"
+                            if is_allowed_wifi "$ssid" "$blacklist_wifi_ssids"; then
+                                if [ "$current_state" != "disabled" ]; then
+                                    touch "${module_dir}/disable"
+                                    log_msg "当前配置：禁用"
+                                    log_msg "已命中列表，模块服务已禁用"
+                                else
+                                    log_msg "当前配置：禁用"
+                                    log_msg "已命中列表，当前模块服务已是禁用，无需操作"
+                                fi
+                            else
+                                if [ "$current_state" != "enabled" ]; then
+                                    rm "${module_dir}/disable" 2>/dev/null
+                                    log_msg "当前配置：启用"
+                                    log_msg "未命中列表，模块服务已启用"
+                                else
+                                    log_msg "当前配置：启用"
+                                    log_msg "未命中列表，模块当前已是启用，无需操作"
+                                fi
+                            fi
+                        elif [ "$use_wifi_list_mode" = "whitelist" ]; then
+                            log_msg "白名单模式：启用"
+                            log_msg "白名单列表: ${whitelist_wifi_ssids}"
+                            if is_allowed_wifi "$ssid" "$whitelist_wifi_ssids"; then
+                                if [ "$current_state" != "enabled" ]; then
+                                    rm "${module_dir}/disable" 2>/dev/null
+                                    log_msg "当前配置：启用"
+                                    log_msg "已命中列表，模块服务已启用"
+                                else
+                                    log_msg "当前配置：启用"
+                                    log_msg "已命中列表，当前模块服务已是启用，无需操作"
+                                fi
+                            else
+                                if [ "$current_state" != "disabled" ]; then
+                                    touch "${module_dir}/disable"
+                                    log_msg "当前配置：禁用"
+                                    log_msg "未命中列表，已禁用模块服务"
+                                else
+                                    log_msg "当前配置：禁用"
+                                    log_msg "未命中列表，模块当前已是禁用，无需操作"
+                                fi
+                            fi
+                        else
+                            log_msg "警告：当前黑白名单模式选择为空"
                             if [ "$current_state" != "enabled" ]; then
                                 rm "${module_dir}/disable" 2>/dev/null
                                 log_msg "当前配置：启用"
-                                log_msg "模块服务已启用"
+                                log_msg "模块服务已启用（默认逻辑）"
                             else
                                 log_msg "当前配置：启用"
-                                log_msg "当前模块服务已是启用，无需操作"
-                            fi
-                        else
-                            if [ "$current_state" != "disabled" ]; then
-                                touch "${module_dir}/disable"
-                                log_msg "未命中列表，已禁用模块服务"
-                            else
-                                log_msg "未命中列表，模块当前已是禁用，无需操作"
+                                log_msg "模块服务已是启用，无需操作（默认逻辑）"
                             fi
                         fi
                     else
-                        log_msg "白名单模式：禁用"
                         log_msg "使用常规WiFi模块设置"
                         if [ "$current_state" != "enabled" ]; then
                             rm "${module_dir}/disable" 2>/dev/null
@@ -155,7 +189,7 @@ check_module_service() {
                             log_msg "模块服务已启用"
                         else
                             log_msg "当前配置：启用"
-                            log_msg "当前模块服务已是启用，无需操作"
+                            log_msg "模块服务已是启用，无需操作"
                         fi
                     fi
                 fi
