@@ -60,7 +60,7 @@ function styleScrollView(sv)
   end
 end
 
-local updateLog = "v6.3.5\n1、优化一些已知问题..."
+local updateLog = "1、优化一些已知问题...\n2、新增ipv6测试项"
 function checkForUpdate()
   Http.get(url1 .. "?t=" .. os.time(), nil, "UTF-8", headers, function(code, content)
     if code == 200 then
@@ -614,6 +614,11 @@ Http.get(url2 .. "?t=" .. os.time(), nil, "UTF-8", headers, function(code, conte
                 builder.show()
             end
 
+            menu.add("纯ipv6测试").onMenuItemClick = function(a)
+                local url = "https://ipv6.test-ipv6.com/"
+                webView.loadUrl(url)
+            end
+
             menu.add("切换面板").onMenuItemClick = function(a)
                 local subPop = PopupMenu(activity, more)
                 local subMenu = subPop.Menu
@@ -684,7 +689,7 @@ Http.get(url2 .. "?t=" .. os.time(), nil, "UTF-8", headers, function(code, conte
                 local endTimestamp = #ssb
                 ssb.setSpan(ForegroundColorSpan(0xFF444444), startTimestamp, endTimestamp, 0)
 
-                local updateLogTitle = "更新日志:\n"
+                local updateLogTitle = "热更新:\n"
                 local startLog = #ssb
                 ssb.append(updateLogTitle)
                 local endLog = #ssb
@@ -697,8 +702,9 @@ Http.get(url2 .. "?t=" .. os.time(), nil, "UTF-8", headers, function(code, conte
                 ssb.append(logContent)
                 local endContent = #ssb
                 ssb.setSpan(ForegroundColorSpan(0xFF888888), startContent, endContent, 0)
+                ssb.setSpan(RelativeSizeSpan(0.9), startContent, endContent, 0)
 
-                local copyrightText = "@Surfing Webbrowser 2023"
+                local copyrightText = "@Surfing Webbrowser 2023."
                 local startCopyright = #ssb
                 ssb.append(copyrightText)
                 local endCopyright = #ssb
