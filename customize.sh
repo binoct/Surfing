@@ -110,6 +110,15 @@ if [ -d /data/adb/box_bll ]; then
   restore_subscribe_urls
   ui_print "- 正在重启服务..."
   /data/adb/box_bll/scripts/box.service start > /dev/null 2>&1
+  sleep 1
+  for pid in $(pidof inotifyd); do
+  if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
+    kill ${pid}
+  fi
+  done
+  nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$SURFING_PATH" > /dev/null 2>&1 &
+  nohup inotifyd "${SCRIPTS_PATH}net.inotify" "$NET_PATH" > /dev/null 2>&1 &
+  nohup inotifyd "${SCRIPTS_PATH}ctr.inotify" "$CTR_PATH" > /dev/null 2>&1 &
   ui_print "- 更新完成无需重启设备..."
 else
   ui_print "- 安装中..."
@@ -118,8 +127,8 @@ else
   installapk
   ui_print "- 模块安装完成 工作目录"
   ui_print "- data/adb/box_bll/"
-  ui_print "- 安装无需重启设备..."
-  ui_print "- 首次安装需通过模块开关重启模块服务"
+  ui_print "- 请先于工作目录/config.yaml"
+  ui_print "- 添加你的订阅，首次安装需重启设备一次..."
 fi
 
 if [ "$KSU" = true ]; then
@@ -143,14 +152,3 @@ set_perm_recursive /data/adb/box_bll/bin/ 0 3005 0755 0700
 set_perm "$service_dir/Surfing_service.sh" 0 0 0700
 
 chmod ugo+x /data/adb/box_bll/scripts/*
-
-for pid in $(pidof inotifyd); do
-  if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
-    kill ${pid}
-  fi
-done
-
-mkdir -p "$SURFING_PATH"
-nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$SURFING_PATH" > /dev/null 2>&1 &
-nohup inotifyd "${SCRIPTS_PATH}net.inotify" "$NET_PATH" > /dev/null 2>&1 &
-nohup inotifyd "${SCRIPTS_PATH}ctr.inotify" "$CTR_PATH" > /dev/null 2>&1 &
