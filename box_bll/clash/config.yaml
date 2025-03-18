@@ -1,3 +1,4 @@
+# —————————
 # 基础设置
 mixed-port: 7890
 redir-port: 7891
@@ -19,9 +20,12 @@ external-controller: 0.0.0.0:9090
 external-ui: /data/adb/box_bll/panel/Zash/ # 主推zash
 secret: ""
 # —————————
-#####################
-#修改配置文件保存时，建议重启服务/重载配置.
-#####################
+# ==== Tips
+
+# 1. 修改配置文件保存时，建议重启服务/重载配置.
+# 2. 如遇 Web.apk 请求资源失败正在加载本地面板，或者代理组的图标无法显示，确保Tun保持开启状态下，您可先尝试 关闭/开启网络，亦或者检查是否能访问上 raw.githubusercontent.com
+# —————————
+
 
 # 健康检查
 p: &p
@@ -31,6 +35,10 @@ p: &p
     enable: true
     url: https://www.gstatic.com/generate_204
     interval: 300
+  header:
+      User-Agent:
+      - "mihomo/1.19.3"
+      - "clash.meta"
 # —————————
 
 # 订阅地址相关
@@ -53,18 +61,21 @@ proxy-providers: # ← 此函数位置请勿变动！此为模块更新时备份
     <<: *p
     override:
       additional-prefix: "Main："
+    path: ./proxies/1.主要地址.yaml
     url: "引入您的Clash订阅链接地址"
 
   2.备用地址:
     <<: *p
     override:
       additional-prefix: "Minor："
+    path: ./proxies/2.备用地址.yaml
     url: "引入您的Clash订阅链接地址"
 
   3.额外地址:
     <<: *p
     override:
       additional-prefix: "Additi："
+    path: ./proxies/3.额外地址.yaml
     url: "引入您的Clash订阅链接地址"
 
 # —————————
@@ -96,7 +107,7 @@ sniffer:
 
 # 网卡模块
 tun:
-  enable: true #true 开 #false 关
+  enable: true #true 开 #false 关 # 防止地址泄露此项必须开启
   device: meta
   stack: gvisor
   dns-hijack:
@@ -128,9 +139,9 @@ tun:
 # —————————
 
 # DNS模块
+# 解析不懂别瞎改养蛊 已最优解，你再怎么折腾也是没啥卵用
 dns:
   enable: true
-  prefer-h3: true
   ipv6: true
   listen: 0.0.0.0:1053
   enhanced-mode: fake-ip
@@ -141,22 +152,18 @@ dns:
     - "connect.rom.miui.com"
     - "localhost.ptlogin2.qq.com"
     - "+.market.xiaomi.com"
-  default-nameserver:
-    - 120.53.53.53
-    - 119.29.29.29
-    - 1.12.12.12
-    - 223.5.5.5
-    - 223.6.6.6
   direct-nameserver:
-    - https://doh.pub/dns-query
-    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query#🌎 全球直连
+    - https://dns.alidns.com/dns-query#🌎 全球直连&h3=true
   proxy-server-nameserver:
-    - https://doh.pub/dns-query
-    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query#🌎 全球直连
+    - https://dns.alidns.com/dns-query#🌎 全球直连&h3=true
   nameserver:
-    - https://dns.google/dns-query#DNS解析
-    - https://cloudflare-dns.com/dns-query#DNS解析
+    - https://dns.google/dns-query#DNS解析&h3=true
+    - https://cloudflare-dns.com/dns-query#DNS解析&h3=true
 # —————————
+
+global-ua: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Mobile Safari/537.36
 
 proxies:
   - {name: 🌎 全球直连, type: direct, udp: true}
@@ -321,70 +328,87 @@ rule-anchor:
 rule-providers:
   CN_IP:
     <<: *RuleDefault
+    path: ./rules/CN_IP.list
     url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geoip/classical/cn.list"
 
   private_Lan:
     <<: *RuleDefault
+    path: ./rules/private_Lan.list
     url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geoip/classical/private.list"
 
   CN_域名:
     <<: *RuleDefault
+    path: ./rules/CN_域名.list
     url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/classical/cn.list"
 
   No-ads-all:
     <<: *RuleDefault
+    path: ./rules/No-ads-all.list
     url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/classical/category-ads-all.list"
 
   TikTok:
     <<: *RuleDefault
+    path: ./rules/TikTok.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/TikTok/TikTok.list"
 
   Facebook:
     <<: *RuleDefault
+    path: ./rules/Facebook.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Facebook/Facebook.list"
 
   Telegram:
     <<: *RuleDefault
+    path: ./rules/Telegram.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Telegram/Telegram.list"
 
   YouTube:
     <<: *RuleDefault
+    path: ./rules/YouTube.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/YouTube/YouTube.list"
 
   Google:
     <<: *RuleDefault
+    path: ./rules/Google.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Google/Google.list"
 
   GoogleFCM:
     <<: *RuleDefault
+    path: ./rules/GoogleFCM.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/GoogleFCM/GoogleFCM.list"
 
   Microsoft:
     <<: *RuleDefault
+    path: ./rules/Microsoft.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Microsoft/Microsoft.list"
 
   Apple:
     <<: *RuleDefault
+    path: ./rules/Apple.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Apple/Apple.list"
 
   OpenAI:
     <<: *RuleDefault
+    path: ./rules/OpenAI.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/OpenAI/OpenAI.list"
 
   Netflix:
     <<: *RuleDefault
+    path: ./rules/Netflix.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Netflix/Netflix.list"
 
   Discord:
     <<: *RuleDefault
+    path: ./rules/Discord.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Discord/Discord.list"
 
   GitHub:
     <<: *RuleDefault
+    path: ./rules/GitHub.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/GitHub/GitHub.list"
 
   Twitter:
     <<: *RuleDefault
+    path: ./rules/Twitter.list
     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Twitter/Twitter.list"
 # —————————
 
