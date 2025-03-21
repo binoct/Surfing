@@ -8,9 +8,24 @@ SCRIPTS_PATH="/data/adb/box_bll/scripts/"
 NET_PATH="/data/misc/net"
 CTR_PATH="/data/misc/net/rt_tables"
 CONFIG_FILE="/data/adb/box_bll/clash/config.yaml"
-BACKUP_FILE="/data/adb/box_bll/clash/subscribe_urls_backup.txt"
+BACKUP_FILE="/data/adb/box_bll/clash/proxies/subscribe_urls_backup.txt"
 APK_FILE="$MODPATH/webroot/Web.apk"
 INSTALL_DIR="/data/app"
+HOSTS_FILE="/data/adb/modules/Surfing/system/etc/hosts"
+HOSTS_BACKUP="/data/adb/modules/Surfing/system/etc/hosts.bak"
+
+
+MODULE_PROP_PATH="/data/adb/modules/Surfing/module.prop"
+
+MODULE_VERSION_CODE=$(awk -F'=' '/versionCode/ {print $2}' "$MODULE_PROP_PATH")
+
+if [ "$MODULE_VERSION_CODE" -lt 1610 ]; then
+  INSTALL_APK=true
+  UPDATE_GEO=true
+else
+  INSTALL_APK=false
+  UPDATE_GEO=false
+fi
 
 if [ "$BOOTMODE" != true ]; then
   abort "Error: 请在 Magisk Manager / KernelSU Manager / APatch 中安装"
@@ -30,11 +45,14 @@ fi
 
 extract_subscribe_urls() {
   if [ -f "$CONFIG_FILE" ]; then
-    awk '/proxy-providers:/,/^profile:/' "$CONFIG_FILE" | grep -Eo "url: \".*\"" | sed -E 's/url: "(.*)"/\1/' > "$BACKUP_FILE"
+    awk '/proxy-providers:/,/^profile:/' "$CONFIG_FILE" | \
+    grep -Eo "url: \".*\"" | \
+    sed -E 's/url: "(.*)"/\1/' | \
+    sed 's/&/\\&/g' > "$BACKUP_FILE"
     
     if [ -s "$BACKUP_FILE" ]; then
-      echo "- 提取订阅地址已备份到"
-      echo "- $BACKUP_FILE"
+      echo "- 提取订阅地址已备份到："
+      echo "- proxies/subscribe_urls_backup.txt"
     else
       echo "- 未找到目标 URL，请检查配置文件格式"
     fi
@@ -42,6 +60,7 @@ extract_subscribe_urls() {
     echo "- 配置文件不存在，无法提取订阅地址"
   fi
 }
+
 restore_subscribe_urls() {
   if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
     awk 'NR==FNR {
@@ -55,17 +74,13 @@ restore_subscribe_urls() {
          /profile:/ { inBlock = 0 }
          { print }
         ' "$BACKUP_FILE" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
-    echo "- 订阅地址已恢复 >> 新配置中！"
+    echo "- 订阅地址已恢复至新配置中！"
   else
     echo "- 备份文件不存在或为空，无法恢复订阅地址。"
   fi
 }
 
 installapk() {
-  PACKAGE_NAME="com.android64bit.web"
-  if pm list packages | grep -q "$PACKAGE_NAME"; then
-    return
-  fi
   if [ -f "$APK_FILE" ]; then
     cp "$APK_FILE" "$INSTALL_DIR/"
     ui_print "- 开始安装 Web.apk..."
@@ -84,24 +99,26 @@ if [ -d /data/adb/box_bll ]; then
   ui_print "- 正在初始化服务..."
   /data/adb/box_bll/scripts/box.service stop > /dev/null 2>&1
   sleep 1.5
-  installapk
-  if [ -d /data/adb/box_bll/mihomo ]; then
-    mv /data/adb/box_bll/mihomo /data/adb/box_bll/clash
+  if [ "$INSTALL_APK" = true ]; then
+    installapk
   fi
-  if [ -f /data/adb/box_bll/bin/mihomo ]; then
-    mv /data/adb/box_bll/bin/mihomo /data/adb/box_bll/bin/clash
+  
+  if [ "$UPDATE_GEO" = true ]; then
+    cp -f "$MODPATH/box_bll/clash/GeoIP.dat" /data/adb/box_bll/clash/
+    cp -f "$MODPATH/box_bll/clash/GeoSite.dat" /data/adb/box_bll/clash/
+  fi
+  
+  extract_subscribe_urls
+
+  if [ -f "$HOSTS_FILE" ]; then
+      cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"
   fi
 
-  if [ -d /data/adb/box_bll/clash ]; then
-    extract_subscribe_urls
-    cp /data/adb/box_bll/clash/config.yaml /data/adb/box_bll/clash/config.yaml.bak
-    ui_print "- 配置文件 config.yaml 已备份 bak"
-  fi
-  if [ -d /data/adb/box_bll/scripts ]; then
-    cp /data/adb/box_bll/scripts/box.config /data/adb/box_bll/scripts/box.config.bak
-    ui_print "- 用户配置 box.config 已备份 bak"
-  fi
-
+  mkdir -p "/data/adb/modules/Surfing/system/etc/"
+  cp -f "$MODPATH/system/etc/"* /data/adb/modules/Surfing/system/etc/
+  
+  cp /data/adb/box_bll/clash/config.yaml /data/adb/box_bll/clash/config.yaml.bak
+  cp /data/adb/box_bll/scripts/box.config /data/adb/box_bll/scripts/box.config.bak
   cp -f "$MODPATH/box_bll/clash/config.yaml" /data/adb/box_bll/clash/
   cp -f "$MODPATH/box_bll/clash/Toolbox.sh" /data/adb/box_bll/clash/
   cp -f "$MODPATH/box_bll/scripts/"* /data/adb/box_bll/scripts/
@@ -112,9 +129,9 @@ if [ -d /data/adb/box_bll ]; then
   /data/adb/box_bll/scripts/box.service start > /dev/null 2>&1
   sleep 1
   for pid in $(pidof inotifyd); do
-  if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
-    kill ${pid}
-  fi
+    if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
+      kill ${pid}
+    fi
   done
   nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$SURFING_PATH" > /dev/null 2>&1 &
   nohup inotifyd "${SCRIPTS_PATH}net.inotify" "$NET_PATH" > /dev/null 2>&1 &
@@ -138,9 +155,6 @@ fi
 if [ "$APATCH" = true ]; then
   sed -i 's/name=Surfingmagisk/name=SurfingAPatch/g' "$MODPATH/module.prop"
 fi
-
-mkdir -p /data/adb/box_bll/bin/
-mkdir -p /data/adb/box_bll/run/
 
 rm -f customize.sh
 mv -f "$MODPATH/Surfing_service.sh" "$service_dir/"
