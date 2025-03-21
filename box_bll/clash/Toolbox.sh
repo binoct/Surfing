@@ -41,7 +41,7 @@ YACDD_URL="https://api.github.com/repos/MetaCubeX/Yacd-meta/releases/latest"
 ZASH_DIR="${PANEL_DIR}Zash/"
 ZASH_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
 ZASHD_URL="https://api.github.com/repos/Zephyruso/zashboard/releases/latest"
-BACKUP_FILE="/data/adb/box_bll/clash/subscribe_urls_backup.txt"
+BACKUP_FILE="/data/adb/box_bll/clash/proxies/subscribe_urls_backup.txt"
 TEMP_FILE="/data/local/tmp/Surfing_update.zip"
 TEMP_DIR="/data/local/tmp/Surfing_update"
 DB_PATH="/data/adb/box_bll/clash/cache.db"
@@ -55,11 +55,11 @@ GEOIP_PATH="/data/adb/box_bll/clash/GeoIP.dat"
 GEOSITE_PATH="/data/adb/box_bll/clash/GeoSite.dat"
 RULES_PATH="/data/adb/box_bll/clash/rule/"
 GIT_URL="https://api.github.com/repos/MoGuangYu/Surfing/releases/latest"
-RULES_URL_PREFIX="https://raw.githubusercontent.com/MoGuangYu/rules/main/Home/"
-RULES=("YouTube.yaml" "TikTok.yaml" "Telegram.yaml" "OpenAI.yaml" "Netflix.yaml" "Microsoft.yaml" "Google.yaml" "Facebook.yaml" "Discord.yaml" "Apple.yaml")
+HOSTS_FILE="/data/adb/modules/Surfing/system/etc/hosts"
+HOSTS_BACKUP="/data/adb/modules/Surfing/system/etc/hosts.bak"
 
 
-CURRENT_VERSION="v13.3.6"
+CURRENT_VERSION="v13.4.1"
 TOOLBOX_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
 
@@ -88,10 +88,10 @@ check_version() {
     if [ "$remote_version" != "$CURRENT_VERSION" ]; then
         echo "↴" 
         echo "GitHub Toolbox版本效验！"
-        echo "===================="
+        echo 
         echo "当前版本: $CURRENT_VERSION"
         echo "远程版本: $remote_version"
-        echo "===================="
+        echo 
         
         while read -r -p "是否同步更新脚本？(y/n) " update_confirmation; do
             case "$update_confirmation" in
@@ -123,20 +123,22 @@ check_version() {
 check_version
 
 extract_subscribe_urls() {
-    if [ -f "$CONFIG_PATH" ]; then
-        echo "正在提取订阅地址..."
-        awk '/proxy-providers:/,/^profile:/' "$CONFIG_PATH" | grep -Eo "url: \".*\"" | sed -E 's/url: "(.*)"/\1/' > "$BACKUP_FILE"
-        
-        if [ -s "$BACKUP_FILE" ]; then
-            echo "订阅地址已备份到:"
-            echo "$BACKUP_FILE"
-        else
-            echo "未找到目标 URL，请检查配置文件格式"
-            rm -f "$BACKUP_FILE"
-        fi
+  if [ -f "$CONFIG_PATH" ]; then
+    echo "- 正在提取订阅地址..."
+    awk '/proxy-providers:/,/^profile:/' "$CONFIG_PATH" | \
+    grep -Eo "url: \".*\"" | \
+    sed -E 's/url: "(.*)"/\1/' | \
+    sed 's/&/\\&/g' > "$BACKUP_FILE"
+    
+    if [ -s "$BACKUP_FILE" ]; then
+      echo "- 提取订阅地址已备份到："
+      echo "- proxies/subscribe_urls_backup.txt"
     else
-        echo "配置文件不存在，无法提取订阅地址"
+      echo "- 未找到目标 URL，请检查配置文件格式"
     fi
+  else
+    echo "- 配置文件不存在，无法提取订阅地址"
+  fi
 }
 restore_subscribe_urls() {
     if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
@@ -160,7 +162,7 @@ restore_subscribe_urls() {
         ' "$CONFIG_PATH" > "$CONFIG_PATH.tmp" && \
         mv "$CONFIG_PATH.tmp" "$CONFIG_PATH"
 
-        echo "订阅地址已恢复 >> 新配置中！"
+        echo "订阅地址已恢复至新配置中！"
     else
         echo "配置文件不存在，无法提取订阅地址"
     fi
@@ -185,7 +187,26 @@ reload_configuration1() {
           echo "重载失败！"
        fi
     }
+APK_FILE="$TEMP_DIR/webroot/Web.apk"
+INSTALL_DIR="/data/app"
+installapk() {
+  : <<EOF
+  PACKAGE_NAME="com.android64bit.web"
+  if pm list packages | grep -q "$PACKAGE_NAME"; then
+    return
+  fi
+EOF
 
+  if [ -f "$APK_FILE" ]; then
+    cp "$APK_FILE" "$INSTALL_DIR/"
+    echo "开始安装 Web.apk..."
+    pm install "$INSTALL_DIR/Web.apk"
+    echo "Web.apk 安装完成"
+    rm -rf "$INSTALL_DIR/Web.apk"
+  else
+    echo "未找到 APK 文件 Web.apk"
+  fi
+}
 update_module() {
     echo "↴"
     module_installed=true
@@ -196,7 +217,7 @@ update_module() {
         module_installed=false
         echo "当前设备没有安装 Surfing 模块"
         while true; do
-            echo "是否下载安装？回复y/n"
+            echo "是否下载安装？(y/n)"
             read -r install_confirmation
             if [ "$install_confirmation" == "y" ]; then
                 break
@@ -250,6 +271,7 @@ update_module() {
     if [ "$module_installed" = false ]; then
         echo "是否安装模块？(y/n)"
     else
+        echo "Warn：使用该选项请确保当前脚本已是最新版本！"
         echo "是否更新模块？(y/n)"
     fi
     
@@ -281,6 +303,17 @@ update_module() {
         rm -rf "$TEMP_FILE" "$TEMP_DIR"
         return
     fi
+    
+    MODULE_PROP_PATH="/data/adb/modules/Surfing/module.prop"
+    MODULE_VERSION_CODE=$(awk -F'=' '/versionCode/ {print $2}' "$MODULE_PROP_PATH")
+
+    if [ "$MODULE_VERSION_CODE" -lt 1610 ]; then
+      INSTALL_APK=true
+      UPDATE_GEO=true
+    else
+      INSTALL_APK=false
+      UPDATE_GEO=false
+    fi
 
     if [ "$KSU" = true ] && [ "$KSU_VER_CODE" -lt 10683 ]; then
         SERVICE_PATH="/data/adb/ksu/service.d"
@@ -296,16 +329,34 @@ update_module() {
         /data/adb/box_bll/scripts/box.service stop > /dev/null 2>&1
         sleep 1.5
         extract_subscribe_urls
+        if [ "$INSTALL_APK" = true ]; then
+          installapk
+        fi
+        
+        if [ "$UPDATE_GEO" = true ]; then
+          cp -f "$TEMP_DIR/box_bll/clash/GeoIP.dat" "$COREE_PATH"
+          cp -f "$TEMP_DIR/box_bll/clash/GeoSite.dat" "$COREE_PATH"
+        fi
 
-        [ -f "$CONFIG_PATH" ] && mv "$CONFIG_PATH" "${CONFIG_PATH}.bak"
-        [ -f "$BOX_PATH" ] && mv "$BOX_PATH" "${BOX_PATH}.bak"
+        if [ -f "$CONFIG_PATH" ]; then
+            mv "$CONFIG_PATH" "${CONFIG_PATH}.bak"
+        fi
+        
+        if [ -f "$BOX_PATH" ]; then
+            mv "$BOX_PATH" "${BOX_PATH}.bak"
+        fi
+        
+        if [ -f "$HOSTS_FILE" ]; then
+            cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"
+        fi
 
         cp -f "$TEMP_DIR/box_bll/clash/config.yaml" "$COREE_PATH"
         cp -f "$TEMP_DIR/box_bll/clash/Toolbox.sh" "$COREE_PATH"
         cp -f "$TEMP_DIR/box_bll/scripts/"* "$SCRIPTS_PATH"
+        mkdir -p "$SURFING_PATH/system/etc/"
+        cp -f "$TEMP_DIR/system/etc/"* "$SURFING_PATH/system/etc/"
         find "$TEMP_DIR" -mindepth 1 -maxdepth 1 ! -name "README.md" ! -name "Surfing_service.sh" ! -name "customize.sh" ! -name "box_bll" ! -name "META-INF" -exec cp -r {} "$SURFING_PATH" \;
         restore_subscribe_urls
-        
         echo "正在重启服务..."
         /data/adb/box_bll/scripts/box.service start  > /dev/null 2>&1
     else
@@ -313,8 +364,10 @@ update_module() {
         mkdir -p "$COREE_PATH"
         mkdir -p "$SURFING_PATH"
         mkdir -p "$SURFING_PATH/webroot"
+        mkdir -p "$SURFING_PATH/system"
         mv "$TEMP_DIR/box_bll" "/data/adb/"
         mv "$TEMP_DIR/webroot" "$SURFING_PATH"
+        mv "$TEMP_DIR/system" "$SURFING_PATH"
         find "$TEMP_DIR" -mindepth 1 -maxdepth 1 ! -name "README.md" ! -name "Surfing_service.sh" ! -name "customize.sh" ! -name "box_bll" ! -name "META-INF" -exec cp -r {} "$SURFING_PATH" \;
     fi
 
@@ -331,9 +384,6 @@ update_module() {
       sed -i 's/name=Surfingmagisk/name=SurfingAPatch/g' "$TEMP_DIR/module.prop"
     fi
     
-    mkdir -p /data/adb/box_bll/bin/
-    mkdir -p /data/adb/box_bll/run/
-    
     mv "$TEMP_DIR/Surfing_service.sh" "$SERVICE_PATH"
     chmod 0700 "${SERVICE_PATH}/Surfing_service.sh"
     
@@ -344,7 +394,6 @@ update_module() {
         kill ${pid}
       fi
     done
-    
     mkdir -p "$SURFING_PATH"
     nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$SURFING_PATH" > /dev/null 2>&1 &
     nohup inotifyd "${SCRIPTS_PATH}net.inotify" "$NET_PATH" > /dev/null 2>&1 &
@@ -352,11 +401,13 @@ update_module() {
 
     if [ "$module_installed" = false ]; then
         echo "安装成功✓"
+        echo "需重启设备..."
     else
         echo "更新成功✓"
+        echo "无需重启设备..."
     fi
-    echo "无需重启设备..."
-
+    
+    exec sh "$TOOLBOX_FILE"
 }
 update_module
 
@@ -553,7 +604,7 @@ check_and_update_files() {
 show_menu() {
     while true; do
         echo "=========="
-        echo "Menu：$CURRENT_VERSION"
+        echo "Version：$CURRENT_VERSION"
         echo
         echo "1. 重载配置"
         echo
@@ -563,25 +614,23 @@ show_menu() {
         echo
         echo "4. 更新数据库"
         echo
-        echo "5. 更新路由规则"
+        echo "5. 更新核心"
         echo
-        echo "6. 更新核心"
+        echo "6. 少儿频道"
         echo
-        echo "7. 少儿频道"
+        echo "7. 控制台面板入口"
         echo
-        echo "8. 控制台面板入口"
+        echo "8. 整合客户端更新状态"
         echo
-        echo "9. 整合客户端更新状态"
+        echo "9. 禁用/启用 更新模块"
         echo
-        echo "10. 禁用/启用 更新模块"
+        echo "10. 检查仓库最新提交"
         echo
-        echo "11. 检查仓库最新提交"
+        echo "11. 项目地址"
         echo
-        echo "12. 项目地址"
+        echo "12. 一键卸载"
         echo
-        echo "13. 一键卸载"
-        echo
-        echo "14. Exit"
+        echo "13. Exit"
         echo "——————"
         read -r choice
         case $choice in
@@ -598,27 +647,25 @@ show_menu() {
                 update_geo_database
                 ;;
             5)
-                update_rules
-                ;;
-            6)
                 update_core
                 ;;
-            7)
+            6)
                 open_telegram_group
                 ;;
-            8)
+            7)
                 show_web_panel_menu
                 ;;
-            9)
+            8)
                 integrate_magisk_update
                 ;;
-            10)
+            9)
                 if ! check_module_installed; then
                     continue
                 fi
                 check_update_status
                 echo "1. 禁用更新"
                 echo "2. 启用更新"
+                echo "3. 返回菜单"
                 read -r update_choice
                 case $update_choice in
                     1)
@@ -627,13 +674,17 @@ show_menu() {
                     2)
                         enable_updates
                         ;;
+                    3)
+                        echo "↴"
+                        echo "操作已取消！"
+                        ;;
                     *)
                         echo "↴"
                         echo "无效的输入！"
                         ;;
                 esac
                 ;;
-            11)
+            10)
                 echo "↴"
                 echo "正在检查仓库更新..."
                 all_up_to_date=true
@@ -664,13 +715,13 @@ show_menu() {
                 echo
                 echo "检测已完毕..."
                 ;;
-            12)
+            11)
                 open_project_page
                 ;;
-            13)
+            12)
                 delete_files_and_dirs
                 ;;
-            14)
+            13)
                 exit 0
                 ;;
             *)
@@ -681,7 +732,7 @@ show_menu() {
     done
 }
 
-NO_UPDATE_ENABLED=true
+NO_UPDATE_ENABLED=false
 ensure_var_path() {
     if [ ! -d "$VAR_PATH" ]; then
         mkdir -p "$VAR_PATH"
@@ -758,12 +809,12 @@ enable_updates() {
 }
 integrate_magisk_update() {
     if [ ! -f "$MODULE_PROP" ]; then
-        echo "↴" 
+        echo "↴"
         echo "当前未安装模块！"
         return
     fi
     echo "↴"
-    echo "如果你在客户端 安装/更新 模块，可进行整合刷新并更新状态 无需重启设备，是否整合？回复y/n"
+    echo "如果你在客户端 安装/更新 模块，可进行整合刷新并更新状态 无需重启设备，是否整合？(y/n)"
     read -r confirmation
     if [ "$confirmation" != "y" ]; then
         echo "↴"
@@ -779,18 +830,14 @@ integrate_magisk_update() {
 
     if [ -d "$GXSURFING_PATH" ]; then
         echo "检测到 安装/更新 Surfing 模块，进行整合..."
-        rm -rf "$SURFING_PATH"
-        mv "$GXSURFING_PATH" /data/adb/modules/
+        cp -rf "$GXSURFING_PATH"/* "$SURFING_PATH/"
+        
         if [ -f "$SURFING_PATH/update" ]; then
             rm -f "$SURFING_PATH/update"
-        fi    
-        echo "整合成功✓"
-        for pid in $(pidof inotifyd); do
-        if grep -q box.inotify /proc/${pid}/cmdline; then
-            kill ${pid}
         fi
-       done
-       nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$SURFING_PATH" > /dev/null 2>&1 & 
+
+        rm -rf "$GXSURFING_PATH"
+        echo "整合成功✓"
     else
         echo "没有检测到 安装/更新 Surfing 模块。"
     fi
@@ -893,69 +940,12 @@ update_geo_database() {
         return
     fi
     echo "更新成功✓"
-    echo
-    echo "建议重载配置..."
     chown root:net_admin "$GEOIP_PATH" "$GEOSITE_PATH"
     if [ $? -ne 0 ]; then
         echo "设置文件权限失败！"
         return
     fi
     echo "$geo_version" > "$GEO_DATABASE_VERSION_FILE"
-}
-update_rules() {
-    if [ "$NO_UPDATE_ENABLED" = "true" ]; then
-        echo "↴"
-        echo "当前选项是禁用状态，不允许执行该操作！"
-        return
-    fi
-    
-    if [ ! -f "$MODULE_PROP" ]; then
-        echo "↴" 
-        echo "当前未安装模块！"
-        return
-    fi
-    echo "↴"
-    ensure_var_path
-    RULES_UPDATE_TIMESTAMP="${VAR_PATH}last_rules_update"    
-    if [ -f "$RULES_UPDATE_TIMESTAMP" ]; then
-        last_update=$(date -d "@$(cat $RULES_UPDATE_TIMESTAMP)" +"%Y-%m-%d %H:%M:%S")
-        echo "距离上次更新是: $last_update"
-    fi
-    echo "此操作会从 GitHub 拉取最新全部规则，是否更新？(y/n)"
-    read -r confirmation
-    if [ "$confirmation" != "y" ];then
-        echo "↴"
-        echo "操作取消！"
-        return
-    fi
-    if [ ! -d "$RULES_PATH" ];then
-
-        mkdir -p "$RULES_PATH"
-        if [ $? -ne 0 ];then
-            echo "创建规则目录失败，请检查权限！"
-            return
-        fi
-    fi
-    echo "↴"
-    echo "正在下载文件中..."
-    for rule in "${RULES[@]}"; do
-        curl -o "${RULES_PATH}${rule}" -L "${RULES_URL_PREFIX}${rule}"
-        if [ $? -ne 0 ];then
-            echo "下载 ${rule} 失败！"
-            return
-        fi
-    done
-    echo "更新成功✓"
-    echo
-    echo "建议重载配置..."
-    chown -R root:net_admin "$RULES_PATH"
-    find "$RULES_PATH" -type d -exec chmod 0755 {} \;
-
-    if [ $? -ne 0 ];then
-        echo "设置文件权限失败！"
-        return
-    fi
-    date +%s > "$RULES_UPDATE_TIMESTAMP"
 }
 show_web_panel_menu() {
     while true; do
@@ -1337,6 +1327,12 @@ delete_files_and_dirs() {
             echo "正在停止服务..."
             /data/adb/box_bll/scripts/box.service stop > /dev/null 2>&1
             sleep 1.5
+            for pid in $(pidof inotifyd); do
+            if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
+            kill ${pid}
+            fi
+            done
+            sleep 1
             echo "正在删除..."
             rm -rf "/data/adb/modules_update/Surfing/" \
                    "/data/adb/modules/Surfing/" \
