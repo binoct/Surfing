@@ -6,10 +6,14 @@ tproxy-port: 1536
 ipv6: true
 mode: Rule
 allow-lan: true
+geodata-mode: true
 geo-auto-update: true
 geo-update-interval: 24
 geox-url:
-  ASN.mmdb: "https://github.com/xishang0128/geoip/releases/download/latest/GeoLite2-ASN.mmdb"
+  asn: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb"
+  geoip: "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat"
+  geosite: "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat"
+global-ua: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Mobile Safari/537.36
 unified-delay: true
 tcp-concurrent: true
 log-level: silent
@@ -23,7 +27,6 @@ secret: ""
 # ==== Tips
 
 # 1. 修改配置文件保存时，建议重启服务/重载配置.
-# 2. 如遇 Web.apk 请求资源失败正在加载本地面板，或者代理组的图标无法显示，确保Tun保持开启状态下，您可先尝试 关闭/开启网络，亦或者检查是否能访问上 raw.githubusercontent.com
 # —————————
 
 
@@ -106,6 +109,8 @@ sniffer:
 # —————————
 
 # 网卡模块
+# ==== Tips
+# 1. Tp无法劫持发往局域网的请求，也会导致WebRTC地址泄露DNS会有劫持抢答风险
 tun:
   enable: true #true 开 #false 关 # 防止地址泄露此项必须开启
   device: meta
@@ -119,8 +124,12 @@ tun:
   auto-redirect: false
   auto-detect-interface: true
   route-exclude-address:
-  - 192.168.0.0/16
-  - fc00::/7
+    - 192.168.0.0/16
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 100.64.0.0/10
+    - fc00::/7
+    - fe80::/10
   exclude-package: # 游戏卡顿可添加包名 仅Android
     #- com.tencent.tmgp.sgame
     # _____________________# 三星专供 ↓ 范围
@@ -134,7 +143,7 @@ tun:
 #    - com.qti.qcc
 #    - com.sec.epdg
 #    - com.sec.imsservice # 三星专供 ↑ 范围
-    # 如果你不是不必理会
+    # 非三星用户不必理会，三星用户可自行取消注释
     
 # —————————
 
@@ -147,23 +156,19 @@ dns:
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.0/15
   fake-ip-filter:
-    - "*"
-    - "+.lan"
-    - "connect.rom.miui.com"
+    - "GeoSite:CN,private"
     - "localhost.ptlogin2.qq.com"
-    - "+.market.xiaomi.com"
-  direct-nameserver:
-    - https://doh.pub/dns-query#🌎 全球直连
-    - https://dns.alidns.com/dns-query#🌎 全球直连&h3=true
   proxy-server-nameserver:
     - https://doh.pub/dns-query#🌎 全球直连
     - https://dns.alidns.com/dns-query#🌎 全球直连&h3=true
+  nameserver-policy:
+    "GeoSite:CN":
+       - https://doh.pub/dns-query#🌎 全球直连
+       - https://dns.alidns.com/dns-query#🌎 全球直连&h3=true
   nameserver:
     - https://dns.google/dns-query#DNS解析&h3=true
     - https://cloudflare-dns.com/dns-query#DNS解析&h3=true
 # —————————
-
-global-ua: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Mobile Safari/537.36
 
 proxies:
   - {name: 🌎 全球直连, type: direct, udp: true}
@@ -320,116 +325,24 @@ proxy-groups:
     <<: *All
 # —————————
 
-rule-anchor:
-  RuleDefault: &RuleDefault
-    {type: http, behavior: classical, format: text, interval: 86400}
-# —————————
-
-rule-providers:
-  CN_IP:
-    <<: *RuleDefault
-    path: ./rules/CN_IP.list
-    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geoip/classical/cn.list"
-
-  private_Lan:
-    <<: *RuleDefault
-    path: ./rules/private_Lan.list
-    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geoip/classical/private.list"
-
-  CN_域名:
-    <<: *RuleDefault
-    path: ./rules/CN_域名.list
-    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/classical/cn.list"
-
-  No-ads-all:
-    <<: *RuleDefault
-    path: ./rules/No-ads-all.list
-    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/classical/category-ads-all.list"
-
-  TikTok:
-    <<: *RuleDefault
-    path: ./rules/TikTok.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/TikTok/TikTok.list"
-
-  Facebook:
-    <<: *RuleDefault
-    path: ./rules/Facebook.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Facebook/Facebook.list"
-
-  Telegram:
-    <<: *RuleDefault
-    path: ./rules/Telegram.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Telegram/Telegram.list"
-
-  YouTube:
-    <<: *RuleDefault
-    path: ./rules/YouTube.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/YouTube/YouTube.list"
-
-  Google:
-    <<: *RuleDefault
-    path: ./rules/Google.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Google/Google.list"
-
-  GoogleFCM:
-    <<: *RuleDefault
-    path: ./rules/GoogleFCM.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/GoogleFCM/GoogleFCM.list"
-
-  Microsoft:
-    <<: *RuleDefault
-    path: ./rules/Microsoft.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Microsoft/Microsoft.list"
-
-  Apple:
-    <<: *RuleDefault
-    path: ./rules/Apple.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Apple/Apple.list"
-
-  OpenAI:
-    <<: *RuleDefault
-    path: ./rules/OpenAI.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/OpenAI/OpenAI.list"
-
-  Netflix:
-    <<: *RuleDefault
-    path: ./rules/Netflix.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Netflix/Netflix.list"
-
-  Discord:
-    <<: *RuleDefault
-    path: ./rules/Discord.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Discord/Discord.list"
-
-  GitHub:
-    <<: *RuleDefault
-    path: ./rules/GitHub.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/GitHub/GitHub.list"
-
-  Twitter:
-    <<: *RuleDefault
-    path: ./rules/Twitter.list
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Twitter/Twitter.list"
-# —————————
-
 rules:
   - DST-PORT,53,🌐 DNS_Hijack
-  - RULE-SET,No-ads-all,广告拦截
-  - RULE-SET,Twitter,Twitter(X)
-  - RULE-SET,GitHub,GitHub
-  - RULE-SET,Discord,Discord
-  - RULE-SET,TikTok,TikTok
-  - RULE-SET,YouTube,YouTube
-  - RULE-SET,Netflix,Netflix
-  - RULE-SET,Facebook,Facebook
-  - RULE-SET,OpenAI,OpenAI
-  - RULE-SET,GoogleFCM,GoogleFCM
-  - RULE-SET,Google,Google
-  - RULE-SET,Apple,Apple
-  - RULE-SET,Microsoft,Microsoft
-  - RULE-SET,Telegram,Telegram
-  - RULE-SET,CN_域名,🌎 全球直连
-  - RULE-SET,CN_IP,🌎 全球直连
-  - RULE-SET,private_Lan,🌎 全球直连,no-resolve
+  - GeoSite,Category-ads-all,广告拦截
+  - GeoSite,Twitter,Twitter(X)
+  - GeoSite,GitHub,GitHub
+  - GeoSite,Discord,Discord
+  - GeoSite,TikTok,TikTok
+  - GeoSite,YouTube,YouTube
+  - GeoSite,Netflix,Netflix
+  - GeoSite,Facebook,Facebook
+  - GeoSite,OpenAI,OpenAI
+  - GeoSite,GoogleFCM,GoogleFCM
+  - GeoSite,Google,Google
+  - GeoSite,Apple,Apple
+  - GeoSite,Microsoft,Microsoft
+  - GeoSite,Telegram,Telegram
+  - GeoSite,CN,🌎 全球直连
+  - GeoIP,CN,🌎 全球直连
+  - GeoIP,private,🌎 全球直连,no-resolve
   - MATCH,漏网之鱼
 # —————————
