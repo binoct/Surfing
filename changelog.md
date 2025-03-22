@@ -1,3 +1,8 @@
+# v7.4.0
+- 优化 hosts 挂载
+   - ``/data/adb/box_bll/clash/etc/``
+   - 更新及修改实时生效
+
 # v7.3.9
 - 全系规则采用呼声最高的 Geo数据库(满血版)
 - 彻底解决访问 **raw.githubusercontent** 异常
