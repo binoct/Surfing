@@ -158,6 +158,9 @@ dns:
   fake-ip-filter:
     - "GeoSite:CN,private"
     - "localhost.ptlogin2.qq.com"
+  direct-nameserver:
+    - https://doh.pub/dns-query#🌎 全球直连
+    - https://dns.alidns.com/dns-query#🌎 全球直连&h3=true
   proxy-server-nameserver:
     - https://doh.pub/dns-query#🌎 全球直连
     - https://dns.alidns.com/dns-query#🌎 全球直连&h3=true
