@@ -55,11 +55,12 @@ GEOIP_PATH="/data/adb/box_bll/clash/GeoIP.dat"
 GEOSITE_PATH="/data/adb/box_bll/clash/GeoSite.dat"
 RULES_PATH="/data/adb/box_bll/clash/rule/"
 GIT_URL="https://api.github.com/repos/MoGuangYu/Surfing/releases/latest"
-HOSTS_FILE="/data/adb/modules/Surfing/system/etc/hosts"
-HOSTS_BACKUP="/data/adb/modules/Surfing/system/etc/hosts.bak"
+HOSTS_FILE="/data/adb/box_bll/clash/etc/hosts"
+HOSTS_PATH="/data/adb/box_bll/clash/etc/"
+HOSTS_BACKUP="/data/adb/box_bll/clash/etc/hosts.bak"
 
 
-CURRENT_VERSION="v13.4.1"
+CURRENT_VERSION="v13.4.3"
 TOOLBOX_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
 
@@ -346,28 +347,44 @@ update_module() {
             mv "$BOX_PATH" "${BOX_PATH}.bak"
         fi
         
+        if [ -d "/data/adb/modules/Surfing/system/" ]; then
+            rm -rf "/data/adb/modules/Surfing/system/"
+        fi
+        
         if [ -f "$HOSTS_FILE" ]; then
             cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"
         fi
+        
+        mkdir -p "$SURFING_PATH"
+        mkdir -p "$HOSTS_PATH"
+        
+        touch "$HOSTS_FILE"
 
         cp -f "$TEMP_DIR/box_bll/clash/config.yaml" "$COREE_PATH"
         cp -f "$TEMP_DIR/box_bll/clash/Toolbox.sh" "$COREE_PATH"
         cp -f "$TEMP_DIR/box_bll/scripts/"* "$SCRIPTS_PATH"
-        mkdir -p "$SURFING_PATH/system/etc/"
-        cp -f "$TEMP_DIR/system/etc/"* "$SURFING_PATH/system/etc/"
+        
         find "$TEMP_DIR" -mindepth 1 -maxdepth 1 ! -name "README.md" ! -name "Surfing_service.sh" ! -name "customize.sh" ! -name "box_bll" ! -name "META-INF" -exec cp -r {} "$SURFING_PATH" \;
         restore_subscribe_urls
         echo "正在重启服务..."
         /data/adb/box_bll/scripts/box.service start  > /dev/null 2>&1
+        
+        for pid in $(pidof inotifyd); do
+        if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
+        kill ${pid}
+        fi
+        done
+        nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$HOSTS_PATH" > /dev/null 2>&1 &
+        nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$SURFING_PATH" > /dev/null 2>&1 &
+        nohup inotifyd "${SCRIPTS_PATH}net.inotify" "$NET_PATH" > /dev/null 2>&1 &
+        nohup inotifyd "${SCRIPTS_PATH}ctr.inotify" "$CTR_PATH" > /dev/null 2>&1 &
+        sleep 1
+        cp -f "$TEMP_DIR/box_bll/clash/etc/"* "$HOSTS_PATH"
     else
-        mkdir -p "$SCRIPTS_PATH"
-        mkdir -p "$COREE_PATH"
         mkdir -p "$SURFING_PATH"
         mkdir -p "$SURFING_PATH/webroot"
-        mkdir -p "$SURFING_PATH/system"
         mv "$TEMP_DIR/box_bll" "/data/adb/"
         mv "$TEMP_DIR/webroot" "$SURFING_PATH"
-        mv "$TEMP_DIR/system" "$SURFING_PATH"
         find "$TEMP_DIR" -mindepth 1 -maxdepth 1 ! -name "README.md" ! -name "Surfing_service.sh" ! -name "customize.sh" ! -name "box_bll" ! -name "META-INF" -exec cp -r {} "$SURFING_PATH" \;
     fi
 
@@ -376,6 +393,9 @@ update_module() {
     find /data/adb/box_bll/ -type f -exec chmod 644 {} \;
     chmod -R 711 /data/adb/box_bll/scripts/
     chmod -R 700 /data/adb/box_bll/bin/
+    chown -R 0:0 /data/adb/box_bll/clash/etc/
+    find /data/adb/box_bll/clash/etc/ -type d -exec chmod 755 {} \;
+    find /data/adb/box_bll/clash/etc/ -type f -exec chmod 644 {} \;
 
     if [ "$KSU" = true ]; then
       sed -i 's/name=Surfingmagisk/name=SurfingKernelSU/g' "$TEMP_DIR/module.prop"
@@ -388,16 +408,6 @@ update_module() {
     chmod 0700 "${SERVICE_PATH}/Surfing_service.sh"
     
     rm -rf "$TEMP_FILE" "$TEMP_DIR"
-
-    for pid in $(pidof inotifyd); do
-      if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
-        kill ${pid}
-      fi
-    done
-    mkdir -p "$SURFING_PATH"
-    nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$SURFING_PATH" > /dev/null 2>&1 &
-    nohup inotifyd "${SCRIPTS_PATH}net.inotify" "$NET_PATH" > /dev/null 2>&1 &
-    nohup inotifyd "${SCRIPTS_PATH}ctr.inotify" "$CTR_PATH" > /dev/null 2>&1 &
 
     if [ "$module_installed" = false ]; then
         echo "安装成功✓"

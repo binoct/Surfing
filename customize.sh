@@ -11,9 +11,9 @@ CONFIG_FILE="/data/adb/box_bll/clash/config.yaml"
 BACKUP_FILE="/data/adb/box_bll/clash/proxies/subscribe_urls_backup.txt"
 APK_FILE="$MODPATH/webroot/Web.apk"
 INSTALL_DIR="/data/app"
-HOSTS_FILE="/data/adb/modules/Surfing/system/etc/hosts"
-HOSTS_BACKUP="/data/adb/modules/Surfing/system/etc/hosts.bak"
-
+HOSTS_FILE="/data/adb/box_bll/clash/etc/hosts"
+HOSTS_PATH="/data/adb/box_bll/clash/etc/"
+HOSTS_BACKUP="/data/adb/box_bll/clash/etc/hosts.bak"
 
 MODULE_PROP_PATH="/data/adb/modules/Surfing/module.prop"
 
@@ -111,19 +111,22 @@ if [ -d /data/adb/box_bll ]; then
   extract_subscribe_urls
 
   if [ -f "$HOSTS_FILE" ]; then
-      cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"
+    cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"
+  fi
+  
+  if [ -d "/data/adb/modules/Surfing/system/" ]; then
+    rm -rf "/data/adb/modules/Surfing/system/"
   fi
 
-  mkdir -p "/data/adb/modules/Surfing/system/etc/"
-  cp -f "$MODPATH/system/etc/"* /data/adb/modules/Surfing/system/etc/
+  mkdir -p "$HOSTS_PATH"
+  touch "$HOSTS_FILE"
   
   cp /data/adb/box_bll/clash/config.yaml /data/adb/box_bll/clash/config.yaml.bak
   cp /data/adb/box_bll/scripts/box.config /data/adb/box_bll/scripts/box.config.bak
   cp -f "$MODPATH/box_bll/clash/config.yaml" /data/adb/box_bll/clash/
   cp -f "$MODPATH/box_bll/clash/Toolbox.sh" /data/adb/box_bll/clash/
   cp -f "$MODPATH/box_bll/scripts/"* /data/adb/box_bll/scripts/
-  rm -rf "$MODPATH/box_bll"
-  rm -rf /data/adb/box_bll/mihomo
+  
   restore_subscribe_urls
   ui_print "- 正在重启服务..."
   /data/adb/box_bll/scripts/box.service start > /dev/null 2>&1
@@ -133,9 +136,14 @@ if [ -d /data/adb/box_bll ]; then
       kill ${pid}
     fi
   done
+  nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$HOSTS_PATH" > /dev/null 2>&1 &
   nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$SURFING_PATH" > /dev/null 2>&1 &
   nohup inotifyd "${SCRIPTS_PATH}net.inotify" "$NET_PATH" > /dev/null 2>&1 &
   nohup inotifyd "${SCRIPTS_PATH}ctr.inotify" "$CTR_PATH" > /dev/null 2>&1 &
+  sleep 1
+  cp -f "$MODPATH/box_bll/clash/etc/"* /data/adb/box_bll/clash/etc/
+  rm -rf /data/adb/box_bll/mihomo
+  rm -rf "$MODPATH/box_bll"
   ui_print "- 更新完成无需重启设备..."
 else
   ui_print "- 安装中..."
@@ -163,6 +171,7 @@ set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm_recursive /data/adb/box_bll/ 0 3005 0755 0644
 set_perm_recursive /data/adb/box_bll/scripts/ 0 3005 0755 0700
 set_perm_recursive /data/adb/box_bll/bin/ 0 3005 0755 0700
+set_perm_recursive /data/adb/box_bll/clash/etc/ 0 0 0755 0644
 set_perm "$service_dir/Surfing_service.sh" 0 0 0700
 
 chmod ugo+x /data/adb/box_bll/scripts/*

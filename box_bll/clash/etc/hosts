@@ -1,5 +1,7 @@
 127.0.0.1       localhost
 ::1             ip6-localhost
+
+# GitHub
 185.199.109.133 raw.githubusercontent.com
 185.199.108.133 raw.githubusercontent.com
 185.199.110.133 raw.githubusercontent.com
@@ -8,3 +10,6 @@
 2606:50c0:8001::154 raw.githubusercontent.com
 2606:50c0:8002::154 raw.githubusercontent.com
 2606:50c0:8003::154 raw.githubusercontent.com
+20.205.243.166  github.com
+20.27.177.113   github.com
+20.200.245.247  github.com
