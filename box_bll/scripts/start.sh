@@ -23,7 +23,6 @@ wait_until_login(){
     sleep 1
   done
 }
-
 wait_until_login
 
 rm ${pid_file}
@@ -36,3 +35,7 @@ if [ ! -f ${box_path}/manual ] && [ ! -f ${module_dir}/disable ] ; then
   ${scripts_dir}/box.service start >> ${run_path}/run.log 2>> ${run_path}/run_error.log && \
   ${scripts_dir}/box.tproxy enable >> ${run_path}/run.log 2>> ${run_path}/run_error.log
 fi
+
+chown -R 0:0 /data/adb/box_bll/clash/etc/
+find /data/adb/box_bll/clash/etc/ -type d -exec chmod 755 {} \;
+find /data/adb/box_bll/clash/etc/ -type f -exec chmod 644 {} \;
