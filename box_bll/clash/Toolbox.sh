@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/system/bin/sh
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "请设置以 Root 用户运行"
@@ -60,7 +60,7 @@ HOSTS_PATH="/data/adb/box_bll/clash/etc/"
 HOSTS_BACKUP="/data/adb/box_bll/clash/etc/hosts.bak"
 
 
-CURRENT_VERSION="v13.4.3"
+CURRENT_VERSION="v13.4.4"
 TOOLBOX_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
 
@@ -69,12 +69,8 @@ get_remote_version() {
         echo "无法连接到 GitHub！"
         return 1
     }
-    
-    remote_version=$(
-        echo "$remote_content" |
-        grep -m1 '^CURRENT_VERSION="v[0-9]\+\(\.[0-9]\+\)\{1,2\}"' |
-        sed 's/^CURRENT_VERSION="\(.*\)"/\1/'
-    )
+
+    remote_version=$(echo "$remote_content" | grep -E -m1 '^CURRENT_VERSION="v[0-9]+(\.[0-9]+){1,2}"' | sed 's/^CURRENT_VERSION="//; s/"$//')
 
     [ -n "$remote_version" ] || {
         echo "无法获取远程版本信息！"
@@ -88,13 +84,15 @@ check_version() {
     remote_version=$(get_remote_version) || return
     if [ "$remote_version" != "$CURRENT_VERSION" ]; then
         echo "↴" 
-        echo "GitHub Toolbox版本效验！"
+        echo "GitHub Toolbox版本校验！"
         echo 
         echo "当前版本: $CURRENT_VERSION"
         echo "远程版本: $remote_version"
         echo 
         
-        while read -r -p "是否同步更新脚本？(y/n) " update_confirmation; do
+        while true; do
+            echo "是否同步更新脚本？(y/n)"
+            read -r update_confirmation
             case "$update_confirmation" in
                 [yY]) 
                     echo "↴" 
@@ -115,6 +113,7 @@ check_version() {
                     break
                     ;;
                 *) 
+                    echo "↴"
                     echo "无效的输入！"
                     ;;
             esac
@@ -371,7 +370,7 @@ update_module() {
         
         for pid in $(pidof inotifyd); do
         if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
-        kill ${pid}
+        kill "$pid"
         fi
         done
         nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$HOSTS_PATH" > /dev/null 2>&1 &
@@ -1320,7 +1319,7 @@ open_project_page() {
     fi
 }
 delete_files_and_dirs() {
-    if [[ ! -d "/data/adb/modules/Surfing/" ]]; then
+    if [ ! -d "/data/adb/modules/Surfing/" ]; then
         echo "↴"
         echo "当前未安装模块！"
         return
@@ -1328,34 +1327,58 @@ delete_files_and_dirs() {
     echo "↴"
     echo "警告：此操作将卸载删除 Surfing 模块，所有目录及数据！"
     echo
-    echo "↴"
-    read -r -p "确定要继续吗？(y/n): " confirm
-    if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        read -r -p "请输入'确认'以继续删除，直接回车取消: " input
-        if [[ "$input" == "确认" ]]; then
+    while true; do
+        echo "↴"
+        printf "确定要继续吗？(y/n)："
+        read confirm
+        case "$confirm" in
+            y|Y)
+                break
+                ;;
+            n|N)
+                echo "↴"
+                echo "操作已取消！"
+                return
+                ;;
+            *)
+                echo "↴"
+                echo "无效的输入！"
+                echo
+                ;;
+        esac
+    done
+    while true; do
+        echo "↴"
+        printf "请输入'确认'以继续删除，直接回车取消："
+        read input
+        if [ "$input" = "确认" ]; then
             echo "↴"
             echo "正在停止服务..."
             /data/adb/box_bll/scripts/box.service stop > /dev/null 2>&1
             sleep 1.5
             for pid in $(pidof inotifyd); do
-            if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
-            kill ${pid}
-            fi
+                if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
+                    kill "$pid"
+                fi
             done
             sleep 1
+            echo "↴"
             echo "正在删除..."
             rm -rf "/data/adb/modules_update/Surfing/" \
                    "/data/adb/modules/Surfing/" \
                    "/data/adb/service.d/Surfing_service.sh" 2>/dev/null
             rm -rf "/data/adb/box_bll/" 2>/dev/null
             echo "卸载完成！"
-        else
+            return
+        elif [ -z "$input" ]; then
             echo "↴"
             echo "操作已取消！"
+            return
+        else
+            echo "↴"
+            echo "无效的输入！"
+            echo
         fi
-    else
-        echo "↴"
-        echo "卸载已取消！"
-    fi
+    done
 }
 show_menu
