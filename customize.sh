@@ -21,10 +21,8 @@ MODULE_VERSION_CODE=$(awk -F'=' '/versionCode/ {print $2}' "$MODULE_PROP_PATH")
 
 if [ "$MODULE_VERSION_CODE" -lt 1610 ]; then
   INSTALL_APK=true
-  UPDATE_GEO=true
 else
   INSTALL_APK=false
-  UPDATE_GEO=false
 fi
 
 if [ "$BOOTMODE" != true ]; then
@@ -103,21 +101,15 @@ if [ -d /data/adb/box_bll ]; then
     installapk
   fi
   
-  if [ "$UPDATE_GEO" = true ]; then
-    cp -f "$MODPATH/box_bll/clash/GeoIP.dat" /data/adb/box_bll/clash/
-    cp -f "$MODPATH/box_bll/clash/GeoSite.dat" /data/adb/box_bll/clash/
-  fi
-  
   extract_subscribe_urls
 
   if [ -f "$HOSTS_FILE" ]; then
     cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"
   fi
-  
-  if [ -d "/data/adb/modules/Surfing/system/" ]; then
-    rm -rf "/data/adb/modules/Surfing/system/"
-  fi
 
+  rm -rf /data/adb/modules/Surfing/system/
+  rm -f /data/adb/box_bll/clash/GeoSite.dat /data/adb/box_bll/clash/GeoIP.dat
+  
   mkdir -p "$HOSTS_PATH"
   touch "$HOSTS_FILE"
   
@@ -133,7 +125,7 @@ if [ -d /data/adb/box_bll ]; then
   sleep 1
   for pid in $(pidof inotifyd); do
     if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
-      kill ${pid}
+      kill "$pid"
     fi
   done
   nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$HOSTS_PATH" > /dev/null 2>&1 &
@@ -164,7 +156,6 @@ if [ "$APATCH" = true ]; then
   sed -i 's/name=Surfingmagisk/name=SurfingAPatch/g' "$MODPATH/module.prop"
 fi
 
-rm -f customize.sh
 mv -f "$MODPATH/Surfing_service.sh" "$service_dir/"
 
 set_perm_recursive "$MODPATH" 0 0 0755 0644
@@ -175,3 +166,5 @@ set_perm_recursive /data/adb/box_bll/clash/etc/ 0 0 0755 0644
 set_perm "$service_dir/Surfing_service.sh" 0 0 0700
 
 chmod ugo+x /data/adb/box_bll/scripts/*
+
+rm -f customize.sh
