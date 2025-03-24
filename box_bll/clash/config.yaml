@@ -11,8 +11,6 @@ geo-auto-update: true
 geo-update-interval: 24
 geox-url:
   asn: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb"
-  geoip: "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat"
-  geosite: "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat"
 global-ua: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Mobile Safari/537.36
 unified-delay: true
 tcp-concurrent: true
@@ -156,7 +154,7 @@ dns:
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.0/15
   fake-ip-filter:
-    - "GeoSite:CN,private"
+    - "RULE-SET:CN_域名,private_Lan"
     - "localhost.ptlogin2.qq.com"
   direct-nameserver:
     - https://doh.pub/dns-query#🌎 全球直连
@@ -165,7 +163,7 @@ dns:
     - https://doh.pub/dns-query#🌎 全球直连
     - https://dns.alidns.com/dns-query#🌎 全球直连&h3=true
   nameserver-policy:
-    "GeoSite:CN":
+    "RULE-SET:CN_域名":
        - https://doh.pub/dns-query#🌎 全球直连
        - https://dns.alidns.com/dns-query#🌎 全球直连&h3=true
   nameserver:
@@ -279,7 +277,7 @@ proxy-groups:
       - ⛔️ 拒绝连接
       - 🌎 全球直连
       - REJECT-DROP
-      - PASS #匹配规则
+      - PASS #匹配规则 放行
 
   - name: 延迟最低
     icon: "https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/icon/Return.svg"
@@ -328,24 +326,116 @@ proxy-groups:
     <<: *All
 # —————————
 
+rule-anchor:
+  RuleDefault: &RuleDefault
+    {type: http, behavior: classical, format: text, interval: 86400}
+# —————————
+
+rule-providers:
+  CN_IP:
+    <<: *RuleDefault
+    path: ./rules/CN_IP.list
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geoip/classical/cn.list"
+
+  private_Lan:
+    <<: *RuleDefault
+    path: ./rules/private_Lan.list
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geoip/classical/private.list"
+
+  CN_域名:
+    <<: *RuleDefault
+    path: ./rules/CN_域名.list
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/classical/cn.list"
+
+  No-ads-all:
+    <<: *RuleDefault
+    path: ./rules/No-ads-all.list
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/classical/category-ads-all.list"
+
+  TikTok:
+    <<: *RuleDefault
+    path: ./rules/TikTok.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/TikTok/TikTok.list"
+
+  Facebook:
+    <<: *RuleDefault
+    path: ./rules/Facebook.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Facebook/Facebook.list"
+
+  Telegram:
+    <<: *RuleDefault
+    path: ./rules/Telegram.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Telegram/Telegram.list"
+
+  YouTube:
+    <<: *RuleDefault
+    path: ./rules/YouTube.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/YouTube/YouTube.list"
+
+  Google:
+    <<: *RuleDefault
+    path: ./rules/Google.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Google/Google.list"
+
+  GoogleFCM:
+    <<: *RuleDefault
+    path: ./rules/GoogleFCM.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/GoogleFCM/GoogleFCM.list"
+
+  Microsoft:
+    <<: *RuleDefault
+    path: ./rules/Microsoft.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Microsoft/Microsoft.list"
+
+  Apple:
+    <<: *RuleDefault
+    path: ./rules/Apple.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Apple/Apple.list"
+
+  OpenAI:
+    <<: *RuleDefault
+    path: ./rules/OpenAI.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/OpenAI/OpenAI.list"
+
+  Netflix:
+    <<: *RuleDefault
+    path: ./rules/Netflix.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Netflix/Netflix.list"
+
+  Discord:
+    <<: *RuleDefault
+    path: ./rules/Discord.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Discord/Discord.list"
+
+  GitHub:
+    <<: *RuleDefault
+    path: ./rules/GitHub.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/GitHub/GitHub.list"
+
+  Twitter:
+    <<: *RuleDefault
+    path: ./rules/Twitter.list
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Twitter/Twitter.list"
+# —————————
+
 rules:
   - DST-PORT,53,🌐 DNS_Hijack
-  - GeoSite,Category-ads-all,广告拦截
-  - GeoSite,Twitter,Twitter(X)
-  - GeoSite,GitHub,GitHub
-  - GeoSite,Discord,Discord
-  - GeoSite,TikTok,TikTok
-  - GeoSite,YouTube,YouTube
-  - GeoSite,Netflix,Netflix
-  - GeoSite,Facebook,Facebook
-  - GeoSite,OpenAI,OpenAI
-  - GeoSite,GoogleFCM,GoogleFCM
-  - GeoSite,Google,Google
-  - GeoSite,Apple,Apple
-  - GeoSite,Microsoft,Microsoft
-  - GeoSite,Telegram,Telegram
-  - GeoSite,CN,🌎 全球直连
-  - GeoIP,CN,🌎 全球直连
-  - GeoIP,private,🌎 全球直连,no-resolve
+  - RULE-SET,No-ads-all,广告拦截
+  - RULE-SET,Twitter,Twitter(X)
+  - RULE-SET,GitHub,GitHub
+  - RULE-SET,Discord,Discord
+  - RULE-SET,TikTok,TikTok
+  - RULE-SET,YouTube,YouTube
+  - RULE-SET,Netflix,Netflix
+  - RULE-SET,Facebook,Facebook
+  - RULE-SET,OpenAI,OpenAI
+  - RULE-SET,GoogleFCM,GoogleFCM
+  - RULE-SET,Google,Google
+  - RULE-SET,Apple,Apple
+  - RULE-SET,Microsoft,Microsoft
+  - RULE-SET,Telegram,Telegram
+  - RULE-SET,CN_域名,🌎 全球直连
+  - RULE-SET,CN_IP,🌎 全球直连
+  - RULE-SET,private_Lan,🌎 全球直连,no-resolve
   - MATCH,漏网之鱼
 # —————————
