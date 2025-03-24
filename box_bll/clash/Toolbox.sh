@@ -60,7 +60,7 @@ HOSTS_PATH="/data/adb/box_bll/clash/etc/"
 HOSTS_BACKUP="/data/adb/box_bll/clash/etc/hosts.bak"
 
 
-CURRENT_VERSION="v13.4.4"
+CURRENT_VERSION="v13.4.5"
 TOOLBOX_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
 
@@ -309,10 +309,10 @@ update_module() {
 
     if [ "$MODULE_VERSION_CODE" -lt 1610 ]; then
       INSTALL_APK=true
-      UPDATE_GEO=true
+      
     else
       INSTALL_APK=false
-      UPDATE_GEO=false
+      
     fi
 
     if [ "$KSU" = true ] && [ "$KSU_VER_CODE" -lt 10683 ]; then
@@ -333,11 +333,6 @@ update_module() {
           installapk
         fi
         
-        if [ "$UPDATE_GEO" = true ]; then
-          cp -f "$TEMP_DIR/box_bll/clash/GeoIP.dat" "$COREE_PATH"
-          cp -f "$TEMP_DIR/box_bll/clash/GeoSite.dat" "$COREE_PATH"
-        fi
-
         if [ -f "$CONFIG_PATH" ]; then
             mv "$CONFIG_PATH" "${CONFIG_PATH}.bak"
         fi
@@ -346,9 +341,8 @@ update_module() {
             mv "$BOX_PATH" "${BOX_PATH}.bak"
         fi
         
-        if [ -d "/data/adb/modules/Surfing/system/" ]; then
-            rm -rf "/data/adb/modules/Surfing/system/"
-        fi
+        rm -rf /data/adb/modules/Surfing/system/
+        rm -f /data/adb/box_bll/clash/GeoSite.dat /data/adb/box_bll/clash/GeoIP.dat
         
         if [ -f "$HOSTS_FILE" ]; then
             cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"
@@ -741,7 +735,7 @@ show_menu() {
     done
 }
 
-NO_UPDATE_ENABLED=false
+NO_UPDATE_ENABLED=true
 ensure_var_path() {
     if [ ! -d "$VAR_PATH" ]; then
         mkdir -p "$VAR_PATH"
