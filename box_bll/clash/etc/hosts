@@ -24,3 +24,7 @@
 104.16.249.249 cloudflare-dns.com
 2606:4700::6810:f8f9 cloudflare-dns.com
 2606:4700::6810:f9f9 cloudflare-dns.com
+
+# 其它
+127.0.0.1 api.installer.xiaomi.com
+127.0.0.1 etl.xlmc.sec.miui.com
