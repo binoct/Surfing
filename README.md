@@ -76,15 +76,25 @@ Please decide whether to use the Surfing module only after clearly understanding
 <details>
 <summary>1. First Use</summary>
 
-- After installing the module for the first time, please add your subscription address to `/data/adb/box_bll/clash/config.yaml`, then manually restart your device once.  
-- Due to network issues, **rules**/**subscriptions** may not be fully downloaded automatically. Please refresh them manually via the panel.  
-  - If the above fails, ensure your network is working properly.  
+- After installing the module for the first time, **please first** add your subscription URL to `/data/adb/box_bll/clash/config.yaml`, and then manually restart the device once.
+- Due to network reasons, the **rules**/**subscriptions** may not be fully downloaded automatically. Please manually refresh the panel.
+  - If the above fails, ensure your network environment is normal.
+- After the configuration and node fetching are complete, go to: 
+- **Settings** → **Search Box**, and search for the keyword "DNS." If similar options appear, select them:
+  - Private DNS
+  - Dedicated DNS
+- And configure the custom domain:
+```text
+1dot1dot1dot1.cloudflare-dns.com
+```
 
-- **Web App:**  
-  - This is only a graphical auxiliary tool for convenient browsing and backend route management, with no other extra functions.  
-  - If you encounter **"Request resource failed, loading local panel"**, or if proxy group icons are not displayed, try toggling your network connection on/off or check whether is accessible. `raw.githubusercontent.com`
+- Web App:
+  - It is purely a graphical tool for portable browsing and managing backend routing data, with no other unnecessary uses.
+  - If you encounter a **connection failed** request or the proxy group icons are not displayed, you can try turning the network off/on, or check if you can access `raw.githubusercontent.com`.
 
-> The module has a built-in GUI that can be accessed locally via a browser or used online via the app. There is essentially no difference between the two.
+<img src="./folder/Webapk.png" alt="Web UI" width="300">
+
+> The module has an integrated GUI that can be accessed locally via a browser or online via the app. The two are essentially the same.
 
 </details>
 
@@ -118,34 +128,35 @@ Please decide whether to use the Surfing module only after clearly understanding
 #
 
 <details>
-<summary>3. Routing Rules</summary>  
+<summary>3. Routing Rules</summary>
 
-GitHub Actions automatically builds updates at 6 AM Beijing time every day to ensure the latest rules. [Wiki](https://github.com/MetaCubeX/meta-rules-dat)  
+GitHub Actions automatically builds at 6 AM Beijing Time every day to ensure the CN rules are up to date. [Wiki](https://github.com/MetaCubeX/meta-rules-dat)
 
-> Routing rules use online links and update automatically every 24 hours.
+> The routing rules are all linked online and automatically updated every 24 hours.
 
 </details>
 
 #
 
 <details>
-<summary>4. Future Updates</summary>  
+<summary>4. Subsequent Updates</summary>
 
-- If you use all the default configurations, updates will be seamless.  
-- The module supports online updates within the client. After updating, no reboot is required; however, the module switch's enable/disable control ~~may temporarily not work and still require a reboot~~ or can be updated via Toolbox.  
-- During updates, the configuration file will be backed up to:  
-   - `config.yaml.bak`  
-- During updates, the old user configuration files will be backed up to:  
-   - `box.config.bak`  
-- During updates, your subscription URLs will be automatically extracted and backed up to:  
-   - `subscribe_urls_backup.txt`  
-   - The backup will be automatically extracted and restored into the new configuration, applicable when using the default configuration file.  
-- The module update does NOT include:  
-   - Geo database files  
-   - Binary files  
-   - Web resources  
+- If you are using the default configuration, updates will be seamless.
+- The module supports online updates in the client, and no restart is required after the update. The module switch control (enable/disable) ~~may temporarily fail and still require a restart~~, or you can use Toolbox for updates (not recommended, as script updates may not be timely).
+- During updates, the configuration file will be backed up to:
+   - `config.yaml.bak`
+- User configuration will be backed up during the update to:
+   - `box.config.bak`
+- Your subscription URL will be automatically extracted and backed up to:
+   - `subscribe_urls_backup.txt`
+   - The backup will be automatically extracted and restored to the new configuration, suitable for those using the default configuration file.
 
-> Note: Updates mainly follow upstream changes and distribute some configurations.
+- Module updates do not include:
+   - Geo database files
+   - Bin files
+   - Web resources
+
+> Ps: The update mainly follows upstream updates and delivers some configurations.
 
 </details>
 
@@ -170,15 +181,16 @@ Android user group ID identifiers:
 > Typically, you can find all user group IDs and application package names in `/data/user/`. Do not use fake-ip mode when using black/whitelist.
 
 2. Tun Mode
-- Enabled by default
+- ~~Enabled by default~~
+- Deprecated in v7.4.3
 
-> It is recommended to keep it enabled. It can be disabled if not needed, but do not use black/white lists when this mode is enabled.
+> If necessary, you can manually enable it. Please do not use the whitelist/blacklist before using this mode.
 
 3. Routing Rules
-- Bypass mainland China
-- It basically meets the needs of most daily usage.
+- Designed for mainland China usage
+- Sufficient for most daily needs
 
-> Black/whitelist is not significant unless strictly required. The module's built-in configuration is sufficient.
+> If there are no strict requirements, the whitelist/blacklist is not very meaningful, and the default configuration of the module is enough.
 
 4. Panel Management
 - Magisk Font Module
@@ -188,7 +200,23 @@ Android user group ID identifiers:
 5. LAN Sharing
 - Enable hotspot to allow other devices to connect.
 
-> For other devices to access the console backend, just use (http://currentWiFigateway:9090/ui).
+> If other devices need to access the console backend, just use (http://Current WiFi Gateway:9090/ui).
+
+6. Private DNS
+- **When enabled**, please **ensure the module service is running properly**, **otherwise**, it may affect CN resolution and result in **no internet connection**.
+- This is an optional feature ✅
+- It is recommended to enable it.
+
+> This is to fully solve some IPv6 DNS request leaks under Wan0.
+
+7. Host File
+- No need to mount
+   - Just delete the file.
+- To remount
+   - Create a new file in the `etc` folder.
+- All modifications take effect immediately.
+
+> Domain IP redirection.
 
 </details>
 
