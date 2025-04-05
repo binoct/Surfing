@@ -18,9 +18,9 @@ log-level: silent
 find-process-mode: always
 global-client-fingerprint: chrome
 external-controller: 0.0.0.0:9090
-#面板默认 Meta 可选 Yacd / Zash 重启模块即可加载
-external-ui: /data/adb/box_bll/panel/Zash/ # 主推zash
-secret: ""
+external-ui-url: "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
+external-ui: /data/adb/box_bll/panel/Zash/
+secret: "" # 面板访问密码，如在公网访问建议设置
 # —————————
 # ==== Tips
 
@@ -108,9 +108,9 @@ sniffer:
 
 # 网卡模块
 # ==== Tips
-# 1. Tp无法劫持发往局域网的请求，也会导致WebRTC地址泄露DNS会有劫持抢答风险
+# 1. v7.4.3 已弃用
 tun:
-  enable: true #true 开 #false 关 # 防止地址泄露此项必须开启
+  enable: false  #true 开 #false 关 
   device: meta
   stack: gvisor
   dns-hijack:
@@ -121,14 +121,7 @@ tun:
   strict-route: true
   auto-redirect: false
   auto-detect-interface: true
-  route-exclude-address:
-    - 192.168.0.0/16
-    - 10.0.0.0/8
-    - 172.16.0.0/12
-    - 100.64.0.0/10
-    - fc00::/7
-    - fe80::/10
-  exclude-package: # 游戏卡顿可添加包名 仅Android
+  exclude-package: 
     #- com.tencent.tmgp.sgame
     # _____________________# 三星专供 ↓ 范围
 #    - com.samsung.android.messaging
@@ -146,7 +139,7 @@ tun:
 # —————————
 
 # DNS模块
-# 解析不懂别瞎改养蛊 已最优解，你再怎么折腾也是没啥卵用
+# 请勿随意变动！
 dns:
   enable: true
   ipv6: true
@@ -156,6 +149,7 @@ dns:
   fake-ip-filter:
     - "RULE-SET:CN_域名"
     - "localhost.ptlogin2.qq.com"
+    - "+.mtalk.google.com"
   direct-nameserver:
     - https://doh.pub/dns-query#🌎 全球直连
     - https://dns.alidns.com/dns-query#🌎 全球直连&h3=true
@@ -424,6 +418,7 @@ rule-providers:
 
 rules:
   - DST-PORT,53,🌐 DNS_Hijack
+  - DST-PORT,853,DNS解析
   - RULE-SET,No-ads-all,广告拦截
   - RULE-SET,Twitter,Twitter(X)
   - RULE-SET,GitHub,GitHub
@@ -433,6 +428,7 @@ rules:
   - RULE-SET,Netflix,Netflix
   - RULE-SET,Facebook,Facebook
   - RULE-SET,OpenAI,OpenAI
+  - DST-PORT,5228,GoogleFCM
   - RULE-SET,GoogleFCM,GoogleFCM
   - RULE-SET,Google,Google
   - RULE-SET,Apple,Apple
