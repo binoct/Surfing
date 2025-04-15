@@ -32,3 +32,14 @@
 # 其它
 127.0.0.1 api.installer.xiaomi.com
 127.0.0.1 etl.xlmc.sec.miui.com
+
+# GoogleFCM 强制指向台湾 CDN
+2404:6800:4008:c06::bc mtalk.google.com
+2404:6800:4008:c06::bc alt1-mtalk.google.com
+2404:6800:4008:c06::bc alt2-mtalk.google.com
+2404:6800:4008:c06::bc alt3-mtalk.google.com
+2404:6800:4008:c06::bc alt4-mtalk.google.com
+2404:6800:4008:c06::bc alt5-mtalk.google.com
+2404:6800:4008:c06::bc alt6-mtalk.google.com
+2404:6800:4008:c06::bc alt7-mtalk.google.com
+2404:6800:4008:c06::bc alt8-mtalk.google.com
