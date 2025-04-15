@@ -79,11 +79,11 @@ Please decide whether to use the Surfing module only after clearly understanding
 - After installing the module for the first time, **please first** add your subscription URL to `/data/adb/box_bll/clash/config.yaml`, and then manually restart the device once.
 - Due to network reasons, the **rules**/**subscriptions** may not be fully downloaded automatically. Please manually refresh the panel.
   - If the above fails, ensure your network environment is normal.
-- After the configuration and node fetching are complete, go to: 
-- **Settings** → **Search Box**, and search for the keyword "DNS." If similar options appear, select them:
-  - Private DNS
-  - Dedicated DNS
-- And configure the custom domain:
+- ~~After the configuration and node fetching are complete, go to~~: 
+- ~~**Settings** → **Search Box**, and search for the keyword "DNS." If similar options appear, select them~~:
+  - ~~Private DNS~~
+  - ~~Dedicated DNS~~
+- ~~And configure the custom domain~~:
 ```text
 1dot1dot1dot1.cloudflare-dns.com
 ```
@@ -181,8 +181,8 @@ Android user group ID identifiers:
 > Typically, you can find all user group IDs and application package names in `/data/user/`. Do not use fake-ip mode when using black/whitelist.
 
 2. Tun Mode
-- ~~Enabled by default~~
-- Deprecated in v7.4.3
+- Enabled by default
+- ~~Deprecated in v7.4.3~~
 
 > If necessary, you can manually enable it. Please do not use the whitelist/blacklist before using this mode.
 
@@ -202,10 +202,10 @@ Android user group ID identifiers:
 
 > If other devices need to access the console backend, just use (http://Current WiFi Gateway:9090/ui).
 
-6. Private DNS
-- **When enabled**, please **ensure the module service is running properly**, **otherwise**, it may affect CN resolution and result in **no internet connection**.
-- This is an optional feature ✅
-- It is recommended to enable it.
+~~6. Private DNS~~
+- ~~**When enabled**, please **ensure the module service is running properly**, **otherwise**, it may affect CN resolution and result in **no internet connection**.~~
+- ~~This is an optional feature ✅~~
+- ~~It is recommended to enable it.~~
 
 > This is to fully solve some IPv6 DNS request leaks under Wan0.
 
@@ -213,7 +213,7 @@ Android user group ID identifiers:
 - No need to mount
    - Just delete the file.
 - To remount
-   - Create a new file in the `etc` folder.
+   - Create a new file in the **etc** folder.
 - All modifications take effect immediately.
 
 > Domain IP redirection.
