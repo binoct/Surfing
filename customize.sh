@@ -146,8 +146,6 @@ else
   ui_print "- data/adb/box_bll/"
   ui_print "- 请先于工作目录/config.yaml"
   ui_print "- 添加你的订阅，首次安装随后需重启设备一次..."
-  ui_print "- 面板拉取节点完成后，请于设置开启私人DNS"
-  ui_print "- 地址：1dot1dot1dot1.cloudflare-dns.com"
   ui_print "- 依次顺序由上往下"
 fi
 
