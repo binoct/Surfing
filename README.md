@@ -182,9 +182,10 @@ Android user group ID identifiers:
 
 2. Tun Mode
 - Enabled by default
+- Better routing traffic management
 - ~~Deprecated in v7.4.3~~
 
-> If necessary, you can manually enable it. Please do not use the whitelist/blacklist before using this mode.
+> If you have special needs, you can turn it off by yourself. Please do not use the blacklist or whitelist before using this mode.
 
 3. Routing Rules
 - Designed for mainland China usage
