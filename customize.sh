@@ -120,9 +120,7 @@ if [ -d /data/adb/box_bll ]; then
   cp -f "$MODPATH/box_bll/scripts/"* /data/adb/box_bll/scripts/
   
   restore_subscribe_urls
-  ui_print "- 正在重启服务..."
-  /data/adb/box_bll/scripts/box.service start > /dev/null 2>&1
-  sleep 1
+
   for pid in $(pidof inotifyd); do
     if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
       kill "$pid"
@@ -136,6 +134,10 @@ if [ -d /data/adb/box_bll ]; then
   cp -f "$MODPATH/box_bll/clash/etc/"* /data/adb/box_bll/clash/etc/
   rm -rf /data/adb/box_bll/mihomo
   rm -rf "$MODPATH/box_bll"
+  
+  sleep 1
+  ui_print "- 正在重启服务..."
+  /data/adb/box_bll/scripts/box.service start > /dev/null 2>&1
   ui_print "- 更新完成无需重启设备..."
 else
   ui_print "- 安装中..."
