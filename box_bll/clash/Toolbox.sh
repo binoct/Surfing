@@ -60,7 +60,86 @@ HOSTS_PATH="/data/adb/box_bll/clash/etc/"
 HOSTS_BACKUP="/data/adb/box_bll/clash/etc/hosts.bak"
 
 
-CURRENT_VERSION="v13.4.5"
+SAVE_DIR="/data/adb/box_bll/clash/rules/规则审查"
+
+rules=(
+"广告拦截_Domain.yaml https://anti-ad.net/clash.yaml"
+"WebRTC_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/rules/WebRTC.list"
+"CN_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geoip/cn.yaml"
+"CN_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/cn.yaml"
+"XiaoHongShu_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/XiaoHongShu/XiaoHongShu.yaml"
+"DouYin_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/DouYin/DouYin.yaml"
+"BiliBili_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/BiliBili/BiliBili.yaml"
+"Steam_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Steam/Steam.yaml"
+"TikTok_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/TikTok/TikTok.yaml"
+"Spotify_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Spotify/Spotify.yaml"
+"Facebook_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Facebook/Facebook.yaml"
+"Telegram_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Telegram/Telegram.yaml"
+"YouTube_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/YouTube/YouTube.yaml"
+"Google_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Google/Google.yaml"
+"GoogleFCM_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/GoogleFCM/GoogleFCM.yaml"
+"Microsoft_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Microsoft/Microsoft.yaml"
+"Apple_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Apple/Apple.yaml"
+"OpenAI_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/OpenAI/OpenAI.yaml"
+"Netflix_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Netflix/Netflix.yaml"
+"Discord_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Discord/Discord.yaml"
+"GitHub_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/GitHub/GitHub.yaml"
+"Twitter_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Twitter/Twitter.yaml"
+"LAN_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Lan/Lan.yaml"
+)
+
+download_rule() {
+    local name="$1"
+    local url="$2"
+    local file_path="$SAVE_DIR/$name"
+
+    mkdir -p "$SAVE_DIR"
+
+    curl -s -o "$file_path" "$url" > /dev/null 2>&1
+
+    if [ $? -ne 0 ]; then
+        status_code=$?
+        echo "下载失败: $name, 状态码: $status_code"
+    fi
+}
+
+download_all_rules() {
+    while true; do
+        echo "↴" 
+        echo "此为用于审查配置文件中引用的规则集 (y/n)"
+        read confirm
+        case "$confirm" in
+            y|Y)
+                echo "↴" 
+                echo "正在下载规则文件..."
+                echo "https://github.com/MoGuangYu/rule"
+
+                for rule in "${rules[@]}"; do
+                    name=$(echo "$rule" | awk '{print $1}')
+                    url=$(echo "$rule" | awk '{print $2}')
+                    download_rule "$name" "$url"
+                done
+
+                echo "↴" 
+                echo "所有规则下载完成"
+                echo "↴" 
+                echo "位于 /data/adb/box_bll/clash/rules/"
+                break
+                ;;
+            n|N)
+                echo "↴" 
+                echo "操作已取消！"
+                break
+                ;;
+            *)
+                echo "↴" 
+                echo "无效的输入！"
+                ;;
+        esac
+    done
+}
+
+CURRENT_VERSION="v13.4.6"
 TOOLBOX_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
 
@@ -604,6 +683,7 @@ check_and_update_files() {
         done
     done
 }
+
 show_menu() {
     while true; do
         echo "=========="
@@ -629,11 +709,13 @@ show_menu() {
         echo
         echo "10. 检查仓库最新提交"
         echo
-        echo "11. 项目地址"
+        echo "11. 规则审查"
         echo
-        echo "12. 一键卸载"
+        echo "12. 项目地址"
         echo
-        echo "13. Exit"
+        echo "13. 一键卸载"
+        echo
+        echo "14. Exit"
         echo "——————"
         read -r choice
         case $choice in
@@ -719,12 +801,15 @@ show_menu() {
                 echo "检测已完毕..."
                 ;;
             11)
-                open_project_page
+                download_all_rules
                 ;;
             12)
-                delete_files_and_dirs
+                open_project_page
                 ;;
             13)
+                delete_files_and_dirs
+                ;;
+            14)
                 exit 0
                 ;;
             *)
