@@ -33,18 +33,6 @@
 127.0.0.1 api.installer.xiaomi.com
 127.0.0.1 etl.xlmc.sec.miui.com
 
-# GoogleFCM 强制指向台湾 CDN
-# 如果连接出问题可尝试删除即可
-2404:6800:4008:c06::bc mtalk.google.com
-2404:6800:4008:c06::bc alt1-mtalk.google.com
-2404:6800:4008:c06::bc alt2-mtalk.google.com
-2404:6800:4008:c06::bc alt3-mtalk.google.com
-2404:6800:4008:c06::bc alt4-mtalk.google.com
-2404:6800:4008:c06::bc alt5-mtalk.google.com
-2404:6800:4008:c06::bc alt6-mtalk.google.com
-2404:6800:4008:c06::bc alt7-mtalk.google.com
-2404:6800:4008:c06::bc alt8-mtalk.google.com
-
 # 这里的修改均实时生效 
 # 如无需挂载 hosts 删除该文件即可
 # 重新挂载同理
