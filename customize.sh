@@ -107,9 +107,6 @@ if [ -d /data/adb/box_bll ]; then
     cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"
   fi
 
-  rm -rf /data/adb/modules/Surfing/system/
-  rm -f /data/adb/box_bll/clash/GeoSite.dat /data/adb/box_bll/clash/GeoIP.dat
-  
   mkdir -p "$HOSTS_PATH"
   touch "$HOSTS_FILE"
   
