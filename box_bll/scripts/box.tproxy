@@ -136,6 +136,8 @@ start_redirect() {
     log Info "所有应用的透明代理已启用(IPv4)."
   fi
 
+  ip6tables -A OUTPUT -p udp --dport 53 -j DROP
+  ip6tables -A OUTPUT -p tcp --dport 853 -j DROP
   ${iptables} -t nat -I OUTPUT -j BOX_LOCAL
   ${iptables} -A OUTPUT -d 127.0.0.1 -p tcp -m owner --uid-owner ${box_user} --gid-owner ${box_group} -m tcp --dport ${redir_port} -j REJECT
 }
@@ -147,6 +149,9 @@ stop_redirect() {
 
   ${iptables} -D OUTPUT -d 127.0.0.1 -p tcp -m owner --uid-owner ${box_user} --gid-owner ${box_group} -m tcp --dport ${redir_port} -j REJECT
   ${iptables} -D OUTPUT -d 127.0.0.1 -p tcp -m owner --uid-owner 0 --gid-owner 3005 -m tcp --dport ${redir_port} -j REJECT
+  
+  ip6tables -D OUTPUT -p udp --dport 53 -j DROP 
+  ip6tables -D OUTPUT -p tcp --dport 853 -j DROP 
   
   ${iptables} -t nat -F BOX_EXTERNAL
   ${iptables} -t nat -X BOX_EXTERNAL
@@ -359,7 +364,9 @@ start_tproxy() {
       ${iptables} -t nat -I OUTPUT -j CLASH_DNS_LOCAL
     fi  
   fi  
-
+  
+  ip6tables -A OUTPUT -p udp --dport 53 -j DROP
+  ip6tables -A OUTPUT -p tcp --dport 853 -j DROP
 
   # 修复ICMP（ping），这不保证ping结果是有效的（如clash等代理不支持转发ICMP），  
   # 只是返回结果，"--to-destination"可以设置为可达地址  
@@ -374,6 +381,9 @@ stop_tproxy() {
   ip -6 route flush table ${table_id}  
   ip rule del fwmark ${mark_id} table ${table_id} pref ${table_id}  
   ip route flush table ${table_id}  
+  
+  ip6tables -D OUTPUT -p udp --dport 53 -j DROP 
+  ip6tables -D OUTPUT -p tcp --dport 853 -j DROP 
   
   ${iptables} -t mangle -D PREROUTING -j BOX_EXTERNAL  
       
