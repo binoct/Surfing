@@ -8,4 +8,8 @@ else
     filename="Surfing_${version}_release.zip"
 fi
 
-zip -r -o -X -ll "$filename" ./ -x '.git/*' -x '.github/*' -x 'folder/*' -x 'build.sh' -x 'Surfing.json'
+cd Surfingtile || exit 1
+zip -r -o -X -ll ../Surfingtile.zip ./*
+cd ..
+
+zip -r -o -X -ll "$filename" ./ -x 'Surfingtile/*' -x '.git/*' -x '.github/*' -x 'folder/*' -x 'build.sh' -x 'Surfing.json'
