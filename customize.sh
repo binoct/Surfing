@@ -125,7 +125,7 @@ install_surfingtile_module() {
 unzip -qo "${ZIPFILE}" -x 'META-INF/*' -d "$MODPATH"
 if [ -d /data/adb/box_bll ]; then
   ui_print "Updating..."
-  ui_print "————————————————"
+  ui_print "↴"
   ui_print "Initializing services..."
   /data/adb/box_bll/scripts/box.service stop > /dev/null 2>&1
   sleep 1.5
@@ -177,7 +177,7 @@ if [ -d /data/adb/box_bll ]; then
   ui_print "Update completed. No need to reboot..."
 else
   ui_print "Installing..."
-  ui_print "————————————————"
+  ui_print "↴"
   mv "$MODPATH/box_bll" /data/adb/
   install_surfingtile_module
   install_Surfingtile_apk
