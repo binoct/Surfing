@@ -2,37 +2,6 @@
 127.0.0.1       localhost
 ::1             ip6-localhost
 
-# GitHub
-20.205.243.166 github.com
-20.200.245.247 github.com
-20.27.177.113 github.com
-185.199.109.133 raw.githubusercontent.com
-185.199.108.133 raw.githubusercontent.com
-185.199.110.133 raw.githubusercontent.com
-185.199.111.133 raw.githubusercontent.com
-2606:50c0:8000::154 raw.githubusercontent.com
-2606:50c0:8001::154 raw.githubusercontent.com
-2606:50c0:8002::154 raw.githubusercontent.com
-2606:50c0:8003::154 raw.githubusercontent.com
-
-# DNS
-8.8.4.4 dns.google
-8.8.8.8 dns.google
-2001:4860:4860::8844 dns.google
-2001:4860:4860::8888 dns.google
-104.16.248.249 cloudflare-dns.com
-104.16.249.249 cloudflare-dns.com
-2606:4700::6810:f8f9 cloudflare-dns.com
-2606:4700::6810:f9f9 cloudflare-dns.com
-1.0.0.1 1dot1dot1dot1.cloudflare-dns.com
-1.1.1.1 1dot1dot1dot1.cloudflare-dns.com
-2606:4700:4700::1001 1dot1dot1dot1.cloudflare-dns.com
-2606:4700:4700::1111 1dot1dot1dot1.cloudflare-dns.com
-
-# 其它
-127.0.0.1 api.installer.xiaomi.com
-127.0.0.1 etl.xlmc.sec.miui.com
-
 # 这里的修改均实时生效 
 # 如无需挂载 hosts 删除该文件即可
 # 重新挂载同理
