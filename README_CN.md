@@ -74,14 +74,18 @@
 
  - 从 Magisk Manager 、Kernelsu Manager 、APatch 应用卸载本模块即可 [👉🏻铲屎命令](https://github.com/MoGuangYu/Surfing/blob/main/uninstall.sh#L3-L4)
 
+> 通过管理器卸载本模块，会完全卸载所有相应的服务及组件
+
 ## Wiki
 
 <details>
 <summary>1. 首次使用</summary>
 
 - 首次安装模块完成后，**请先**于 `/data/adb/box_bll/clash/config.yaml` 添加你的订阅地址，随后需手动重启设备一次
+- 切换模块开关一次，桌面打开 **Web** 应用
 - 可能因网络原因不会自动下载完全部 **规则**/**订阅**，请至面板手动刷新一下
-  - 如上述失败，并确保你的网络环境正常
+  - 如遇订阅无法加载请尝试切换配置文件里面的 **UA**
+  - 如上述失败，确保你的网络环境正常
 - ~~配置拉取节点完成后于~~: 
 - ~~**设置** → **搜索框**，**搜索DNS**关键字 如有以下类似选项，选择它~~
   - ~~私人DNS~~
@@ -93,7 +97,6 @@
 
 - Web App：
   - 仅为图形辅助工具，用于便携浏览及管理后台路由数据，并无其它多余用途
-  - 如果遇到**请求连接失败**，或者代理组的图标无法显示，您可以尝试 关闭/开启网络，亦或者检查是否能访问上 `raw.githubusercontent.com`
 
 <img src="./folder/Webapk.png" alt="Web UI" width="300">
 
@@ -108,7 +111,7 @@
 
 - 可通过 **WiFi SSID** 网络控制启停
 - 可通过模块开关进行 关闭/开启 控制运行服务实时生效
-- 可向系统状态栏添加模块的控制开关磁贴，你可以 [下载源码](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/SurfingTile.tar.gz) 至本地查阅。如安装模块重启设备后无法找到磁贴开关，你可以直接导航至 `/data/adb/modules/Surfingtile/system/app/com.yadli.surfingtile/` 进行手动安装  
+- 可向系统状态栏添加模块的控制开关磁贴，如安装模块重启设备后无法找到磁贴开关，你可以直接导航至 `/data/adb/modules/Surfingtile/system/app/com.yadli.surfingtile/` 进行手动安装 [下载源码](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/SurfingTile.tar.gz)
 
 </details>
 
@@ -129,13 +132,13 @@ GitHub Actions 北京时间每天早上 6 点自动构建，保证CN规则最新
 <summary>4. 后续更新</summary>
 
 - 如果你全部使用默认配置，更新将是无感
-- 支持在客户端中在线更新模块，更新后无须重启，模块开关控制 启用/关闭 ~~会临时失效，仍需重启~~ 亦或使用 Toolbox 更新(不建议 因为脚本更新可能不及时)
+- 支持在客户端中在线更新模块，更新后无须重启，但仍需建议重启
 - 更新时配置文件会备份至
    - `config.yaml.bak`
 - 更新时会备份旧文件用户配置，至
    - `box.config.bak`
 - 更新时会自动提取你的订阅地址并备份，至
-   - `subscribe_urls_backup.txt`
+   - `proxies/subscribe_urls_backup.txt`
    - 自动提取备份并恢复至新配置中，适用于使用默认配置文件的
 - 更新模块时不包含：
    - Geo数据库文件
@@ -186,8 +189,9 @@ GitHub Actions 北京时间每天早上 6 点自动构建，保证CN规则最新
 
 五、局域网共享
 - 开启热点让其它设备连接即可
+- Tun 网关: `172.20.0.1`
 
-> 其它设备若访问控制台后端，只需 (http://当前WiFi网关:9090/ui)
+> 其它设备若访问控制台后端: `http://当前WiFi/Tun网关:9090/ui`
 
 ~~六、私人DNS~~
 - ~~**开启后**请严格**保持模块服务正常运行**，**否则**会影响 CN 解析可能**会出现无法上网**状态~~

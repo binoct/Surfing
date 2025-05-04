@@ -71,13 +71,17 @@ Please decide whether to use the Surfing module only after clearly understanding
 
 - Uninstall the module from the Magisk Manager, Kernelsu Manager, or APatch application. [👉🏻Removal Command](https://github.com/MoGuangYu/Surfing/blob/main/uninstall.sh#L3-L4)
 
+> Uninstalling this module through the manager will completely uninstall all corresponding services and components
+
 ## Wiki
 
 <details>
 <summary>1. First Use</summary>
 
 - After installing the module for the first time, **please first** add your subscription URL to `/data/adb/box_bll/clash/config.yaml`, and then manually restart the device once.
+- Toggle the module switch once and open the **Web** application on the desktop
 - Due to network reasons, the **rules**/**subscriptions** may not be fully downloaded automatically. Please manually refresh the panel.
+  - If the subscription fails to load, please try to switch the **UA** in the configuration file
   - If the above fails, ensure your network environment is normal.
 - ~~After the configuration and node fetching are complete, go to~~: 
 - ~~**Settings** → **Search Box**, and search for the keyword "DNS." If similar options appear, select them~~:
@@ -90,7 +94,6 @@ Please decide whether to use the Surfing module only after clearly understanding
 
 - Web App:
   - It is purely a graphical tool for portable browsing and managing backend routing data, with no other unnecessary uses.
-  - If you encounter a **connection failed** request or the proxy group icons are not displayed, you can try turning the network off/on, or check if you can access `raw.githubusercontent.com`.
 
 <img src="./folder/Webapk.png" alt="Web UI" width="300">
 
@@ -105,7 +108,7 @@ Please decide whether to use the Surfing module only after clearly understanding
 
 - Can control the start and stop via **WiFi SSID** network.
 - Can control the operation service by turning the module switch on/off, with real-time effect.
-- You can add a control switch tile for the module to the system status bar. You can [download the source code](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/SurfingTile.tar.gz) to view it locally. If the tile switch is not found after restarting the device, you can manually install it by navigating to `/data/adb/modules/Surfingtile/system/app/com.yadli.surfingtile/` .
+- You can add a control switch tile of the module to the system status bar. If you cannot find the tile switch after installing the module and restarting the device, you can directly navigate to `/data/adb/modules/Surfingtile/system/app/com.yadli.surfingtile/` to install it manually [Download source code](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/SurfingTile.tar.gz)
 
 </details>
 
@@ -126,13 +129,13 @@ GitHub Actions automatically builds at 6 AM Beijing Time every day to ensure the
 <summary>4. Subsequent Updates</summary>
 
 - If you are using the default configuration, updates will be seamless.
-- The module supports online updates in the client, and no restart is required after the update. The module switch control (enable/disable) ~~may temporarily fail and still require a restart~~, or you can use Toolbox for updates (not recommended, as script updates may not be timely).
+- Supports online module updates from the client. No reboot is required after updating, but a reboot is still recommended.
 - During updates, the configuration file will be backed up to:
    - `config.yaml.bak`
 - User configuration will be backed up during the update to:
    - `box.config.bak`
 - Your subscription URL will be automatically extracted and backed up to:
-   - `subscribe_urls_backup.txt`
+   - `proxies/subscribe_urls_backup.txt`
    - The backup will be automatically extracted and restored to the new configuration, suitable for those using the default configuration file.
 
 - Module updates do not include:
@@ -183,9 +186,10 @@ Android user group ID identifiers:
 > May affect normal display of page fonts.
 
 5. LAN Sharing
-- Enable hotspot to allow other devices to connect.
+- Enable hotspot and let other devices connect.
+- TUN Gateway: `172.20.0.1`
 
-> If other devices need to access the console backend, just use (http://Current WiFi Gateway:9090/ui).
+> To access the dashboard backend from other devices, visit: `http://<Current WiFi/TUN Gateway>:9090/ui`
 
 ~~6. Private DNS~~
 - ~~**When enabled**, please **ensure the module service is running properly**, **otherwise**, it may affect CN resolution and result in **no internet connection**.~~
