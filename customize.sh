@@ -131,9 +131,10 @@ if [ -d /data/adb/box_bll ]; then
   nohup inotifyd "${SCRIPTS_PATH}net.inotify" "$NET_PATH" > /dev/null 2>&1 &
   nohup inotifyd "${SCRIPTS_PATH}ctr.inotify" "$CTR_PATH" > /dev/null 2>&1 &
   sleep 1
-  cp -f "$MODPATH/box_bll/clash/etc/"* /data/adb/box_bll/clash/etc/
+  cp -f "$MODPATH/box_bll/clash/etc/hosts" /data/adb/box_bll/clash/etc/
   rm -rf /data/adb/box_bll/mihomo
   rm -rf "$MODPATH/box_bll"
+  rm -f /data/adb/box_bll/clash/etc/hosts
   
   sleep 1
   ui_print "- 正在重启服务..."
@@ -145,11 +146,14 @@ else
   mv "$MODPATH/box_bll" /data/adb/
   
   installapk
+  
   ui_print "- 模块安装完成 工作目录"
   ui_print "- data/adb/box_bll/"
   ui_print "- 请先于工作目录/config.yaml"
   ui_print "- 添加你的订阅，首次安装随后需重启设备一次..."
   ui_print "- 依次顺序由上往下"
+  
+  rm -f /data/adb/box_bll/clash/etc/hosts
 fi
 
 if [ "$KSU" = true ]; then
