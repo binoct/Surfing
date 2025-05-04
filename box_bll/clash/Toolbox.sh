@@ -158,7 +158,7 @@ download_all_rules() {
     done
 }
 
-CURRENT_VERSION="v13.4.7"
+CURRENT_VERSION="v13.4.8"
 TOOLBOX_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
 
@@ -307,45 +307,30 @@ EOF
 }
 update_module() {
     echo "↴"
-    module_installed=true
     if [ -f "$MODULE_PROP" ]; then
         current_version=$(grep '^version=' "$MODULE_PROP" | cut -d'=' -f2)
         echo "当前模块版本号: $current_version"
     else
-        module_installed=false
+        current_version=""
         echo "当前设备没有安装 Surfing 模块"
-        while true; do
-            echo "是否下载安装？(y/n)"
-            read -r install_confirmation
-            if [ "$install_confirmation" == "y" ]; then
-                break
-            elif [ "$install_confirmation" == "n" ]; then
-                echo "↴"
-                echo "操作取消！"
-                return
-            else
-                echo "无效的输入！"
-            fi
-        done
+        echo "↴"
     fi
-    
-    echo "↴"
+
     echo "正在获取服务器中..."
     module_release=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$GIT_URL")
     module_version=$(echo "$module_release" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
     if [ -z "$module_version" ]; then
         echo "获取服务器失败！"
-        echo "错误：API 速率受限 / 网络请求异常 ！"
+        echo "错误：API 速率受限 / 网络请求异常！"
         return
     fi
-    download_url=$(echo "$module_release" | grep '"browser_download_url".*release' | sed -E 's/.*"([^"]+)".*/\1/')
     echo "获取成功！"
     echo "当前最新版本号: $module_version"
 
-    if [ "$module_installed" = true ] && [ "$current_version" = "$module_version" ]; then
-        echo "当前已是最新版本！"
+    if [ -n "$current_version" ] && [ "$current_version" = "$module_version" ]; then
         return
     fi
+
     echo "↴"
     echo "正在获取更新日志..."
     echo
@@ -356,8 +341,7 @@ update_module() {
             if ($0 ~ ("^# " ver)) {
                 p=1
                 next
-            }
-            else if ($0 ~ "^# v") {
+            } else if ($0 ~ "^# v") {
                 p=0
             }
         }
@@ -366,149 +350,13 @@ update_module() {
     echo "$latest_changelog"
     echo
 
-    if [ "$module_installed" = false ]; then
-        echo "是否安装模块？(y/n)"
+    if [ -n "$current_version" ]; then
+        echo "发现新版本：$module_version（当前：$current_version）"
+        echo " ↳ 请手动至客户端操作"
     else
-        echo "Warn：使用该选项请确保当前脚本已是最新版本！"
-        echo "是否更新模块？(y/n)"
+        echo "检测到新版本：$module_version（当前未安装）"
+        echo " ↳ 请手动至客户端操作"
     fi
-    
-    while true; do
-    read -r confirmation
-    if [ "$confirmation" = "y" ]; then
-        break
-    elif [ "$confirmation" = "n" ]; then
-        echo "↴"
-        echo "更新取消！"
-        return
-    else
-        echo "↴"
-        echo "无效的输入！"
-    fi
-    done
-
-    echo "↴"
-    echo "正在下载文件中..."
-    if ! curl -sS -L -o "$TEMP_FILE" "$download_url"; then
-        echo "下载失败，请检查网络连接是否能正常访问 GitHub！"
-        return
-    fi
-
-    echo "文件效验通过，开始处理..."
-    mkdir -p "$TEMP_DIR"
-    if ! unzip -qo "$TEMP_FILE" -d "$TEMP_DIR"; then
-        echo "解压失败，文件异常！"
-        rm -rf "$TEMP_FILE" "$TEMP_DIR"
-        return
-    fi
-    
-    MODULE_PROP_PATH="/data/adb/modules/Surfing/module.prop"
-    MODULE_VERSION_CODE=$(awk -F'=' '/versionCode/ {print $2}' "$MODULE_PROP_PATH")
-
-    if [ "$MODULE_VERSION_CODE" -lt 1610 ]; then
-      INSTALL_APK=true
-      
-    else
-      INSTALL_APK=false
-      
-    fi
-
-    if [ "$KSU" = true ] && [ "$KSU_VER_CODE" -lt 10683 ]; then
-        SERVICE_PATH="/data/adb/ksu/service.d"
-    else 
-        SERVICE_PATH="/data/adb/service.d"
-    fi
-    if [ ! -d "$SERVICE_PATH" ]; then
-      mkdir -p "$SERVICE_PATH"
-    fi
-    
-    if [ -d /data/adb/box_bll ]; then
-        echo "正在初始化服务..."
-        /data/adb/box_bll/scripts/box.service stop > /dev/null 2>&1
-        sleep 1.5
-        extract_subscribe_urls
-        if [ "$INSTALL_APK" = true ]; then
-          installapk
-        fi
-        
-        if [ -f "$CONFIG_PATH" ]; then
-            mv "$CONFIG_PATH" "${CONFIG_PATH}.bak"
-        fi
-        
-        if [ -f "$BOX_PATH" ]; then
-            mv "$BOX_PATH" "${BOX_PATH}.bak"
-        fi
-        
-        rm -rf /data/adb/modules/Surfing/system/
-        rm -f /data/adb/box_bll/clash/GeoSite.dat /data/adb/box_bll/clash/GeoIP.dat
-        
-        if [ -f "$HOSTS_FILE" ]; then
-            cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"
-        fi
-        
-        mkdir -p "$SURFING_PATH"
-        mkdir -p "$HOSTS_PATH"
-        
-        touch "$HOSTS_FILE"
-
-        cp -f "$TEMP_DIR/box_bll/clash/config.yaml" "$COREE_PATH"
-        cp -f "$TEMP_DIR/box_bll/clash/Toolbox.sh" "$COREE_PATH"
-        cp -f "$TEMP_DIR/box_bll/scripts/"* "$SCRIPTS_PATH"
-        
-        find "$TEMP_DIR" -mindepth 1 -maxdepth 1 ! -name "README.md" ! -name "Surfing_service.sh" ! -name "customize.sh" ! -name "box_bll" ! -name "META-INF" -exec cp -r {} "$SURFING_PATH" \;
-        restore_subscribe_urls
-        echo "正在重启服务..."
-        /data/adb/box_bll/scripts/box.service start  > /dev/null 2>&1
-        
-        for pid in $(pidof inotifyd); do
-        if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
-        kill "$pid"
-        fi
-        done
-        nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$HOSTS_PATH" > /dev/null 2>&1 &
-        nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$SURFING_PATH" > /dev/null 2>&1 &
-        nohup inotifyd "${SCRIPTS_PATH}net.inotify" "$NET_PATH" > /dev/null 2>&1 &
-        nohup inotifyd "${SCRIPTS_PATH}ctr.inotify" "$CTR_PATH" > /dev/null 2>&1 &
-        sleep 1
-        cp -f "$TEMP_DIR/box_bll/clash/etc/"* "$HOSTS_PATH"
-    else
-        mkdir -p "$SURFING_PATH"
-        mkdir -p "$SURFING_PATH/webroot"
-        mv "$TEMP_DIR/box_bll" "/data/adb/"
-        mv "$TEMP_DIR/webroot" "$SURFING_PATH"
-        find "$TEMP_DIR" -mindepth 1 -maxdepth 1 ! -name "README.md" ! -name "Surfing_service.sh" ! -name "customize.sh" ! -name "box_bll" ! -name "META-INF" -exec cp -r {} "$SURFING_PATH" \;
-    fi
-
-    chown -R root:net_admin /data/adb/box_bll/
-    find /data/adb/box_bll/ -type d -exec chmod 755 {} \;
-    find /data/adb/box_bll/ -type f -exec chmod 644 {} \;
-    chmod -R 711 /data/adb/box_bll/scripts/
-    chmod -R 700 /data/adb/box_bll/bin/
-    chown -R 0:0 /data/adb/box_bll/clash/etc/
-    find /data/adb/box_bll/clash/etc/ -type d -exec chmod 755 {} \;
-    find /data/adb/box_bll/clash/etc/ -type f -exec chmod 644 {} \;
-
-    if [ "$KSU" = true ]; then
-      sed -i 's/name=Surfingmagisk/name=SurfingKernelSU/g' "$TEMP_DIR/module.prop"
-    fi
-    if [ "$APATCH" = true ]; then
-      sed -i 's/name=Surfingmagisk/name=SurfingAPatch/g' "$TEMP_DIR/module.prop"
-    fi
-    
-    mv "$TEMP_DIR/Surfing_service.sh" "$SERVICE_PATH"
-    chmod 0700 "${SERVICE_PATH}/Surfing_service.sh"
-    
-    rm -rf "$TEMP_FILE" "$TEMP_DIR"
-
-    if [ "$module_installed" = false ]; then
-        echo "安装成功✓"
-        echo "需重启设备..."
-    else
-        echo "更新成功✓"
-        echo "无需重启设备..."
-    fi
-    
-    exec sh "$TOOLBOX_FILE"
 }
 update_module
 
