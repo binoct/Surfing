@@ -15,11 +15,14 @@ HOSTS_FILE="/data/adb/box_bll/clash/etc/hosts"
 HOSTS_PATH="/data/adb/box_bll/clash/etc/"
 HOSTS_BACKUP="/data/adb/box_bll/clash/etc/hosts.bak"
 
+SURFING_TILE_ZIP="$MODPATH/Surfingtile.zip"
+SURFING_TILE_DIR="/data/adb/modules_update/Surfingtile"
+
 MODULE_PROP_PATH="/data/adb/modules/Surfing/module.prop"
 
 MODULE_VERSION_CODE=$(awk -F'=' '/versionCode/ {print $2}' "$MODULE_PROP_PATH")
 
-if [ "$MODULE_VERSION_CODE" -lt 1610 ]; then
+if [ "$MODULE_VERSION_CODE" -lt 1622 ]; then
   INSTALL_APK=true
 else
   INSTALL_APK=false
@@ -140,6 +143,7 @@ else
   ui_print "- 安装中..."
   ui_print "- ————————————————"
   mv "$MODPATH/box_bll" /data/adb/
+  
   installapk
   ui_print "- 模块安装完成 工作目录"
   ui_print "- data/adb/box_bll/"
@@ -156,9 +160,17 @@ if [ "$APATCH" = true ]; then
   sed -i 's/name=Surfingmagisk/name=SurfingAPatch/g' "$MODPATH/module.prop"
 fi
 
+mkdir -p "$SURFING_TILE_DIR"
+
+unzip -o "$SURFING_TILE_ZIP" -d "$SURFING_TILE_DIR" >/dev/null 2>&1
+
+touch "$SURFING_TILE_DIR/update"
+
 mv -f "$MODPATH/Surfing_service.sh" "$service_dir/"
+rm -f "$SURFING_TILE_ZIP"
 
 set_perm_recursive "$MODPATH" 0 0 0755 0644
+set_perm_recursive "$SURFING_TILE_DIR" 0 0 0755 0644
 set_perm_recursive /data/adb/box_bll/ 0 3005 0755 0644
 set_perm_recursive /data/adb/box_bll/scripts/ 0 3005 0755 0700
 set_perm_recursive /data/adb/box_bll/bin/ 0 3005 0755 0700
@@ -168,3 +180,5 @@ set_perm "$service_dir/Surfing_service.sh" 0 0 0700
 chmod ugo+x /data/adb/box_bll/scripts/*
 
 rm -f customize.sh
+
+
