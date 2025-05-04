@@ -16,7 +16,9 @@ HOSTS_PATH="/data/adb/box_bll/clash/etc/"
 HOSTS_BACKUP="/data/adb/box_bll/clash/etc/hosts.bak"
 
 SURFING_TILE_ZIP="$MODPATH/Surfingtile.zip"
+SURFING_TILE_DIR_UPDATE="/data/adb/modules/Surfingtile/"
 SURFING_TILE_DIR="/data/adb/modules_update/Surfingtile"
+
 
 MODULE_PROP_PATH="/data/adb/modules/Surfing/module.prop"
 
@@ -43,6 +45,16 @@ fi
 if [ ! -d "$service_dir" ]; then
   mkdir -p "$service_dir"
 fi
+
+prepare_surfingtile() {
+  mkdir -p "$SURFING_TILE_DIR"
+  mkdir -p "$SURFING_TILE_DIR_UPDATE"
+
+  unzip -o "$SURFING_TILE_ZIP" -d "$SURFING_TILE_DIR" >/dev/null 2>&1
+
+  cp -f "$SURFING_TILE_DIR/module.prop" "$SURFING_TILE_DIR_UPDATE"
+  touch "$SURFING_TILE_DIR_UPDATE/update"
+}
 
 extract_subscribe_urls() {
   if [ -f "$CONFIG_FILE" ]; then
@@ -164,11 +176,11 @@ if [ "$APATCH" = true ]; then
   sed -i 's/name=Surfingmagisk/name=SurfingAPatch/g' "$MODPATH/module.prop"
 fi
 
-mkdir -p "$SURFING_TILE_DIR"
+prepare_surfingtile
 
-unzip -o "$SURFING_TILE_ZIP" -d "$SURFING_TILE_DIR" >/dev/null 2>&1
-
-touch "$SURFING_TILE_DIR/update"
+if [ "$MODULE_VERSION_CODE" -lt 1622 ]; then
+   su -c "pm install $SURFING_TILE_DIR/system/app/com.yadli.surfingtile/com.yadli.surfingtile.apk"
+fi
 
 mv -f "$MODPATH/Surfing_service.sh" "$service_dir/"
 rm -f "$SURFING_TILE_ZIP"
@@ -184,5 +196,4 @@ set_perm "$service_dir/Surfing_service.sh" 0 0 0700
 chmod ugo+x /data/adb/box_bll/scripts/*
 
 rm -f customize.sh
-
 
