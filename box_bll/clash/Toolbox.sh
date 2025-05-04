@@ -158,7 +158,7 @@ download_all_rules() {
     done
 }
 
-CURRENT_VERSION="v13.4.8"
+CURRENT_VERSION="v13.4.9"
 TOOLBOX_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
 
@@ -285,26 +285,6 @@ reload_configuration1() {
           echo "重载失败！"
        fi
     }
-APK_FILE="$TEMP_DIR/webroot/Web.apk"
-INSTALL_DIR="/data/app"
-installapk() {
-  : <<EOF
-  PACKAGE_NAME="com.android64bit.web"
-  if pm list packages | grep -q "$PACKAGE_NAME"; then
-    return
-  fi
-EOF
-
-  if [ -f "$APK_FILE" ]; then
-    cp "$APK_FILE" "$INSTALL_DIR/"
-    echo "开始安装 Web.apk..."
-    pm install "$INSTALL_DIR/Web.apk"
-    echo "Web.apk 安装完成"
-    rm -rf "$INSTALL_DIR/Web.apk"
-  else
-    echo "未找到 APK 文件 Web.apk"
-  fi
-}
 update_module() {
     echo "↴"
     if [ -f "$MODULE_PROP" ]; then
@@ -763,6 +743,12 @@ enable_updates() {
     fi
 }
 integrate_magisk_update() {
+    if [ "$NO_UPDATE_ENABLED" = "true" ]; then
+        echo "↴"
+        echo "当前选项是禁用状态，不允许执行该操作！"
+        return
+    fi
+    
     if [ ! -f "$MODULE_PROP" ]; then
         echo "↴"
         echo "当前未安装模块！"
