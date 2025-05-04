@@ -106,25 +106,9 @@
 <details>
 <summary>2. 控制运行</summary>
 
-- 可通过 **WiFi SDID** 网络控制启停
+- 可通过 **WiFi SSID** 网络控制启停
 - 可通过模块开关进行 关闭/开启 控制运行服务实时生效
-- 可向系统状态栏添加模块的控制开关  
-
-<img src="./folder/KAKJFS.jpg" alt="KJFS" width="300">
-
-[下载Apk](https://www.coolapk.com/apk/com.coolapk.market) | [复制URL](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/KJFSURL.md)
-
-<img src="./folder/BJZDY.jpg" alt="KJFS" width="300">
-
-- 进入设置
-
-<img src="./folder/WLDR.jpg" alt="KJFS" width="300">
-
-- 导入URL
-
-<img src="./folder/CTSZ.jpg" alt="KJFS" width="300">
-
-- 向状态栏自定义磁贴
+- 可向系统状态栏添加模块的控制开关磁贴，你可以 [下载源码](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/SurfingTile.tar.gz) 至本地查阅。如安装模块重启设备后无法找到磁贴开关，你可以直接导航至 `/data/adb/modules/Surfingtile/system/app/com.yadli.surfingtile/` 进行手动安装  
 
 </details>
 
@@ -133,7 +117,7 @@
 <details>
 <summary>3. 路由规则</summary>
 
-GitHub Actions 北京时间每天早上 6 点自动构建，保证CN规则最新  [Wiki](https://github.com/MetaCubeX/meta-rules-dat)  
+GitHub Actions 北京时间每天早上 6 点自动构建，保证CN规则最新  [Wiki](https://github.com/MoGuangYu/rule)  
 
 > 路由规则全使用在线链接，24小时自动更新
 

@@ -101,27 +101,11 @@ Please decide whether to use the Surfing module only after clearly understanding
 #
 
 <details>
-<summary>2. Controlling Operation</summary>  
+<summary>2. Control Operation</summary>
 
-- Can be controlled via **WiFi SSID** network toggling  
-- Use the module switch to enable/disable the service in real time  
-- Add a control switch to the system status bar
-  
-<img src="./folder/KAKJFS.jpg" alt="KJFS" width="300">
-
-[Download Apk](https://www.coolapk.com/apk/com.coolapk.market) | [Copy URL](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/KJFSURL.md)
-
-<img src="./folder/BJZDY.jpg" alt="KJFS" width="300">
-
-- Enter Settings
-
-<img src="./folder/WLDR.jpg" alt="KJFS" width="300">
-
-- Import URL
-
-<img src="./folder/CTSZ.jpg" alt="KJFS" width="300">
-
-- Add a custom tile to the status bar
+- Can control the start and stop via **WiFi SSID** network.
+- Can control the operation service by turning the module switch on/off, with real-time effect.
+- You can add a control switch tile for the module to the system status bar. You can [download the source code](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/SurfingTile.tar.gz) to view it locally. If the tile switch is not found after restarting the device, you can manually install it by navigating to `/data/adb/modules/Surfingtile/system/app/com.yadli.surfingtile/` .
 
 </details>
 
@@ -130,7 +114,7 @@ Please decide whether to use the Surfing module only after clearly understanding
 <details>
 <summary>3. Routing Rules</summary>
 
-GitHub Actions automatically builds at 6 AM Beijing Time every day to ensure the CN rules are up to date. [Wiki](https://github.com/MetaCubeX/meta-rules-dat)
+GitHub Actions automatically builds at 6 AM Beijing Time every day to ensure the CN rules are up to date. [Wiki](https://github.com/MoGuangYu/rule)
 
 > The routing rules are all linked online and automatically updated every 24 hours.
 
