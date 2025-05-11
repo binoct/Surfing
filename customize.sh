@@ -168,6 +168,7 @@ if [ -d /data/adb/box_bll ]; then
   sleep 1
   cp -f "$MODPATH/box_bll/clash/etc/hosts" /data/adb/box_bll/clash/etc/
   rm -rf /data/adb/box_bll/mihomo
+  rm -rf /data/adb/box_bll/panel
   rm -rf "$MODPATH/box_bll"
   rm -f /data/adb/box_bll/clash/etc/hosts
   
