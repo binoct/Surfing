@@ -26,7 +26,7 @@ find-process-mode: always
 global-client-fingerprint: chrome
 external-controller: 0.0.0.0:9090
 external-ui-url: "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
-external-ui: /data/adb/box_bll/panel/Zash/
+external-ui: "./Web/Zash/"
 secret: "" # 面板访问密码，如在公网访问建议设置
 # —————————
 # ==== Tips
@@ -119,7 +119,7 @@ sniffer:
 
 # 网卡模块
 tun:
-  enable: true  # true 开 # false 关  # 注意关闭 Tun 无法拦截 WebRTC 泄露
+  enable: false  # true 开 # false 关  # 注意关闭 Tun 无法拦截 WebRTC 泄露
   device: Meta
   stack: gvisor
   dns-hijack:
@@ -157,6 +157,7 @@ dns:
   fake-ip-range: 172.20.0.1/16
   fake-ip-filter:
     - "RULE-SET:CN_域,Private_域,GoogleFCM_域"
+    - "+.3gppnetwork.org"
   direct-nameserver:
     - https://doh.pub/dns-query#🇨🇳 瓦洛兰大陆
     - https://dns.alidns.com/dns-query#🇨🇳 瓦洛兰大陆&h3=true
