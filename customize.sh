@@ -152,6 +152,7 @@ if [ -d /data/adb/box_bll ]; then
   cp /data/adb/box_bll/scripts/box.config /data/adb/box_bll/scripts/box.config.bak
   cp -f "$MODPATH/box_bll/clash/config.yaml" /data/adb/box_bll/clash/
   cp -f "$MODPATH/box_bll/clash/Toolbox.sh" /data/adb/box_bll/clash/
+  cp -rf "$MODPATH/box_bll/clash/Web" /data/adb/box_bll/clash/
   cp -f "$MODPATH/box_bll/scripts/"* /data/adb/box_bll/scripts/
   
   restore_subscribe_urls
