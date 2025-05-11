@@ -30,7 +30,7 @@ VAR_PATH="/data/adb/box_bll/variab/"
 BASEE_URL="https://github.com/MetaCubeX/mihomo/releases/download/"
 RELEASE_PATH="mihomo-android-arm64-v8"
 BASE_URL="https://api.github.com/repos/MetaCubeX/mihomo/releases/latest"
-PANEL_DIR="/data/adb/box_bll/panel/"
+PANEL_DIR="/data/adb/box_bll/clash/Web/"
 META_DIR="${PANEL_DIR}Meta/"
 CHANGELOG_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/changelog.md"
 META_URL="https://github.com/metacubex/metacubexd/archive/gh-pages.zip"
@@ -158,7 +158,7 @@ download_all_rules() {
     done
 }
 
-CURRENT_VERSION="v13.4.9"
+CURRENT_VERSION="v13.5.0"
 TOOLBOX_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
 
