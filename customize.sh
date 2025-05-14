@@ -3,8 +3,8 @@
 SKIPUNZIP=1
 ASH_STANDALONE=1
 
-SURFING_PATH="/data/adb/modules/Surfing/"
-SCRIPTS_PATH="/data/adb/box_bll/scripts/"
+SURFING_PATH="/data/adb/modules/Surfing"
+SCRIPTS_PATH="/data/adb/box_bll/scripts"
 NET_PATH="/data/misc/net"
 CTR_PATH="/data/misc/net/rt_tables"
 CONFIG_FILE="/data/adb/box_bll/clash/config.yaml"
@@ -12,11 +12,11 @@ BACKUP_FILE="/data/adb/box_bll/clash/proxies/subscribe_urls_backup.txt"
 APK_FILE="$MODPATH/webroot/Web.apk"
 INSTALL_DIR="/data/app"
 HOSTS_FILE="/data/adb/box_bll/clash/etc/hosts"
-HOSTS_PATH="/data/adb/box_bll/clash/etc/"
+HOSTS_PATH="/data/adb/box_bll/clash/etc"
 HOSTS_BACKUP="/data/adb/box_bll/clash/etc/hosts.bak"
 
 SURFING_TILE_ZIP="$MODPATH/Surfingtile.zip"
-SURFING_TILE_DIR_UPDATE="/data/adb/modules/Surfingtile/"
+SURFING_TILE_DIR_UPDATE="/data/adb/modules/Surfingtile"
 SURFING_TILE_DIR="/data/adb/modules_update/Surfingtile"
 
 MODULE_PROP_PATH="/data/adb/modules/Surfing/module.prop"
@@ -33,6 +33,12 @@ if [ "$MODULE_VERSION_CODE" -lt 1622 ]; then
 else
   INSTALL_TILE_APK=false
 fi
+if [ "$MODULE_VERSION_CODE" -lt 1623 ]; then
+  COPY_WEB=true
+else
+  COPY_WEB=false
+fi
+
 
 if [ "$BOOTMODE" != true ]; then
   abort "Error: Please install via Magisk Manager / KernelSU Manager / APatch"
@@ -122,6 +128,17 @@ install_surfingtile_module() {
   touch "$SURFING_TILE_DIR_UPDATE/update"
 }
 
+choose_volume_key() {
+  ui_print "Mount the hosts file to the system？"
+  ui_print "Volume Up: Mount"
+  ui_print "Volume down: Uninstall"
+
+  while true; do
+    getevent -qlc 1 2>/dev/null | grep -q KEY_VOLUMEUP && return 0
+    getevent -qlc 1 2>/dev/null | grep -q KEY_VOLUMEDOWN && return 1
+  done
+}
+
 unzip -qo "${ZIPFILE}" -x 'META-INF/*' -d "$MODPATH"
 if [ -d /data/adb/box_bll ]; then
   ui_print "Updating..."
@@ -152,7 +169,11 @@ if [ -d /data/adb/box_bll ]; then
   cp /data/adb/box_bll/scripts/box.config /data/adb/box_bll/scripts/box.config.bak
   cp -f "$MODPATH/box_bll/clash/config.yaml" /data/adb/box_bll/clash/
   cp -f "$MODPATH/box_bll/clash/Toolbox.sh" /data/adb/box_bll/clash/
-  cp -rf "$MODPATH/box_bll/clash/Web" /data/adb/box_bll/clash/
+  
+  if [ "$COPY_WEB" = true ]; then
+    cp -rf "$MODPATH/box_bll/clash/Web" /data/adb/box_bll/clash/
+  fi
+  
   cp -f "$MODPATH/box_bll/scripts/"* /data/adb/box_bll/scripts/
   
   restore_subscribe_urls
@@ -162,16 +183,25 @@ if [ -d /data/adb/box_bll ]; then
       kill "$pid"
     fi
   done
-  nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$HOSTS_PATH" > /dev/null 2>&1 &
-  nohup inotifyd "${SCRIPTS_PATH}box.inotify" "$SURFING_PATH" > /dev/null 2>&1 &
-  nohup inotifyd "${SCRIPTS_PATH}net.inotify" "$NET_PATH" > /dev/null 2>&1 &
-  nohup inotifyd "${SCRIPTS_PATH}ctr.inotify" "$CTR_PATH" > /dev/null 2>&1 &
+  nohup inotifyd "${SCRIPTS_PATH}/box.inotify" "$HOSTS_PATH" > /dev/null 2>&1 &
+  nohup inotifyd "${SCRIPTS_PATH}/box.inotify" "$SURFING_PATH" > /dev/null 2>&1 &
+  nohup inotifyd "${SCRIPTS_PATH}/net.inotify" "$NET_PATH" > /dev/null 2>&1 &
+  nohup inotifyd "${SCRIPTS_PATH}/ctr.inotify" "$CTR_PATH" > /dev/null 2>&1 &
   sleep 1
-  cp -f "$MODPATH/box_bll/clash/etc/hosts" /data/adb/box_bll/clash/etc/
+  #cp -f "$MODPATH/box_bll/clash/etc/hosts" /data/adb/box_bll/clash/etc/
   rm -rf /data/adb/box_bll/mihomo
   rm -rf /data/adb/box_bll/panel
   rm -rf "$MODPATH/box_bll"
-  rm -f /data/adb/box_bll/clash/etc/hosts
+
+  if choose_volume_key; then
+    ui_print "Hosts file mounted"
+  else
+    ui_print "Uninstalling hosts file is complete"
+    rm -f "$HOSTS_FILE"
+  fi
+
+  rm -rf "$SURFING_TILE_DIR"
+  rm -rf "$SURFING_TILE_DIR_UPDATE"
   
   sleep 1
   ui_print "Restarting service..."
@@ -191,7 +221,15 @@ else
   ui_print "A reboot is required after first installation..."
   ui_print "Follow the steps from top to bottom"
   
-  rm -f /data/adb/box_bll/clash/etc/hosts
+  if choose_volume_key; then
+    ui_print "Hosts file mounted"
+  else
+    ui_print "Uninstalling hosts file is complete"
+    rm -f "$HOSTS_FILE"
+  fi
+  
+  rm -rf "$SURFING_TILE_DIR"
+  rm -rf "$SURFING_TILE_DIR_UPDATE"
 fi
 
 if [ "$KSU" = true ]; then
