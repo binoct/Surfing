@@ -9,36 +9,34 @@ if [ -f "config.env" ]; then
     source config.env
 else
     echo "↴"
-    echo "警告：配置文件 config.env 已创建"
+    echo "Warn：配置文件 config.env 已创建"
     echo 'GITHUB_TOKEN=你的个人令牌' > config.env
     echo "      请打开并配置你的个人令牌，以免受速率限制！"
     sleep 1
     source config.env
 fi
 
-SURFING_PATH="/data/adb/modules/Surfing/"
-MODULE_PROP="${SURFING_PATH}module.prop"
+SURFING_PATH="/data/adb/modules/Surfing"
+MODULE_PROP="${SURFING_PATH}/module.prop"
 GXSURFING_PATH="/data/adb/modules_update/Surfing"
 NET_PATH="/data/misc/net"
 CTR_PATH="/data/misc/net/rt_tables"
-SCRIPTS_PATH="/data/adb/box_bll/scripts/"
 BOX_PATH="/data/adb/box_bll/scripts/box.config"
 CONFIG_PATH="/data/adb/box_bll/clash/config.yaml"
 CORE_PATH="/data/adb/box_bll/bin/clash"
-COREE_PATH="/data/adb/box_bll/clash/"
-VAR_PATH="/data/adb/box_bll/variab/"
+VAR_PATH="/data/adb/box_bll/variab"
 BASEE_URL="https://github.com/MetaCubeX/mihomo/releases/download/"
 RELEASE_PATH="mihomo-android-arm64-v8"
 BASE_URL="https://api.github.com/repos/MetaCubeX/mihomo/releases/latest"
-PANEL_DIR="/data/adb/box_bll/clash/Web/"
-META_DIR="${PANEL_DIR}Meta/"
+PANEL_DIR="/data/adb/box_bll/clash/Web"
+META_DIR="${PANEL_DIR}/Meta"
 CHANGELOG_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/changelog.md"
 META_URL="https://github.com/metacubex/metacubexd/archive/gh-pages.zip"
 METAA_URL="https://api.github.com/repos/metacubex/metacubexd/releases/latest"
-YACD_DIR="${PANEL_DIR}Yacd/"
+YACD_DIR="${PANEL_DIR}/Yacd"
 YACD_URL="https://github.com/MetaCubeX/yacd/archive/gh-pages.zip"
 YACDD_URL="https://api.github.com/repos/MetaCubeX/Yacd-meta/releases/latest"
-ZASH_DIR="${PANEL_DIR}Zash/"
+ZASH_DIR="${PANEL_DIR}/Zash"
 ZASH_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
 ZASHD_URL="https://api.github.com/repos/Zephyruso/zashboard/releases/latest"
 BACKUP_FILE="/data/adb/box_bll/clash/proxies/subscribe_urls_backup.txt"
@@ -53,11 +51,8 @@ GEOSITE_URL="https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/dow
 GEODATA_URL="https://api.github.com/repos/Loyalsoldier/v2ray-rules-dat/releases/latest"
 GEOIP_PATH="/data/adb/box_bll/clash/GeoIP.dat"
 GEOSITE_PATH="/data/adb/box_bll/clash/GeoSite.dat"
-RULES_PATH="/data/adb/box_bll/clash/rule/"
 GIT_URL="https://api.github.com/repos/MoGuangYu/Surfing/releases/latest"
-HOSTS_FILE="/data/adb/box_bll/clash/etc/hosts"
-HOSTS_PATH="/data/adb/box_bll/clash/etc/"
-HOSTS_BACKUP="/data/adb/box_bll/clash/etc/hosts.bak"
+
 
 
 SAVE_DIR="/data/adb/box_bll/clash/rules/规则审查"
@@ -106,6 +101,33 @@ rules=(
 "LAN_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Lan/Lan_OCD_Domain.yaml"
 "LAN_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Lan/Lan_OCD_IP.yaml"
 )
+
+printc() {
+  local newline=1
+  if [ "$1" = "-n" ]; then
+    newline=0
+    shift
+  fi
+  local color="$1"
+  shift
+  local text="$*"
+  local code
+  case "$color" in
+    red) code="\033[1;31m" ;;
+    green) code="\033[1;32m" ;;
+    yellow) code="\033[1;33m" ;;
+    blue) code="\033[1;34m" ;;
+    magenta) code="\033[1;35m" ;;
+    cyan) code="\033[1;36m" ;;
+    white) code="\033[1;37m" ;;
+    *) code=""; text="$color $text" ;;
+  esac
+  if [ "$newline" -eq 1 ]; then
+    echo -e "${code}${text}\033[0m"
+  else
+    echo -en "${code}${text}\033[0m"
+  fi
+}
 
 download_rule() {
     local name="$1"
@@ -158,7 +180,12 @@ download_all_rules() {
     done
 }
 
-CURRENT_VERSION="v13.5.0"
+CURRENT_VERSION="v13.5.1"
+UPDATE_LOG="更新日志: 
+优化已知问题....
+删减多余变量
+移除模块更新"
+
 TOOLBOX_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
 
@@ -182,10 +209,10 @@ check_version() {
     remote_version=$(get_remote_version) || return
     if [ "$remote_version" != "$CURRENT_VERSION" ]; then
         echo "↴" 
-        echo "GitHub Toolbox版本校验！"
+        printc green "GitHub Toolbox版本校验！"
         echo 
-        echo "当前版本: $CURRENT_VERSION"
-        echo "远程版本: $remote_version"
+        echo -e "\033[1;33m当前版本: \033[1;32m$CURRENT_VERSION\033[0m"
+        echo -e "\033[1;33m远程版本: \033[1;32m$remote_version\033[0m"
         echo 
         
         while true; do
@@ -207,7 +234,7 @@ check_version() {
                     ;;
                 [nN])
                     echo "↴" 
-                    echo "更新取消，继续使用当前脚本！"
+                    printc cyan "更新取消，继续使用当前脚本！"
                     break
                     ;;
                 *) 
@@ -532,139 +559,99 @@ check_and_update_files() {
 }
 
 show_menu() {
-    while true; do
-        echo "=========="
-        echo "Version：$CURRENT_VERSION"
-        echo
-        echo "1. 重载配置"
-        echo
-        echo "2. 清空数据库缓存"
-        echo
-        echo "3. 更新控制台面板"
-        echo
-        echo "4. 更新数据库"
-        echo
-        echo "5. 更新核心"
-        echo
-        echo "6. 少儿频道"
-        echo
-        echo "7. 控制台面板入口"
-        echo
-        echo "8. 整合客户端更新状态"
-        echo
-        echo "9. 禁用/启用 更新模块"
-        echo
-        echo "10. 检查仓库最新提交"
-        echo
-        echo "11. 规则审查"
-        echo
-        echo "12. 项目地址"
-        echo
-        echo "13. 一键卸载"
-        echo
-        echo "14. Exit"
-        echo "——————"
-        read -r choice
-        case $choice in
-            1)
-                reload_configuration
-                ;;
-            2)
-                clear_cache
-                ;;
-            3)
-                update_web_panel
-                ;;  
-            4)
-                update_geo_database
-                ;;
-            5)
-                update_core
-                ;;
-            6)
-                open_telegram_group
-                ;;
-            7)
-                show_web_panel_menu
-                ;;
-            8)
-                integrate_magisk_update
-                ;;
-            9)
-                if ! check_module_installed; then
-                    continue
-                fi
-                check_update_status
-                echo "1. 禁用更新"
-                echo "2. 启用更新"
-                echo "3. 返回菜单"
-                read -r update_choice
-                case $update_choice in
-                    1)
-                        disable_updates
-                        ;;
-                    2)
-                        enable_updates
-                        ;;
-                    3)
-                        echo "↴"
-                        echo "操作已取消！"
-                        ;;
-                    *)
-                        echo "↴"
-                        echo "无效的输入！"
-                        ;;
-                esac
-                ;;
-            10)
-                echo "↴"
-                echo "正在检查仓库更新..."
-                all_up_to_date=true
-                rate_limit_exceeded=false
-                net_error=false
-                token_invalid=false
-                
-                check_github_token || true
-                [ ! -d "$LOCAL_SHA_DIR" ] && mkdir -p "$LOCAL_SHA_DIR"
-                check_and_update_files
-                
-                echo
-                echo "↴"
-                if $net_error; then
-                    echo "✗ 网络连接异常"
-                    echo "  请检查网络连接后重试！"
-                elif $rate_limit_exceeded; then
-                    echo "✗ GitHub API限制"
-                    echo "  当前IP请求次数过多，请更换IP或等待1小时后重试！"
-                elif $token_invalid; then
-                    echo "✗ 令牌验证失败"
-                    echo "  请检查GITHUB_TOKEN是否为有效值！"
-                elif $all_up_to_date; then
-                    echo "√ 所有文件均为最新版本"
-                else
-                    echo "√ 检测更新流程完成"
-                fi
-                echo
-                echo "检测已完毕..."
-                ;;
-            11)
-                download_all_rules
-                ;;
-            12)
-                open_project_page
-                ;;
-            13)
-                delete_files_and_dirs
-                ;;
-            14)
-                exit 0
-                ;;
-            *)
-                echo "↴"
-                echo "无效的输入！"
-                ;;
+  while true; do
+    printc cyan "=========="
+    echo -e "\033[1;33mVersion: \033[1;32m$CURRENT_VERSION\033[0m"
+    printc yellow "$UPDATE_LOG"
+    echo
+
+    printc magenta "1. 重载配置"
+    echo
+    printc magenta "2. 清空数据库缓存"
+    echo
+    printc magenta "3. 更新控制台面板"
+    echo
+    printc magenta "4. 更新数据库"
+    echo
+    printc magenta "5. 更新核心"
+    echo
+    printc magenta "6. 少儿频道"
+    echo
+    printc magenta "7. 控制台面板入口"
+    echo
+    printc magenta "8. 整合客户端更新状态"
+    echo
+    printc magenta "9. 禁用/启用 更新模块"
+    echo
+    printc magenta "10. 检查仓库最新提交"
+    echo
+    printc magenta "11. 规则审查"
+    echo
+    printc magenta "12. 项目地址"
+    echo
+    printc magenta "13. 一键卸载"
+    echo
+    printc magenta "14. Exit"
+    echo
+    printc -n blue "正在等待输出: "
+    read -r choice
+    case $choice in
+      1) reload_configuration ;;
+      2) clear_cache ;;
+      3) update_web_panel ;;
+      4) update_geo_database ;;
+      5) update_core ;;
+      6) open_telegram_group ;;
+      7) show_web_panel_menu ;;
+      8) integrate_magisk_update ;;
+      9)
+        if ! check_module_installed; then continue; fi
+        check_update_status
+        printc yellow "1. 禁用更新"
+        printc yellow "2. 启用更新"
+        printc yellow "3. 返回菜单"
+        read -r update_choice
+        case $update_choice in
+          1) disable_updates ;;
+          2) enable_updates ;;
+          3) printc cyan "操作已取消！" ;;
+          *) printc red "无效的输入！" ;;
         esac
-    done
+        ;;
+      10)
+        echo "↴" 
+        printc cyan "正在检查仓库更新..."
+        all_up_to_date=true
+        rate_limit_exceeded=false
+        net_error=false
+        token_invalid=false
+
+        check_github_token || true
+        [ ! -d "$LOCAL_SHA_DIR" ] && mkdir -p "$LOCAL_SHA_DIR"
+        check_and_update_files
+
+        echo
+        if $net_error; then
+          printc red "✗ 网络连接异常\n  请检查网络连接后重试！"
+        elif $rate_limit_exceeded; then
+          printc red "✗ GitHub API限制\n  当前IP请求次数过多，请更换IP或等待1小时后重试！"
+        elif $token_invalid; then
+          printc red "✗ 令牌验证失败\n  请检查GITHUB_TOKEN是否为有效值！"
+        elif $all_up_to_date; then
+          printc green "√ 所有文件均为最新版本"
+        else
+          printc green "√ 检测更新流程完成"
+        fi
+        echo
+        printc cyan "检测已完毕..."
+        ;;
+      11) download_all_rules ;;
+      12) open_project_page ;;
+      13) delete_files_and_dirs ;;
+      14) exit 0 ;;
+      *) printc red "无效的输入！" ;;
+    esac
+  done
 }
 
 NO_UPDATE_ENABLED=true
@@ -706,7 +693,7 @@ disable_updates() {
         read -r confirmation
         if [ "$confirmation" != "y" ]; then
             echo "↴"
-            echo "操作取消！"
+            printc cyan "操作取消！"
             return
         fi
         updateJson_value=$(grep "^updateJson=" "$MODULE_PROP" | cut -d '=' -f 2-)
@@ -729,7 +716,7 @@ enable_updates() {
         read -r confirmation
         if [ "$confirmation" != "y" ];then
             echo "↴"
-            echo "操作取消！"
+            printc cyan "操作取消！"
             return
         fi
         updateJson_value=$(cat "$UPDATE_STATUS_FILE")
@@ -759,7 +746,7 @@ integrate_magisk_update() {
     read -r confirmation
     if [ "$confirmation" != "y" ]; then
         echo "↴"
-        echo "操作取消！"
+        printc cyan "操作取消！"
         return
     fi
     echo "↴"
@@ -791,16 +778,16 @@ clear_cache() {
     fi
     echo "↴"
     ensure_var_path
-    CACHE_CLEAR_TIMESTAMP="${VAR_PATH}last_cache_update" 
+    CACHE_CLEAR_TIMESTAMP="${VAR_PATH}/last_cache_update" 
     if [ -f "$CACHE_CLEAR_TIMESTAMP" ]; then
         last_clear=$(date -d "@$(cat $CACHE_CLEAR_TIMESTAMP)" +"%Y-%m-%d %H:%M:%S")
         echo "距离上次清空缓存是: $last_clear" 
     fi
-    echo "此操作会清空数据库缓存，是否清除？(y/n)"
+    echo "此操作会清空fake-ip映射及节点连接记忆，是否清除？(y/n)"
     read -r confirmation
     if [ "$confirmation" != "y" ]; then
         echo "↴"
-        echo "操作取消！"
+        printc cyan "操作取消！"
         return
     fi
     echo "↴"
@@ -835,7 +822,7 @@ update_geo_database() {
     fi
     echo "↴"  
     ensure_var_path
-    GEO_DATABASE_VERSION_FILE="${VAR_PATH}geo_database_update"
+    GEO_DATABASE_VERSION_FILE="${VAR_PATH}/geo_database_update"
     if [ -f "$GEO_DATABASE_VERSION_FILE" ]; then
         last_version=$(cat "$GEO_DATABASE_VERSION_FILE")
         echo "距离上次更新的版本号是: $last_version"
@@ -859,7 +846,7 @@ update_geo_database() {
     read -r confirmation
     if [ "$confirmation" != "y" ]; then
         echo "↴"
-        echo "操作取消！"
+        printc cyan "操作取消！"
         return
     fi
     echo "↴"
@@ -896,7 +883,7 @@ show_web_panel_menu() {
         echo "2. HTTPS Gui Yacd"
         echo "3. HTTPS Gui Zash"
         echo "4. 本地端口 >>> 127.0.0.1:9090/ui"
-        echo "5. 返回上一级菜单"
+        printc green "5. 返回上一级菜单"
         read -r web_choice
         case $web_choice in
             1)
@@ -952,7 +939,7 @@ update_web_panel() {
     fi
     echo "↴"
     ensure_var_path
-    WEB_PANEL_TIMESTAMP="${VAR_PATH}last_web_panel_update"
+    WEB_PANEL_TIMESTAMP="${VAR_PATH}/last_web_panel_update"
     last_meta_version=""
     last_yacd_version=""
     last_zash_version=""
@@ -1008,7 +995,7 @@ update_web_panel() {
     read -r confirmation
     if [ "$confirmation" != "y" ]; then
         echo "↴"
-        echo "操作取消！"
+        printc cyan "操作取消！"
         return
     fi    
     
@@ -1171,7 +1158,7 @@ update_core() {
     fi
     echo "↴"
     ensure_var_path
-    CORE_TIMESTAMP="${VAR_PATH}last_core_update"
+    CORE_TIMESTAMP="${VAR_PATH}/last_core_update"
     if [ -f "$CORE_TIMESTAMP" ]; then
         last_update=$(cat "$CORE_TIMESTAMP")
         echo "距离上次更新的版本号是: $last_update"
@@ -1198,7 +1185,7 @@ update_core() {
     read -r confirmation
     if [ "$confirmation" != "y" ]; then
         echo "↴"
-        echo "操作取消！"
+        printc cyan "操作取消！"
         return
     fi
     echo "↴"
@@ -1257,7 +1244,7 @@ delete_files_and_dirs() {
         return
     fi
     echo "↴"
-    echo "警告：此操作将卸载删除 Surfing 模块，所有目录及数据！"
+    echo "警告：此操作将卸载删除 Surfing 模块，所有相关组件及数据！"
     echo
     while true; do
         echo "↴"
@@ -1296,10 +1283,25 @@ delete_files_and_dirs() {
             sleep 1
             echo "↴"
             echo "正在删除..."
-            rm -rf "/data/adb/modules_update/Surfing/" \
-                   "/data/adb/modules/Surfing/" \
-                   "/data/adb/service.d/Surfing_service.sh" 2>/dev/null
-            rm -rf "/data/adb/box_bll/" 2>/dev/null
+            
+            rm -rf "/data/adb/modules_update/Surfing" 2>/dev/null
+            rm -rf "/data/adb/modules/Surfing" 2>/dev/null
+            rm -f "/data/adb/service.d/Surfing_service.sh" 2>/dev/null
+            rm -f "/data/adb/ksu/service.d/Surfing_service.sh" 2>/dev/null
+            rm -rf "/data/adb/box_bll" 2>/dev/null
+            
+            rm -rf "/data/adb/modules/Surfingtile" 2>/dev/null
+            
+            APP_DIR=$(find /data/app -type d -name "*com.yadli.surfingtile*" 2>/dev/null | grep com.yadli.surfingtile)
+            rm -rf "$APP_DIR" 2>/dev/null
+            rm -rf "/data/user/0/com.yadli.surfingtile" 2>/dev/null
+            rm -rf "/data/data/com.yadli.surfingtile" 2>/dev/null
+            
+            APP_DIR2=$(find /data/app -type d -name "*com.android64bit.web*" 2>/dev/null | grep com.android64bit.web)
+            rm -rf "$APP_DIR2" 2>/dev/null
+            rm -rf "/data/user/0/com.android64bit.web" 2>/dev/null
+            rm -rf "/data/data/com.android64bit.web" 2>/dev/null
+            
             echo "卸载完成！"
             return
         elif [ -z "$input" ]; then
