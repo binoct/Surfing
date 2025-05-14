@@ -129,14 +129,36 @@ install_surfingtile_module() {
 }
 
 choose_volume_key() {
-  ui_print "Mount the hosts file to the system？"
+  ui_print "Mount the hosts file to the system ？"
   ui_print "Volume Up: Mount"
-  ui_print "Volume down: Uninstall"
+  ui_print "Volume Down: Uninstall"
+  ui_print "Waiting for input (30s)..."
 
-  while true; do
-    getevent -qlc 1 2>/dev/null | grep -q KEY_VOLUMEUP && return 0
-    getevent -qlc 1 2>/dev/null | grep -q KEY_VOLUMEDOWN && return 1
+  TMP_FILE="/dev/tmp/vol_key_choice"
+  rm -f "$TMP_FILE"
+
+  getevent -qlc 1 > "$TMP_FILE" &
+  GETEVENT_PID=$!
+
+  for i in $(seq 1 300); do
+    if [ -s "$TMP_FILE" ]; then
+      if grep -q KEY_VOLUMEUP "$TMP_FILE"; then
+        kill "$GETEVENT_PID" 2>/dev/null
+        rm -f "$TMP_FILE"
+        return 0
+      elif grep -q KEY_VOLUMEDOWN "$TMP_FILE"; then
+        kill "$GETEVENT_PID" 2>/dev/null
+        rm -f "$TMP_FILE"
+        return 1
+      fi
+    fi
+    sleep 0.1
   done
+
+  kill "$GETEVENT_PID" 2>/dev/null
+  rm -f "$TMP_FILE"
+  ui_print "No input detected. Default: Uninstall"
+  return 1
 }
 
 unzip -qo "${ZIPFILE}" -x 'META-INF/*' -d "$MODPATH"
@@ -188,7 +210,7 @@ if [ -d /data/adb/box_bll ]; then
   nohup inotifyd "${SCRIPTS_PATH}/net.inotify" "$NET_PATH" > /dev/null 2>&1 &
   nohup inotifyd "${SCRIPTS_PATH}/ctr.inotify" "$CTR_PATH" > /dev/null 2>&1 &
   sleep 1
-  #cp -f "$MODPATH/box_bll/clash/etc/hosts" /data/adb/box_bll/clash/etc/
+  cp -f "$MODPATH/box_bll/clash/etc/hosts" /data/adb/box_bll/clash/etc/
   rm -rf /data/adb/box_bll/mihomo
   rm -rf /data/adb/box_bll/panel
   rm -rf "$MODPATH/box_bll"
@@ -199,6 +221,7 @@ if [ -d /data/adb/box_bll ]; then
     ui_print "Uninstalling hosts file is complete"
     rm -f "$HOSTS_FILE"
   fi
+  
 
   rm -rf "$SURFING_TILE_DIR"
   rm -rf "$SURFING_TILE_DIR_UPDATE"
