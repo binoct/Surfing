@@ -71,7 +71,7 @@ Please decide whether to use the Surfing module only after clearly understanding
 
 - Uninstall the module from the Magisk Manager, Kernelsu Manager, or APatch application. [👉🏻Removal Command](https://github.com/MoGuangYu/Surfing/blob/main/uninstall.sh#L3-L4)
 
-> Uninstalling this module through the manager will completely uninstall all corresponding services and components
+> Uninstalling this module through the manager will uninstall all corresponding service data. Web and other tile apps need to be uninstalled manually.
 
 ## Wiki
 

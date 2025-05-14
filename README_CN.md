@@ -74,7 +74,7 @@
 
  - 从 Magisk Manager 、Kernelsu Manager 、APatch 应用卸载本模块即可 [👉🏻铲屎命令](https://github.com/MoGuangYu/Surfing/blob/main/uninstall.sh#L3-L4)
 
-> 通过管理器卸载本模块，会完全卸载所有相应的服务及组件
+> 通过管理器卸载本模块，会卸载所有相应的服务数据，Web等磁贴 App 需手动卸载
 
 ## Wiki
 
