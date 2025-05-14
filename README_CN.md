@@ -111,7 +111,7 @@
 
 - 可通过 **WiFi SSID** 网络控制启停
 - 可通过模块开关进行 关闭/开启 控制运行服务实时生效
-- 可向系统状态栏添加模块的控制开关磁贴，如安装模块重启设备后无法找到磁贴开关，你可以直接导航至 `/data/adb/modules/Surfingtile/system/app/com.yadli.surfingtile/` 进行手动安装 [下载源码](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/SurfingTile.tar.gz)
+- 可向系统状态栏添加模块的控制开关磁贴，如安装模块重启设备后无法找到磁贴开关，你可以手动进行安装Apk [下载源码](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/SurfingTile.tar.gz)
 
 </details>
 
@@ -170,11 +170,11 @@ GitHub Actions 北京时间每天早上 6 点自动构建，保证CN规则最新
 > 通常你可以在`/data/user/`找到本机所有用户组id及应用包名，使用黑白名单请勿使用fake-ip模式
 
 二、Tun模式
-- 默认开启
-- 更好的流量管理
+- ~~默认开启~~
+- ~~更好的流量管理~~
 - ~~v7.4.3 弃用~~
 
-> 如特殊需要可自行关闭，使用该模式前请勿使用黑白名单
+> ~~如特殊需要可自行关闭~~，使用该模式前请勿使用黑白名单
 
 三、路由规则
 - 为大陆饶行
@@ -206,6 +206,7 @@ GitHub Actions 北京时间每天早上 6 点自动构建，保证CN规则最新
 - 重新挂载
    - 在 **etc文件夹** 新建一个即可
 - 所有修改均实时生效
+- 更新/安装时可通过音量上(挂)下(卸)键 选择是否挂载
 
 > 域名IP重定向
 

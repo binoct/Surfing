@@ -108,7 +108,7 @@ Please decide whether to use the Surfing module only after clearly understanding
 
 - Can control the start and stop via **WiFi SSID** network.
 - Can control the operation service by turning the module switch on/off, with real-time effect.
-- You can add a control switch tile of the module to the system status bar. If you cannot find the tile switch after installing the module and restarting the device, you can directly navigate to `/data/adb/modules/Surfingtile/system/app/com.yadli.surfingtile/` to install it manually [Download source code](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/SurfingTile.tar.gz)
+- You can add the control switch tile of the module to the system status bar. If you cannot find the tile switch after installing the module and restarting the device, you can manually install the Apk [Download source code](https://raw.githubusercontent.com/MoGuangYu/Surfing/main/folder/SurfingTile.tar.gz)
 
 </details>
 
@@ -168,11 +168,11 @@ Android user group ID identifiers:
 > Typically, you can find all user group IDs and application package names in `/data/user/`. Do not use fake-ip mode when using black/whitelist.
 
 2. Tun Mode
-- Enabled by default
-- Better routing traffic management
+- ~~Enabled by default~~
+- ~~Better routing traffic management~~
 - ~~Deprecated in v7.4.3~~
 
-> If you have special needs, you can turn it off by yourself. Please do not use the blacklist or whitelist before using this mode.
+> ~~If you have special needs, you can turn it off by yourself~~. Please do not use the black and white list before using this mode.
 
 3. Routing Rules
 - Designed for mainland China usage
@@ -204,6 +204,7 @@ Android user group ID identifiers:
 - To remount
    - Create a new file in the **etc** folder.
 - All modifications take effect immediately.
+- When updating/installing, you can use the volume up and down keys to choose whether to mount.
 
 > Domain IP redirection.
 
