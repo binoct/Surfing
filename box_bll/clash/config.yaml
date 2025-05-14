@@ -119,7 +119,7 @@ sniffer:
 
 # 网卡模块
 tun:
-  enable: false  # true 开 # false 关  # 注意关闭 Tun 无法拦截 WebRTC 泄露
+  enable: false  # true 开 # false 默认关
   device: Meta
   stack: gvisor
   dns-hijack:
