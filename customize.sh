@@ -222,10 +222,6 @@ if [ -d /data/adb/box_bll ]; then
     rm -f "$HOSTS_FILE"
   fi
   
-
-  rm -rf "$SURFING_TILE_DIR"
-  rm -rf "$SURFING_TILE_DIR_UPDATE"
-  
   sleep 1
   ui_print "Restarting service..."
   /data/adb/box_bll/scripts/box.service start > /dev/null 2>&1
@@ -251,8 +247,6 @@ else
     rm -f "$HOSTS_FILE"
   fi
   
-  rm -rf "$SURFING_TILE_DIR"
-  rm -rf "$SURFING_TILE_DIR_UPDATE"
 fi
 
 if [ "$KSU" = true ]; then
