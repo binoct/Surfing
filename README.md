@@ -117,7 +117,7 @@ Please decide whether to use the Surfing module only after clearly understanding
 <details>
 <summary>3. Routing Rules</summary>
 
-GitHub Actions automatically builds at 6 AM Beijing Time every day to ensure the CN rules are up to date. [Wiki](https://github.com/MoGuangYu/rule)
+GitHub Actions automatically builds at 6 AM Beijing Time every day to ensure the rules are up to date.
 
 > The routing rules are all linked online and automatically updated every 24 hours.
 

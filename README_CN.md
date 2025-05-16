@@ -120,7 +120,7 @@
 <details>
 <summary>3. 路由规则</summary>
 
-GitHub Actions 北京时间每天早上 6 点自动构建，保证CN规则最新  [Wiki](https://github.com/MoGuangYu/rule)  
+GitHub Actions 北京时间每天早上 6 点自动构建，保证规则最新
 
 > 路由规则全使用在线链接，24小时自动更新
 
