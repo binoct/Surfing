@@ -34,6 +34,13 @@ if [ ! -f ${box_path}/manual ] && [ ! -f ${module_dir}/disable ] ; then
 
   ${scripts_dir}/box.service start >> ${run_path}/run.log 2>> ${run_path}/run_error.log && \
   ${scripts_dir}/box.tproxy enable >> ${run_path}/run.log 2>> ${run_path}/run_error.log
+
+  MONITOR_SCRIPT="${scripts_dir}/box.monitor"
+  MONITOR_PID_FILE="${scripts_dir}/../run/monitor.pid"
+
+  if [ "$enable_monitor" = "true" ]; then
+    nohup "$MONITOR_SCRIPT" >> "${run_path}/run.log" 2>&1 &
+  fi
 fi
 
 chown -R 0:0 /data/adb/box_bll/clash/etc/
