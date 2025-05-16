@@ -24,7 +24,7 @@ tcp-concurrent: true
 log-level: silent
 find-process-mode: always
 global-client-fingerprint: chrome
-external-controller: 0.0.0.0:9090
+external-controller: 0.0.0.0:9090 # 切勿修改端口会影响状态栏磁贴
 external-ui-url: "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
 external-ui: "./Web/Zash/"
 secret: "" # 面板访问密码，如在公网访问建议设置
@@ -156,29 +156,24 @@ dns:
   enhanced-mode: fake-ip
   fake-ip-range: 172.20.0.1/16
   fake-ip-filter:
-    - "RULE-SET:CN_域,Private_域,GoogleFCM_域"
+    - "RULE-SET:CN_域"
+    - "RULE-SET:Private_域"
+    - "RULE-SET:GoogleFCM_域"
     - "+.3gppnetwork.org"
+    - "+.xtracloud.net"
   direct-nameserver:
-    - https://doh.pub/dns-query#🇨🇳 瓦洛兰大陆
+    - https://doh.pub/dns-query#🇨🇳 瓦洛兰大陆&h3=false
     - https://dns.alidns.com/dns-query#🇨🇳 瓦洛兰大陆&h3=true
   proxy-server-nameserver:
-    - https://doh.pub/dns-query#🇨🇳 瓦洛兰大陆
+    - https://doh.pub/dns-query#🇨🇳 瓦洛兰大陆&h3=false
     - https://dns.alidns.com/dns-query#🇨🇳 瓦洛兰大陆&h3=true
   nameserver-policy:
     "RULE-SET:CN_域,Microsoft_域,Apple_域":
-       - https://doh.pub/dns-query#🇨🇳 瓦洛兰大陆
+       - https://doh.pub/dns-query#🇨🇳 瓦洛兰大陆&h3=false
        - https://dns.alidns.com/dns-query#🇨🇳 瓦洛兰大陆&h3=true
   nameserver:
-  # Google DNS
-    - https://8.8.8.8/dns-query#DNS连接&h3=true
-    - https://8.8.4.4/dns-query#DNS连接&h3=true
-    - https://[2001:4860:4860::8888]/dns-query#DNS连接&h3=true
-    - https://[2001:4860:4860::8844]/dns-query#DNS连接&h3=true
-  # Cloudflare DNS
-    - https://1.1.1.1/dns-query#DNS连接&h3=true
-    - https://1.0.0.1/dns-query#DNS连接&h3=true
-    - https://[2606:4700:4700::1111]/dns-query#DNS连接&h3=true
-    - https://[2606:4700:4700::1001]/dns-query#DNS连接&h3=true
+    - https://dns.google/dns-query#DNS连接&h3=true
+    - https://cloudflare-dns.com/dns-query#DNS连接&h3=true
 # —————————
 
 proxies:
@@ -221,7 +216,7 @@ CNproxy_groups: &CNproxy_groups
 # —————————
 proxy-groups:
   - name: 总模式
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/All.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/All.svg"
     type: select
     proxies:
       - 延迟最低
@@ -236,94 +231,94 @@ proxy-groups:
       - 🇨🇳 瓦洛兰大陆
 
   - name: 订阅更新
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Update.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Update.svg"
     type: select
     proxies:
       - 🇨🇳 瓦洛兰大陆
       - 总模式
 
   - name: 小红书
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/XiaoHongShu.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/XiaoHongShu.svg"
     <<: *CNproxy_groups
 
   - name: 抖音
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/DouYin.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/DouYin.svg"
     <<: *CNproxy_groups
 
   - name: BiliBili
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/BiliBili.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/BiliBili.svg"
     <<: *CNproxy_groups
 
   - name: Steam
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Steam.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Steam.svg"
     <<: *CNproxy_groups
 
   - name: Apple
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Apple.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Apple.svg"
     <<: *CNproxy_groups
 
   - name: Microsoft
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Microsoft.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Microsoft.svg"
     <<: *CNproxy_groups
 
   - name: Telegram
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Telegram.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Telegram.svg"
     <<: *proxy_groups
 
   - name: Discord
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Discord.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Discord.svg"
     <<: *proxy_groups
 
   - name: Spotify
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Spotify.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Spotify.svg"
     <<: *proxy_groups
 
   - name: TikTok
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/TikTok.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/TikTok.svg"
     <<: *proxy_groups
 
   - name: YouTube
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/YouTube.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/YouTube.svg"
     <<: *proxy_groups
 
   - name: Netflix
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Netflix.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Netflix.svg"
     <<: *proxy_groups
 
   - name: Google
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Google.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Google.svg"
     <<: *proxy_groups
 
   - name: GoogleFCM
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/GoogleFCM.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/GoogleFCM.svg"
     <<: *proxy_groups
 
   - name: Facebook
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Facebook.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Facebook.svg"
     <<: *proxy_groups
 
   - name: OpenAI
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/OpenAI.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/OpenAI.svg"
     <<: *proxy_groups
 
   - name: GitHub
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/GitHub.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/GitHub.svg"
     <<: *proxy_groups
 
   - name: Twitter(X)
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Twitter.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Twitter.svg"
     <<: *proxy_groups
 
   - name: DNS连接
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/DNS.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/DNS.svg"
     <<: *proxy_groups
 
   - name: 漏网之鱼
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/HBASE-copy.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/HBASE-copy.svg"
     <<: *proxy_groups
 
   - name: 广告拦截
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/No-ads-all.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/No-ads-all.svg"
     type: select
     proxies:
       - ⛔️ 拒绝连接
@@ -332,7 +327,7 @@ proxy-groups:
       - PASS
 
   - name: WebRTC
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/WebRTC.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/WebRTC.svg"
     type: select
     proxies:
       - ⛔️ 拒绝连接
@@ -341,54 +336,62 @@ proxy-groups:
       - PASS
 
   - name: 白名单出站
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/User.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/User.svg"
     <<: *CNproxy_groups
 
   - name: 延迟最低
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Return.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Return.svg"
     type: url-test
     <<: *A
 
   - name: 故障转移
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Return.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Return.svg"
     type: fallback
     <<: *A
 
   - name: 负载均衡
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Return.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Return.svg"
     type: load-balance
     strategy: round-robin
     <<: *A
 
   - name: 台湾节点
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/CN.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/CN.svg"
     filter: "^(?=.*(台|新北|彰化|TW|Taiwan)).*$"
     <<: *All
 
   - name: 香港节点
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/HK.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/HK.svg"
     filter: "^(?=.*(港|HK|hk|Hong Kong|HongKong|hongkong)).*$"
     <<: *All
 
   - name: 日本节点
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/JP.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/JP.svg"
     filter: "^(?=.*(日本|川日|东京|大阪|泉日|埼玉|沪日|深日|[^-]日|JP|Japan)).*$"
     <<: *All
 
   - name: 美国节点
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/US.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/US.svg"
     filter: "^(?=.*(美|波特兰|达拉斯|俄勒冈|凤凰城|费利蒙|硅谷|拉斯维加斯|洛杉矶|圣何塞|圣克拉拉|西雅图|芝加哥|US|United States)).*$"
     <<: *All
 
   - name: 狮城节点
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Singapore.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Singapore.svg"
     filter: "^(?=.*(新加坡|坡|狮城|SG|Singapore)).*$"
     <<: *All
 
   - name: 其它地区
-    icon: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/icon/Globe.svg"
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Globe.svg"
     filter: "^(?!.*(港|HK|hk|Hong Kong|HongKong|hongkong|日本|川日|东京|大阪|泉日|埼玉|沪日|深日|[^-]日|JP|Japan|美|波特兰|达拉斯|俄勒冈|凤凰城|费利蒙|硅谷|拉斯维加斯|洛杉矶|圣何塞|圣克拉拉|西雅图|芝加哥|US|United States|台|新北|彰化|TW|Taiwan|新加坡|坡|狮城|SG|Singapore|灾|网易|Netease|套餐|重置|剩余|到期|订阅|群|账户|流量|有效期|时间|官网)).*$"
     <<: *All
+    
+  - name: CNTEST
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Meter.svg"
+    type: select
+    url: https://www.gstatic.com/generate_204
+    interval: 86400
+    proxies:
+      - 🇨🇳 瓦洛兰大陆
 # —————————
 
 rule-anchor:
@@ -414,7 +417,7 @@ rule-providers:
   WebRTC_端/域:
     <<: *Classical
     path: ./rules/WebRTC.list
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/Surfing@rm/Home/rules/WebRTC.list"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/rules/WebRTC.list"
 
   CN_IP:
     <<: *IPCIDR
@@ -433,145 +436,145 @@ rule-providers:
   XiaoHongShu_域:
     <<: *Domain
     path: ./rules/XiaoHongShu.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/XiaoHongShu/XiaoHongShu_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/XiaoHongShu/XiaoHongShu_OCD_Domain.mrs"
 
   DouYin_域:
     <<: *Domain
     path: ./rules/DouYin.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/DouYin/DouYin_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/DouYin/DouYin_OCD_Domain.mrs"
 
   BiliBili_域:
     <<: *Domain
     path: ./rules/BiliBili.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/BiliBili/BiliBili_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/BiliBili/BiliBili_OCD_Domain.mrs"
   BiliBili_IP:
     <<: *IPCIDR
     path: ./rules/BiliBili_IP.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/BiliBili/BiliBili_OCD_IP.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/BiliBili/BiliBili_OCD_IP.mrs"
 
   Steam_域:
     <<: *Domain
     path: ./rules/Steam.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Steam/Steam_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Steam/Steam_OCD_Domain.mrs"
 
   TikTok_域:
     <<: *Domain
     path: ./rules/TikTok.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/TikTok/TikTok_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/TikTok/TikTok_OCD_Domain.mrs"
 
   Spotify_域:
     <<: *Domain
     path: ./rules/Spotify.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Spotify/Spotify_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Spotify/Spotify_OCD_Domain.mrs"
   Spotify_IP:
     <<: *IPCIDR
     path: ./rules/Spotify_IP.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Spotify/Spotify_OCD_IP.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Spotify/Spotify_OCD_IP.mrs"
 
   Facebook_域:
     <<: *Domain
     path: ./rules/Facebook.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Facebook/Facebook_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Facebook/Facebook_OCD_Domain.mrs"
   Facebook_IP:
     <<: *IPCIDR
     path: ./rules/Facebook_IP.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Facebook/Facebook_OCD_IP.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Facebook/Facebook_OCD_IP.mrs"
 
   Telegram_域:
     <<: *Domain
     path: ./rules/Telegram.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Telegram/Telegram_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Telegram/Telegram_OCD_Domain.mrs"
   Telegram_IP:
     <<: *IPCIDR
     path: ./rules/Telegram_IP.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Telegram/Telegram_OCD_IP.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Telegram/Telegram_OCD_IP.mrs"
 
   YouTube_域:
     <<: *Domain
     path: ./rules/YouTube.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/YouTube/YouTube_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/YouTube/YouTube_OCD_Domain.mrs"
   YouTube_IP:
     <<: *IPCIDR
     path: ./rules/YouTube_IP.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/YouTube/YouTube_OCD_IP.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/YouTube/YouTube_OCD_IP.mrs"
 
   Google_域:
     <<: *Domain
     path: ./rules/Google.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Google/Google_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Google/Google_OCD_Domain.mrs"
   Google_IP:
     <<: *IPCIDR
     path: ./rules/Google_IP.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Google/Google_OCD_IP.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Google/Google_OCD_IP.mrs"
 
   GoogleFCM_域:
     <<: *Domain
     path: ./rules/GoogleFCM.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/GoogleFCM/GoogleFCM_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/GoogleFCM/GoogleFCM_OCD_Domain.mrs"
   GoogleFCM_IP:
     <<: *IPCIDR
     path: ./rules/GoogleFCM_IP.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/GoogleFCM/GoogleFCM_OCD_IP.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/GoogleFCM/GoogleFCM_OCD_IP.mrs"
 
   Microsoft_域:
     <<: *Domain
     path: ./rules/Microsoft.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Microsoft/Microsoft_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Microsoft/Microsoft_OCD_Domain.mrs"
 
   Apple_域:
     <<: *Domain
     path: ./rules/Apple.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Apple/Apple_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Apple/Apple_OCD_Domain.mrs"
   Apple_IP:
     <<: *IPCIDR
     path: ./rules/Apple_IP.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Apple/Apple_OCD_IP.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Apple/Apple_OCD_IP.mrs"
 
   OpenAI_域:
     <<: *Domain
     path: ./rules/OpenAI.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/OpenAI/OpenAI_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/OpenAI/OpenAI_OCD_Domain.mrs"
   OpenAI_IP:
     <<: *IPCIDR
     path: ./rules/OpenAI_IP.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/OpenAI/OpenAI_OCD_IP.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/OpenAI/OpenAI_OCD_IP.mrs"
 
   Netflix_域:
     <<: *Domain
     path: ./rules/Netflix.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Netflix/Netflix_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Netflix/Netflix_OCD_Domain.mrs"
   Netflix_IP:
     <<: *IPCIDR
     path: ./rules/Netflix_IP.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Netflix/Netflix_OCD_IP.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Netflix/Netflix_OCD_IP.mrs"
 
   Discord_域:
     <<: *Domain
     path: ./rules/Discord.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Discord/Discord_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Discord/Discord_OCD_Domain.mrs"
 
   GitHub_域:
     <<: *Domain
     path: ./rules/GitHub.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/GitHub/GitHub_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/GitHub/GitHub_OCD_Domain.mrs"
 
   Twitter_域:
     <<: *Domain
     path: ./rules/Twitter.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Twitter/Twitter_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Twitter/Twitter_OCD_Domain.mrs"
   Twitter_IP:
     <<: *IPCIDR
     path: ./rules/Twitter_IP.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Twitter/Twitter_OCD_IP.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Twitter/Twitter_OCD_IP.mrs"
 
   Private_域:
     <<: *Domain
     path: ./rules/LAN.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Lan/Lan_OCD_Domain.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Lan/Lan_OCD_Domain.mrs"
   Private_IP:
     <<: *IPCIDR
     path: ./rules/Private_IP.mrs
-    url: "https://cdn.jsdelivr.net/gh/MoGuangYu/rule@master/rule/Clash/Lan/Lan_OCD_IP.mrs"
+    url: "https://cdn.jsdelivr.net/gh/GitMetaio/rule@master/rule/Clash/Lan/Lan_OCD_IP.mrs"
 # —————————
 
 rules:
