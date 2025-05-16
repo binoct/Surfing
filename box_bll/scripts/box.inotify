@@ -19,15 +19,22 @@ HOSTS_FILE="/data/adb/box_bll/clash/etc/hosts"
 SYSTEM_HOSTS="/system/etc/hosts"
 mkdir -p ${run_path}
 
+MONITOR_SCRIPT="${SCRIPTS_DIR}/box.monitor"
+MONITOR_PID_FILE="${SCRIPTS_DIR}/../run/monitor.pid"
+
 service_control() {
-  if [ ! -f ${box_path}/manual ]; then
+  if [ ! -f "${box_path}/manual" ]; then
     if [ "${MONITOR_FILE}" = "disable" ]; then
       if [ "${EVENT}" = "d" ]; then
-        ${SERVICE_PATH} start >> ${run_path}/run.log 2>> ${run_path}/run_error.log
-        ${TPROXY_PATH} enable >> ${run_path}/run.log 2>> ${run_path}/run_error.log
+        ${SERVICE_PATH} start >> "${run_path}/run.log" 2>> "${run_path}/run_error.log"
+        ${TPROXY_PATH} enable >> "${run_path}/run.log" 2>> "${run_path}/run_error.log"
+        nohup "$MONITOR_SCRIPT" >> "${run_path}/run.log" 2>&1 &
       elif [ "${EVENT}" = "n" ]; then
-        ${TPROXY_PATH} disable >> ${run_path}/run.log 2>> ${run_path}/run_error.log
-        ${SERVICE_PATH} stop >> ${run_path}/run.log 2>> ${run_path}/run_error.log
+        ${TPROXY_PATH} disable >> "${run_path}/run.log" 2>> "${run_path}/run_error.log"
+        ${SERVICE_PATH} stop >> "${run_path}/run.log" 2>> "${run_path}/run_error.log"
+        if [ -f "$MONITOR_PID_FILE" ]; then
+          rm -f "$MONITOR_PID_FILE"
+        fi
       fi
     fi
   fi
