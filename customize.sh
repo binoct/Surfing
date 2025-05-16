@@ -132,7 +132,7 @@ choose_volume_key() {
   ui_print "Mount the hosts file to the system ？"
   ui_print "Volume Up: Mount"
   ui_print "Volume Down: Uninstall"
-  ui_print "Waiting for input (30s)..."
+  ui_print "Waiting for input (10s)..."
 
   TMP_FILE="/dev/tmp/vol_key_choice"
   rm -f "$TMP_FILE"
@@ -140,7 +140,7 @@ choose_volume_key() {
   getevent -qlc 1 > "$TMP_FILE" &
   GETEVENT_PID=$!
 
-  for i in $(seq 1 300); do
+  for i in $(seq 1 100); do
     if [ -s "$TMP_FILE" ]; then
       if grep -q KEY_VOLUMEUP "$TMP_FILE"; then
         kill "$GETEVENT_PID" 2>/dev/null
