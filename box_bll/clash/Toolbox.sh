@@ -30,7 +30,7 @@ RELEASE_PATH="mihomo-android-arm64-v8"
 BASE_URL="https://api.github.com/repos/MetaCubeX/mihomo/releases/latest"
 PANEL_DIR="/data/adb/box_bll/clash/Web"
 META_DIR="${PANEL_DIR}/Meta"
-CHANGELOG_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/changelog.md"
+CHANGELOG_URL="https://raw.githubusercontent.com/GitMetaio/Surfing/main/changelog.md"
 META_URL="https://github.com/metacubex/metacubexd/archive/gh-pages.zip"
 METAA_URL="https://api.github.com/repos/metacubex/metacubexd/releases/latest"
 YACD_DIR="${PANEL_DIR}/Yacd"
@@ -51,55 +51,53 @@ GEOSITE_URL="https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/dow
 GEODATA_URL="https://api.github.com/repos/Loyalsoldier/v2ray-rules-dat/releases/latest"
 GEOIP_PATH="/data/adb/box_bll/clash/GeoIP.dat"
 GEOSITE_PATH="/data/adb/box_bll/clash/GeoSite.dat"
-GIT_URL="https://api.github.com/repos/MoGuangYu/Surfing/releases/latest"
-
-
+GIT_URL="https://api.github.com/repos/GitMetaio/Surfing/releases/latest"
 
 SAVE_DIR="/data/adb/box_bll/clash/rules/规则审查"
 
 rules=(
 "广告拦截_Domain.yaml https://anti-ad.net/clash.yaml"
-"WebRTC_Classical.yaml https://raw.githubusercontent.com/MoGuangYu/Surfing/refs/heads/rm/Home/rules/WebRTC.list"
+"WebRTC_Classical.yaml https://raw.githubusercontent.com/GitMetaio/Surfing/refs/heads/rm/Home/rules/WebRTC.list"
 "CN_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geoip/cn.yaml"
 "CN_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/cn.yaml"
-"XiaoHongShu_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/XiaoHongShu/XiaoHongShu_OCD_Domain.yaml"
-"XiaoHongShu_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/XiaoHongShu/XiaoHongShu_OCD_IP.yaml"
-"DouYin_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/DouYin/DouYin_OCD_Domain.yaml"
-"DouYin_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/DouYin/DouYin_OCD_IP.yaml"
-"BiliBili_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/BiliBili/BiliBili_OCD_Domain.yaml"
-"BiliBili_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/BiliBili/BiliBili_OCD_IP.yaml"
-"Steam_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Steam/Steam_OCD_Domain.yaml"
-"Steam_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Steam/Steam_OCD_IP.yaml"
-"TikTok_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/TikTok/TikTok_OCD_Domain.yaml"
-"TikTok_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/TikTok/TikTok_OCD_IP.yaml"
-"Spotify_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Spotify/Spotify_OCD_Domain.yaml"
-"Spotify_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Spotify/Spotify_OCD_IP.yaml"
-"Facebook_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Facebook/Facebook_OCD_Domain.yaml"
-"Facebook_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Facebook/Facebook_OCD_IP.yaml"
-"Telegram_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Telegram/Telegram_OCD_Domain.yaml"
-"Telegram_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Telegram/Telegram_OCD_IP.yaml"
-"YouTube_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/YouTube/YouTube_OCD_Domain.yaml"
-"YouTube_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/YouTube/YouTube_OCD_IP.yaml"
-"Google_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Google/Google_OCD_Domain.yaml"
-"Google_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Google/Google_OCD_IP.yaml"
-"GoogleFCM_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/GoogleFCM/GoogleFCM_OCD_Domain.yaml"
-"GoogleFCM_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/GoogleFCM/GoogleFCM_OCD_IP.yaml"
-"Microsoft_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Microsoft/Microsoft_OCD_Domain.yaml"
-"Microsoft_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Microsoft/Microsoft_OCD_IP.yaml"
-"Apple_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Apple/Apple_OCD_Domain.yaml"
-"Apple_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Apple/Apple_OCD_IP.yaml"
-"OpenAI_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/OpenAI/OpenAI_OCD_Domain.yaml"
-"OpenAI_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/OpenAI/OpenAI_OCD_IP.yaml"
-"Netflix_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Netflix/Netflix_OCD_Domain.yaml"
-"Netflix_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Netflix/Netflix_OCD_IP.yaml"
-"Discord_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Discord/Discord_OCD_Domain.yaml"
-"Discord_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Discord/Discord_OCD_IP.yaml"
-"GitHub_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/GitHub/GitHub_OCD_Domain.yaml"
-"GitHub_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/GitHub/GitHub_OCD_IP.yaml"
-"Twitter_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Twitter/Twitter_OCD_Domain.yaml"
-"Twitter_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Twitter/Twitter_OCD_IP.yaml"
-"LAN_Domain.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Lan/Lan_OCD_Domain.yaml"
-"LAN_IPCIDR.yaml https://raw.githubusercontent.com/MoGuangYu/rule/refs/heads/master/rule/Clash/Lan/Lan_OCD_IP.yaml"
+"XiaoHongShu_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/XiaoHongShu/XiaoHongShu_OCD_Domain.yaml"
+"XiaoHongShu_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/XiaoHongShu/XiaoHongShu_OCD_IP.yaml"
+"DouYin_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/DouYin/DouYin_OCD_Domain.yaml"
+"DouYin_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/DouYin/DouYin_OCD_IP.yaml"
+"BiliBili_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/BiliBili/BiliBili_OCD_Domain.yaml"
+"BiliBili_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/BiliBili/BiliBili_OCD_IP.yaml"
+"Steam_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Steam/Steam_OCD_Domain.yaml"
+"Steam_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Steam/Steam_OCD_IP.yaml"
+"TikTok_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/TikTok/TikTok_OCD_Domain.yaml"
+"TikTok_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/TikTok/TikTok_OCD_IP.yaml"
+"Spotify_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Spotify/Spotify_OCD_Domain.yaml"
+"Spotify_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Spotify/Spotify_OCD_IP.yaml"
+"Facebook_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Facebook/Facebook_OCD_Domain.yaml"
+"Facebook_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Facebook/Facebook_OCD_IP.yaml"
+"Telegram_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Telegram/Telegram_OCD_Domain.yaml"
+"Telegram_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Telegram/Telegram_OCD_IP.yaml"
+"YouTube_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/YouTube/YouTube_OCD_Domain.yaml"
+"YouTube_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/YouTube/YouTube_OCD_IP.yaml"
+"Google_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Google/Google_OCD_Domain.yaml"
+"Google_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Google/Google_OCD_IP.yaml"
+"GoogleFCM_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/GoogleFCM/GoogleFCM_OCD_Domain.yaml"
+"GoogleFCM_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/GoogleFCM/GoogleFCM_OCD_IP.yaml"
+"Microsoft_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Microsoft/Microsoft_OCD_Domain.yaml"
+"Microsoft_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Microsoft/Microsoft_OCD_IP.yaml"
+"Apple_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Apple/Apple_OCD_Domain.yaml"
+"Apple_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Apple/Apple_OCD_IP.yaml"
+"OpenAI_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/OpenAI/OpenAI_OCD_Domain.yaml"
+"OpenAI_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/OpenAI/OpenAI_OCD_IP.yaml"
+"Netflix_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Netflix/Netflix_OCD_Domain.yaml"
+"Netflix_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Netflix/Netflix_OCD_IP.yaml"
+"Discord_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Discord/Discord_OCD_Domain.yaml"
+"Discord_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Discord/Discord_OCD_IP.yaml"
+"GitHub_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/GitHub/GitHub_OCD_Domain.yaml"
+"GitHub_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/GitHub/GitHub_OCD_IP.yaml"
+"Twitter_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Twitter/Twitter_OCD_Domain.yaml"
+"Twitter_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Twitter/Twitter_OCD_IP.yaml"
+"LAN_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Lan/Lan_OCD_Domain.yaml"
+"LAN_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Lan/Lan_OCD_IP.yaml"
 )
 
 printc() {
@@ -153,7 +151,7 @@ download_all_rules() {
             y|Y)
                 echo "↴" 
                 echo "正在下载规则文件..."
-                echo "https://github.com/MoGuangYu/rule"
+                echo "https://github.com/GitMetaio/rule"
 
                 for rule in "${rules[@]}"; do
                     name=$(echo "$rule" | awk '{print $1}')
@@ -180,13 +178,11 @@ download_all_rules() {
     done
 }
 
-CURRENT_VERSION="v13.5.1"
+CURRENT_VERSION="v13.5.2"
 UPDATE_LOG="更新日志: 
-优化已知问题....
-删减多余变量
-移除模块更新"
+优化已知问题..."
 
-TOOLBOX_URL="https://raw.githubusercontent.com/MoGuangYu/Surfing/main/box_bll/clash/Toolbox.sh"
+TOOLBOX_URL="https://raw.githubusercontent.com/GitMetaio/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
 
 get_remote_version() {
@@ -368,7 +364,7 @@ update_module() {
 update_module
 
 #————————————————————
-GITHUB_REPO="MoGuangYu/Surfing"
+GITHUB_REPO="GitMetaio/Surfing"
 GIT_SCRIPTS_PATH="box_bll/scripts"
 GIT_clash_PATH="box_bll/clash"
 LOCAL_SCRIPTS_DIR="/data/adb/box_bll/scripts"
@@ -486,7 +482,7 @@ check_and_update_files() {
     
     echo
     echo "↴"
-    echo "正在获取 MoGuangYu/Surfing 仓库最新提交："
+    echo "正在获取 GitMetaio/Surfing 仓库最新提交："
     for file_entry in "${FILES[@]}"; do
         IFS='|' read -r file_path local_path need_backup <<< "$file_entry"
         local_sha_file="$LOCAL_SHA_DIR/$(basename "$local_path")_sha"
@@ -589,9 +585,11 @@ show_menu() {
     echo
     printc magenta "12. 项目地址"
     echo
-    printc magenta "13. 一键卸载"
+    printc magenta "13. 挂载 hosts"
     echo
-    printc magenta "14. Exit"
+    printc magenta "14. 一键卸载"
+    echo
+    printc magenta "15. Exit"
     echo
     printc -n blue "正在等待输出: "
     read -r choice
@@ -647,13 +645,48 @@ show_menu() {
         ;;
       11) download_all_rules ;;
       12) open_project_page ;;
-      13) delete_files_and_dirs ;;
-      14) exit 0 ;;
+      13) mount_hosts ;;
+      14) delete_files_and_dirs ;;
+      15) exit 0 ;;
       *) printc red "无效的输入！" ;;
     esac
   done
 }
+mount_hosts() {
+    local target_dir="/data/adb/box_bll/clash/etc"
+    local hosts_path="$target_dir/hosts"
+    local hosts_url="https://raw.githubusercontent.com/GitMetaio/Surfing/main/box_bll/clash/etc/hosts"
+    echo "↴"
+    echo "此操作将挂载远程 GitHub/Surfing/clash/etc/hosts 文件到本地，是否继续？(y/n)"
+    read -r confirmation
+    if [ "$confirmation" != "y" ] && [ "$confirmation" != "n" ]; then
+        echo "↴"
+        printc red "无效的输入！"
+        return
+    fi
 
+    if [ "$confirmation" = "n" ]; then
+        echo "↴"
+        printc cyan "操作取消！"
+        return
+    fi
+
+    if [ -f "$hosts_path" ]; then
+        echo "↴"
+        printc green "文件已存在，无需重复挂载"
+    else
+        echo "↴"
+        printc cyan "文件不存在，正在从远程下载..."
+        mkdir -p "$target_dir"
+        if curl -fsSL "$hosts_url" -o "$hosts_path"; then
+            echo "↴"
+            printc green "文件已成功挂载到 $hosts_path"
+        else
+            echo "↴"
+            printc red "下载失败，请检查网络连接或 URL 是否正确"
+        fi
+    fi
+}
 NO_UPDATE_ENABLED=true
 ensure_var_path() {
     if [ ! -d "$VAR_PATH" ]; then
@@ -1228,13 +1261,13 @@ open_project_page() {
     echo "↴" 
     echo "正在打开项目地址..."
     if command -v xdg-open > /dev/null; then
-        xdg-open "https://github.com/MoGuangYu/Surfing"
+        xdg-open "https://github.com/GitMetaio/Surfing"
     elif command -v am > /dev/null; then
-        am start -a android.intent.action.VIEW -d "https://github.com/MoGuangYu/Surfing"
+        am start -a android.intent.action.VIEW -d "https://github.com/GitMetaio/Surfing"
     echo "ok" 
     else
         echo "无法打开浏览器，请手动访问以下地址："
-        echo "https://github.com/MoGuangYu/Surfing"
+        echo "https://github.com/GitMetaio/Surfing"
     fi
 }
 delete_files_and_dirs() {
@@ -1244,7 +1277,7 @@ delete_files_and_dirs() {
         return
     fi
     echo "↴"
-    echo "警告：此操作将卸载删除 Surfing 模块，所有相关组件及数据！"
+    echo "警告：此操作将卸载删除 Surfing 模块，整体所有相关组件及数据，不可恢复！"
     echo
     while true; do
         echo "↴"
