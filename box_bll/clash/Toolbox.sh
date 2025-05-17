@@ -1,5 +1,12 @@
 #!/system/bin/sh
-
+trap cleanup INT TERM EXIT
+cleanup() {
+  echo -e "\n脚本已退出，正在清理..."
+  trap - INT TERM EXIT
+  pkill -P $$ 2>/dev/null
+  kill $(jobs -p) 2>/dev/null
+  exit 0
+}
 if [ "$(id -u)" -ne 0 ]; then
     echo "请设置以 Root 用户运行"
     exit 1
@@ -15,7 +22,7 @@ else
     sleep 1
     source config.env
 fi
-trap cleanup INT TERM EXIT
+
 SURFING_PATH="/data/adb/modules/Surfing"
 MODULE_PROP="${SURFING_PATH}/module.prop"
 GXSURFING_PATH="/data/adb/modules_update/Surfing"
@@ -178,7 +185,7 @@ download_all_rules() {
     done
 }
 
-CURRENT_VERSION="v13.5.4"
+CURRENT_VERSION="v13.5.5"
 UPDATE_LOG="更新日志: 
 解决后台异常内存占用..."
 
@@ -554,13 +561,7 @@ check_and_update_files() {
         done
     done
 }
-cleanup() {
-  echo -e "\n脚本已退出，正在清理..."
-  trap - INT TERM EXIT
-  pkill -P $$ 2>/dev/null
-  kill $(jobs -p) 2>/dev/null
-  exit 0
-}
+
 show_menu() {
   while true; do
     printc cyan "=========="
@@ -599,7 +600,7 @@ show_menu() {
     printc magenta "15. Exit"
     echo
     printc -n blue "正在等待输出: "
-    read -t 60 -r choice 2>/dev/null || cleanup
+    read -r choice
     case $choice in
       1) reload_configuration ;;
       2) clear_cache ;;
