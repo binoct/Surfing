@@ -39,7 +39,7 @@ if [ ! -f ${box_path}/manual ] && [ ! -f ${module_dir}/disable ] ; then
   MONITOR_PID_FILE="${scripts_dir}/../run/monitor.pid"
 
   if [ "$enable_monitor" = "true" ]; then
-    nohup "$MONITOR_SCRIPT" >> "${run_path}/run.log" 2>&1 &
+    nohup "$MONITOR_SCRIPT" >> "${run_path}/run_error.log" 2>&1 &
   fi
 fi
 
