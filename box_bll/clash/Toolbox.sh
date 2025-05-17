@@ -178,9 +178,9 @@ download_all_rules() {
     done
 }
 
-CURRENT_VERSION="v13.5.2"
+CURRENT_VERSION="v13.5.3"
 UPDATE_LOG="更新日志: 
-优化已知问题..."
+解决后台异常内存占用..."
 
 TOOLBOX_URL="https://raw.githubusercontent.com/GitMetaio/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
@@ -553,7 +553,12 @@ check_and_update_files() {
         done
     done
 }
-
+cleanup() {
+    echo -e "\n脚本已退出，正在清理..."
+    pkill -P $$
+    exit
+}
+trap cleanup INT TERM EXIT
 show_menu() {
   while true; do
     printc cyan "=========="
@@ -592,7 +597,7 @@ show_menu() {
     printc magenta "15. Exit"
     echo
     printc -n blue "正在等待输出: "
-    read -r choice
+    read -t 60 -r choice || cleanup
     case $choice in
       1) reload_configuration ;;
       2) clear_cache ;;
