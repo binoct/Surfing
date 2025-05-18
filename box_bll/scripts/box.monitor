@@ -34,6 +34,7 @@ total_discharge=0
 count_discharge=0
 total_voltage_mv=0
 voltage_count=0
+current_volt_mv=0
 
 start_ts=$(date +%s)
 start_time_fmt=$(date '+%Y-%m-%d %H:%M:%S')
@@ -41,6 +42,40 @@ last_ts=$start_ts
 
 voltage_mv=$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)
 voltage_mv=$((voltage_mv / 1000))
+
+current_paths=(
+  "/sys/class/power_supply/battery/current_now"
+  "/sys/class/power_supply/bms/current_now"
+  "/sys/class/power_supply/main/current_now"
+  "/sys/class/power_supply/pmic/current_now"
+)
+
+for path in "${current_paths[@]}"; do
+  if [ -r "$path" ]; then
+    CURRENT_NOW_PATH="$path"
+    break
+  fi
+done
+voltage_paths=(
+  "/sys/class/power_supply/battery/voltage_now"
+  "/sys/class/power_supply/bms/voltage_now"
+  "/sys/class/power_supply/main/voltage_now"
+  "/sys/class/power_supply/pmic/voltage_now"
+)
+
+for path in "${voltage_paths[@]}"; do
+  if [ -r "$path" ]; then
+    VOLTAGE_NOW_PATH="$path"
+    break
+  fi
+done
+
+if [ -z "$VOLTAGE_NOW_PATH" ]; then
+  VOLTAGE_NOW_PATH="/dev/null"
+fi
+
+log_interval=300
+last_log_ts=0
 
 while :; do
     [ ! -f "$PID_FILE" ] && break
@@ -50,10 +85,11 @@ while :; do
     now_ts=$(date +%s)
     [ "$now_ts" -le "$last_ts" ] && sleep 0.2 && continue
 
-    current_raw=$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)
-    current_volt=$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)
+    current_raw=$(cat "$CURRENT_NOW_PATH" 2>/dev/null)
+    current_volt=$(cat "$VOLTAGE_NOW_PATH" 2>/dev/null)
 
     [ "$reverse_current_direction" = "true" ] && current_raw=$(( -current_raw ))
+
     abs_curr=$(( current_raw < 0 ? -current_raw : current_raw ))
 
     [ "$current_raw" -gt 0 ] && { total_charge=$((total_charge + abs_curr)); count_charge=$((count_charge + 1)); }
@@ -65,6 +101,11 @@ while :; do
       voltage_count=$((voltage_count + 1))
     fi
 
+# if [ $((now_ts - last_log_ts)) -ge $log_interval ]; then
+#     echo "$(date '+%T') current_raw=$current_raw abs_curr=$abs_curr total_charge=$total_charge total_discharge=$total_discharge" >> "$DEBUG_LOG"
+# fi
+    
+    
     last_ts=$now_ts
     sleep 0.2
 done
@@ -153,8 +194,45 @@ get_battery_info() {
 }
 get_battery_info
 
-discharge_mAh=$(awk "BEGIN { printf \"%.3f\", $total_discharge / 3600000 }")
-charge_mAh=$(awk "BEGIN { printf \"%.3f\", $total_charge / 3600000 }")
+#discharge_mAh=$(awk "BEGIN { printf \"%.3f\", $total_discharge / 3600000 }")
+#charge_mAh=$(awk "BEGIN { printf \"%.3f\", $total_charge / 3600000 }")
+
+discharge_mAh=$(awk -v val="$total_discharge" 'BEGIN { printf "%.1f", val / 3600000 }')
+charge_mAh=$(awk -v val="$total_charge" 'BEGIN { printf "%.1f", val / 3600000 }')
+
+if [ -n "$current_capacity" ] && [ "$current_capacity" -gt 0 ]; then
+  #battery_used_mAh=$(( (start_battery_level - end_battery_level) * current_capacity / 100 ))
+  battery_used_mAh=$(( (end_battery_level - start_battery_level) * current_capacity / 100 ))
+else
+  battery_used_mAh=0
+fi
+
+
+
+if [ "$battery_used_mAh" -gt 0 ]; then
+  battery_used_mAh_str="+$battery_used_mAh"
+elif [ "$battery_used_mAh" -lt 0 ]; then
+  battery_used_mAh_str="$battery_used_mAh"
+else
+  battery_used_mAh_str="0"
+fi
+
+
+if [ -n "$design_capacity" ] && [ "$design_capacity" -gt 0 ]; then
+  charge_pct=$(awk "BEGIN { printf \"%.1f\", ($charge_mAh * 100.0) / $design_capacity }")
+  discharge_pct=$(awk "BEGIN { printf \"%.1f\", ($discharge_mAh * 100.0) / $design_capacity }")
+else
+  charge_pct=0
+  discharge_pct=0
+fi
+#if [ -n "$current_capacity" ] && [ "$current_capacity" -gt 0 ]; then
+  #charge_pct=$(awk "BEGIN { if ($current_capacity > 0) printf \"%.1f\", ($charge_mAh * 100.0) / $current_capacity; else print 0 }")
+ # discharge_pct=$(awk "BEGIN { if ($current_capacity > 0) printf \"%.1f\", ($discharge_mAh * 100.0) / $current_capacity; else print 0 }")
+#else
+#  charge_pct=0
+#  discharge_pct=0
+#fi
+
 
 {
   echo "======== Surfing 系统电流运行报告 ========"
@@ -179,9 +257,12 @@ charge_mAh=$(awk "BEGIN { printf \"%.3f\", $total_charge / 3600000 }")
   echo "平均电流 (放电): ${avg_dch_ma} mA"
   echo "平均功耗 (放电): ${avg_dch_watt} W"
   printf "平均电压: %.2f V\n" "$(echo "$avg_voltage_mv / 1000" | bc -l)"
+  echo "充电总电流原始累计: ${total_charge} μAh"
+  echo "放电总电流原始累计: ${total_discharge} μAh"
   echo " "
-  echo "实际充电统计 (逐秒采样): ${charge_mAh} mAh"
-  echo "实际耗电统计 (逐秒采样): ${discharge_mAh} mAh"
+  echo "期间变化估算 (基于当前容量结算): ${battery_used_mAh_str} mAh"
+  echo "实际充电统计 (电流实时采样): ${charge_mAh} mAh (${charge_pct}%)"
+  echo "实际耗电统计 (电流实时采样): ${discharge_mAh} mAh (${discharge_pct}%)"
   echo "监测时间: ${start_time_fmt}"
   echo "结束时间: ${end_time_fmt}"
   echo "====================================="
