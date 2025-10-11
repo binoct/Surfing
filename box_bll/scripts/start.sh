@@ -31,16 +31,8 @@ mkdir -p ${run_path}
 if [ ! -f ${box_path}/manual ] && [ ! -f ${module_dir}/disable ] ; then
   mv ${run_path}/run.log ${run_path}/run.log.bak
   mv ${run_path}/run_error.log ${run_path}/run_error.log.bak
-
   ${scripts_dir}/box.service start >> ${run_path}/run.log 2>> ${run_path}/run_error.log && \
   ${scripts_dir}/box.tproxy enable >> ${run_path}/run.log 2>> ${run_path}/run_error.log
-
-  for task in upgrade linkclear; do
-      pid_file="${TMP_PID_DIR}/${task}.pid"
-      if [ ! -f "$pid_file" ] || ! kill -0 "$(cat "$pid_file")" 2>/dev/null; then
-         "${scripts_dir}/box.${task}" >> "${run_path}/run_error.log" 2>&1 &
-      fi
-  done
 fi
 
 chown -R 0:0 /data/adb/box_bll/clash/etc/
