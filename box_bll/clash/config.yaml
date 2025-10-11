@@ -306,8 +306,8 @@ proxy-groups:
     icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/No-ads-all.svg"
     type: select
     proxies:
-      - PASS
       - REJECT-DROP
+      - PASS
       - ⛔️ 禁止·拒绝连接
       - 🌐 DNS_Hijack
 
@@ -315,8 +315,8 @@ proxy-groups:
     icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/WebRTC.svg"
     type: select
     proxies:
-      - PASS
       - REJECT-DROP
+      - PASS
       - ⛔️ 禁止·拒绝连接
       - 🌐 DNS_Hijack
 
