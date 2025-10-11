@@ -187,13 +187,13 @@ proxy_groups: &proxy_groups
     proxies:
       - 总模式
       - ALL·延迟最低
-      - ALL·故障转移
       - ALL·负载均衡
-      - ALL·香港地区
+      - ALL·故障转移
       - ALL·中国台湾
-      - ALL·狮城地区
-      - ALL·日本地区
+      - ALL·香港地区
       - ALL·美国地区
+      - ALL·日本地区
+      - ALL·狮城地区
       - ALL·其它地区
       - ⛔️ 禁止·拒绝连接
       - 🌐 本机·本地直连
@@ -207,11 +207,11 @@ proxy-groups:
       - ALL·延迟最低
       - ALL·负载均衡
       - ALL·故障转移
-      - ALL·香港地区  
-      - ALL·中国台湾
-      - ALL·狮城地区
       - ALL·日本地区
+      - ALL·中国台湾
+      - ALL·香港地区  
       - ALL·美国地区
+      - ALL·狮城地区
       - ALL·其它地区
       - 🌐 本机·本地直连
 
@@ -325,15 +325,15 @@ proxy-groups:
     type: url-test
     <<: *A
 
-  - name: ALL·故障转移
-    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Return.svg"
-    type: fallback
-    <<: *A
-
   - name: ALL·负载均衡
     icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Return.svg"
     type: load-balance
     strategy: round-robin
+    <<: *A
+
+  - name: ALL·故障转移
+    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/Return.svg"
+    type: fallback
     <<: *A
 
   - name: ALL·日本地区
