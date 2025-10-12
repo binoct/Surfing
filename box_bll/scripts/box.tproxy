@@ -165,11 +165,6 @@ stop_redirect() {
 }
 
 start_tproxy() {
-  ip -6 rule del fwmark ${mark_id} table ${table_id} pref ${table_id} 2>/dev/null || true
-  ip rule del fwmark ${mark_id} table ${table_id} pref ${table_id} 2>/dev/null || true
-  ip -6 route flush table ${table_id} 2>/dev/null || true
-  ip route flush table ${table_id} 2>/dev/null || true
-
   if [ "${iptables}" = "ip6tables -w 100" ] ; then  
     ip -6 rule add fwmark ${mark_id} table ${table_id} pref ${table_id}  
     ip -6 route add local default dev lo table ${table_id}  
