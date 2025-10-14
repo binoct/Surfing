@@ -5,3 +5,5 @@
 #DOMAIN-SUFFIX,example.com
 #IP-CIDR,192.168.0.0/16
 #DOMAIN,dl.google.com
+
+DOMAIN,api.installer.xiaomi.com
