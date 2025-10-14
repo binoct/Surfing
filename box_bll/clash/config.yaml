@@ -343,7 +343,7 @@ proxy-groups:
 
   - name: ALL·中国台湾
     icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@rm/Home/icon/CN.svg"
-    filter: "^(?=.*(台|新北|彰化|TW|Taiwan)).*$"
+    filter: "^(?=.*(台|新北|彰化|TW|Taiwan|taipei)).*$"
     <<: *All
 
   - name: ALL·香港地区
