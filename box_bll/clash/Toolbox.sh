@@ -185,8 +185,9 @@ download_all_rules() {
     done
 }
 
-CURRENT_VERSION="v13.5.6"
+CURRENT_VERSION="v13.5.7"
 UPDATE_LOG="更新日志: 
+优化已知问题
 临时禁用核心更新..."
 
 TOOLBOX_URL="https://raw.githubusercontent.com/GitMetaio/Surfing/main/box_bll/clash/Toolbox.sh"
@@ -290,34 +291,42 @@ restore_subscribe_urls() {
             { print }
         ' "$CONFIG_PATH" > "$CONFIG_PATH.tmp" && \
         mv "$CONFIG_PATH.tmp" "$CONFIG_PATH"
-
+    
         echo "订阅地址已恢复至新配置中！"
     else
         echo "配置文件不存在，无法提取订阅地址"
     fi
 }
 reload_configuration1() {
-       if [ ! -f "$MODULE_PROP" ]; then
-          echo "↴" 
-          echo "当前未安装模块！"
-          return
-       fi
-       if [ -f "/data/adb/modules/Surfing/disable" ]; then
-          echo "↴" 
-          echo "服务未运行，重载操作失败！"
-          return
-       fi
-          echo "↴"
-          echo "正在重载 clash 配置..."
-          curl -X PUT "$CLASH_RELOAD_URL" -d "{\"path\":\"$CLASH_RELOAD_PATH\"}"
-       if [ $? -eq 0 ]; then
-          echo "ok"
-       else
-          echo "重载失败！"
-       fi
-    }
+   if [ ! -f "$MODULE_PROP" ]; then
+      echo "↴" 
+      echo "当前未安装模块！"
+      return
+   fi
+   if [ -f "/data/adb/modules/Surfing/disable" ]; then
+      echo "↴" 
+      echo "服务未运行，重载操作失败！"
+      return
+   fi
+      echo "↴"
+      echo "正在重载 clash 配置..."
+      curl -X PUT "$CLASH_RELOAD_URL" -d "{\"path\":\"$CLASH_RELOAD_PATH\"}"
+   if [ $? -eq 0 ]; then
+      echo "ok"
+   else
+      echo "重载失败！"
+   fi
+}
 update_module() {
     echo "↴"
+    if [ -z "$GITHUB_TOKEN" ] || [ "$GITHUB_TOKEN" = "你的个人令牌" ]; then
+        use_token=false
+        echo "提示：当前未配置 GitHub 令牌"
+        echo "      使用匿名访问服务可能会受 IP风控 速率等限制！"
+        echo " "
+    else
+        use_token=true
+    fi
     if [ -f "$MODULE_PROP" ]; then
         current_version=$(grep '^version=' "$MODULE_PROP" | cut -d'=' -f2)
         echo "当前模块版本号: $current_version"
@@ -326,9 +335,12 @@ update_module() {
         echo "当前设备没有安装 Surfing 模块"
         echo "↴"
     fi
-
     echo "正在获取服务器中..."
-    module_release=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$GIT_URL")
+    if [ "$use_token" = true ]; then
+        module_release=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$GIT_URL")
+    else
+        module_release=$(curl -s "$GIT_URL")
+    fi
     module_version=$(echo "$module_release" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
     if [ -z "$module_version" ]; then
         echo "获取服务器失败！"
@@ -337,15 +349,17 @@ update_module() {
     fi
     echo "获取成功！"
     echo "当前最新版本号: $module_version"
-
     if [ -n "$current_version" ] && [ "$current_version" = "$module_version" ]; then
         return
     fi
-
     echo "↴"
     echo "正在获取更新日志..."
     echo
-    changelog=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$CHANGELOG_URL")
+    if [ "$use_token" = true ]; then
+        changelog=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$CHANGELOG_URL")
+    else
+        changelog=$(curl -s "$CHANGELOG_URL")
+    fi
     escaped_version=$(echo "$module_version" | sed 's/\./[.]/g')
     latest_changelog=$(echo "$changelog" | awk -v ver="$escaped_version" '
         /^# / {
@@ -360,7 +374,6 @@ update_module() {
     ')
     echo "$latest_changelog"
     echo
-
     if [ -n "$current_version" ]; then
         echo "发现新版本：$module_version（当前：$current_version）"
         echo " ↳ 请手动至客户端操作"
