@@ -20,7 +20,7 @@ echo $$ > "$PID_FILE"
 INTERVAL_ENABLED=$(echo "$interval_enabled" | tr -d '"')
 INTERVAL_RAW=$(echo "$clean_interval" | tr -d '"')
 
-[ "$INTERVAL_ENABLED" != "true" ] && exit 0
+[ "$INTERVAL_ENABLED" != "true" ] && { rm -f "$PID_FILE"; exit 0; }
 
 parse_interval() {
     raw=$(echo "$1" | tr -d '[:space:]')
