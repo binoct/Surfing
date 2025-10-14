@@ -2,12 +2,11 @@
 
 export PATH="/data/adb/magisk:/data/adb/ksu/bin:/data/adb/ap/bin:$PATH:/data/data/com.termux/files/usr/bin"
 
+variab_dir="/dev/tmp/"
 module_dir="/data/adb/modules/Surfing"
 base_dir="/data/adb/box_bll"
-variab_dir="${base_dir}/variab"
-log_file="${base_dir}/run/Networkswitch_debug.log"
-log_file_path="/data/local/tmp/"
-temp_log_file="${log_file_path}debug.log.tmp"
+log_file="${base_dir}/run/Networkswitch.log"
+temp_log_file="${variab_dir}debug.log.tmp"
 last_check_file="${variab_dir}/last_check_time"
 last_wifi_state_file="${variab_dir}/last_wifi_state"
 
