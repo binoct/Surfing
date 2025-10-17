@@ -1,3 +1,17 @@
+# v7.6.0
+### 📦 Debug
+  - 移除：`Smart` 内核 缺乏未知稳定性
+  - 移除：检查内核更新 `scripts` 功能冗余
+  - 优化：`linkclear` task 进程 `sleep` 睡死
+  - 优化：进程管理 `scripts` 更好的启停交互
+  - 修复：调用 `which` 可能查找失败导致的错误
+  - 修复：HyperOS 3 下的 SSID 解析错误 [#253](https://github.com/GitMetaio/Surfing/pull/253) by @zx900930
+  - 其它：已解决待机发热及 CPU 异常问题
+  - 更新：关于  `scripts` config 配置动态调整
+  - 即下个版本起 不会覆盖你们的配置
+  - 现在仍需通过手动进行合并
+> 如有疑问，欢迎加入我们的群组。
+
 # v7.5.9
 ### 👨‍🔧 Debug
   - 修复: 黑白名单失效
