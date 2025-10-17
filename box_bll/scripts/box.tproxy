@@ -333,13 +333,13 @@ start_tproxy() {
   
   ${iptables} -t mangle -I OUTPUT -j BOX_LOCAL  
   
-  ${iptables} -t mangle -N DIVERT  
-  ${iptables} -t mangle -F DIVERT  
+  #${iptables} -t mangle -N DIVERT  
+  #${iptables} -t mangle -F DIVERT  
   
-  ${iptables} -t mangle -A DIVERT -j MARK --set-xmark ${mark_id}  
-  ${iptables} -t mangle -A DIVERT -j ACCEPT  
+  #${iptables} -t mangle -A DIVERT -j MARK --set-xmark ${mark_id}  
+  #${iptables} -t mangle -A DIVERT -j ACCEPT  
   
-  ${iptables} -t mangle -I PREROUTING -p tcp -m socket -j DIVERT  
+  #${iptables} -t mangle -I PREROUTING -p tcp -m socket -j DIVERT  
   
   # 此规则阻止本地访问tproxy端口以防止流量回环.  
   if [ "${iptables}" = "ip6tables -w 100" ] ; then  
@@ -390,7 +390,7 @@ stop_tproxy() {
   ip6tables -D OUTPUT -p udp --dport 53 -j DROP 
   ip6tables -D OUTPUT -p tcp --dport 853 -j DROP 
   
-  ${iptables} -t mangle -D PREROUTING -j BOX_EXTERNAL  
+  #${iptables} -t mangle -D PREROUTING -j BOX_EXTERNAL  
       
   ${iptables} -t mangle -D PREROUTING -p tcp -m socket -j DIVERT  
   
@@ -407,8 +407,8 @@ stop_tproxy() {
   ip6tables -t mangle -F LOCAL_IP_V6  
   ip6tables -t mangle -X LOCAL_IP_V6  
   
-  ${iptables} -t mangle -F DIVERT  
-  ${iptables} -t mangle -X DIVERT  
+  #${iptables} -t mangle -F DIVERT  
+  #${iptables} -t mangle -X DIVERT  
   
   if [ "${iptables}" = "ip6tables -w 100" ] ; then  
     ${iptables} -D OUTPUT -d ::1 -p tcp -m owner --uid-owner ${box_user} --gid-owner ${box_group} -m tcp --dport ${tproxy_port} -j REJECT  
