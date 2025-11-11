@@ -45,14 +45,17 @@ handle_hosts_event() {
         case "$EVENT" in
             m|c|d)
                 sleep 1
-                umount "$SYSTEM_HOSTS" 2>> "${run_path}/run_error.log"
-                mount -o bind "$HOSTS_FILE" "$SYSTEM_HOSTS" 2>> "${run_path}/run_error.log"
+                umount "$SYSTEM_HOSTS" 2>/dev/null
+                if [ -f "$HOSTS_FILE" ]; then
+                    mount -o bind "$HOSTS_FILE" "$SYSTEM_HOSTS" 2>/dev/null
+                fi
                 ;;
             *)
                 ;;
         esac
     fi
 }
+handle_hosts_event
 
 handle_inotify_event() {
     if [ ! -d "$HOSTS_PATH" ]; then
