@@ -1,8 +1,6 @@
-# Surfing
-
 <h1 align="center">
-  <img src="./folder/logo.svg" alt="BOXMETA" width="200">
-  <br>BOXMETA<br>
+  <img src="./folder/logo.svg" alt="logo" width="200">
+  <br>Surfing<br>
 </h1>
 
 <h3 align="center">Magisk, Kernelsu, APatch</h3>
