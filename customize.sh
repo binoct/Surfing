@@ -207,10 +207,8 @@ if [ -d /data/adb/box_bll ]; then
   ui_print "Initializing services..."
   /data/adb/box_bll/scripts/box.service stop > /dev/null 2>&1
   sleep 1.5
-  
-  [ -d "$SURFING_TILE_DIR_UPDATE" ] && install_surfingtile_module
-  
-  if [ "$INSTALL_TILE_APK" = true ]; then
+    
+  if [ "$INSTALL_TILE_APK" = true ] || [ -d "$SURFING_TILE_DIR_UPDATE" ]; then
     install_surfingtile_module
   fi
   if [ "$INSTALL_APK" = true ]; then
