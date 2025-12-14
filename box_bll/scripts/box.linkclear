@@ -41,7 +41,7 @@ INTERVAL=$(parse_interval "$INTERVAL_RAW")
 
 LOCALHOST=${LOCALHOST:-127.0.0.1}
 
-PORT=$(grep -E '^\s*external-controller:' "$CLASH_CONFIG" | awk -F: '{print $NF}' | tr -d ' ')
+PORT=$(grep '^[[:space:]]*external-controller:' "$CLASH_CONFIG" | awk -F: '{print $NF}' | tr -d ' "')
 
 [ -z "$PORT" ] && PORT=9090
 
