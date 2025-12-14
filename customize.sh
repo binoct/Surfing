@@ -211,10 +211,10 @@ if [ -d /data/adb/box_bll ]; then
   [ -d "$SURFING_TILE_DIR_UPDATE" ] && install_surfingtile_module
   
   if [ "$INSTALL_TILE_APK" = true ]; then
-    choose_to_install_surfingtile_module
+    install_surfingtile_module
   fi
   if [ "$INSTALL_APK" = true ]; then
-    choose_to_install_web_app
+    install_web_app
   fi
   
   extract_subscribe_urls
