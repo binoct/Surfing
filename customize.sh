@@ -16,21 +16,17 @@ HOSTS_PATH="/data/adb/box_bll/clash/etc"
 HOSTS_BACKUP="/data/adb/box_bll/clash/etc/hosts.bak"
 
 SURFING_TILE_ZIP="$MODPATH/Surfingtile.zip"
-SURFING_TILE_DIR_UPDATE="/data/adb/modules/Surfingtile"
-SURFING_TILE_DIR="/data/adb/modules_update/Surfingtile"
+SURFING_TILE_DIR_UPDATE="/data/adb/modules/Surfing_Tile"
+SURFING_TILE_DIR="/data/adb/modules_update/Surfing_Tile"
 
 MODULE_PROP_PATH="/data/adb/modules/Surfing/module.prop"
-
 MODULE_VERSION_CODE=$(awk -F'=' '/versionCode/ {print $2}' "$MODULE_PROP_PATH")
 
 if [ "$MODULE_VERSION_CODE" -lt 1622 ]; then
   INSTALL_APK=true
-else
-  INSTALL_APK=false
-fi
-if [ "$MODULE_VERSION_CODE" -lt 1622 ]; then
   INSTALL_TILE_APK=true
 else
+  INSTALL_APK=false
   INSTALL_TILE_APK=false
 fi
 if [ "$MODULE_VERSION_CODE" -lt 1623 ]; then
@@ -105,8 +101,8 @@ install_Web_apk() {
 }
 
 install_Surfingtile_apk() {
-  APK_SRC="$SURFING_TILE_DIR/system/app/com.yadli.surfingtile/com.yadli.surfingtile.apk"
-  APK_TMP="$INSTALL_DIR/com.yadli.surfingtile.apk"
+  APK_SRC="$SURFING_TILE_DIR/system/app/com.surfing.tile/com.surfing.tile.apk"
+  APK_TMP="$INSTALL_DIR/com.surfing.tile.apk"
   if [ -f "$APK_SRC" ]; then
     cp "$APK_SRC" "$APK_TMP"
     pm install "$APK_TMP"
@@ -129,39 +125,84 @@ install_surfingtile_module() {
 }
 
 choose_volume_key() {
-  ui_print "Mount the hosts file to the system ？"
-  ui_print "Volume Up: Mount"
-  ui_print "Volume Down: Uninstall"
-  ui_print "Waiting for input (10s)..."
+    timeout_seconds=10
 
-  TMP_FILE="/dev/tmp/vol_key_choice"
-  rm -f "$TMP_FILE"
+    ui_print "Waiting for input (${timeout_seconds}s)..."
 
-  getevent -qlc 1 > "$TMP_FILE" &
-  GETEVENT_PID=$!
+    read -r -t $timeout_seconds line < <(getevent -ql | awk '/KEY_VOLUME/ {print; exit}')
 
-  for i in $(seq 1 100); do
-    if [ -s "$TMP_FILE" ]; then
-      if grep -q KEY_VOLUMEUP "$TMP_FILE"; then
-        kill "$GETEVENT_PID" 2>/dev/null
-        rm -f "$TMP_FILE"
-        return 0
-      elif grep -q KEY_VOLUMEDOWN "$TMP_FILE"; then
-        kill "$GETEVENT_PID" 2>/dev/null
-        rm -f "$TMP_FILE"
+    if [ $? -eq 142 ]; then
+        ui_print "No input detected. Running default option..."
         return 1
-      fi
     fi
-    sleep 0.1
-  done
 
-  kill "$GETEVENT_PID" 2>/dev/null
-  rm -f "$TMP_FILE"
-  ui_print "No input detected. Default: Uninstall"
-  return 1
+    if echo "$line" | grep -q "KEY_VOLUMEUP"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+choose_to_umount_hosts_file() {
+
+  ui_print "Mount the hosts file to the system ?"
+  ui_print "Volume Up: Mount"
+  ui_print "Volume Down: Uninstall (default)"
+
+  if choose_volume_key; then
+    ui_print "Hosts file mounted"
+  else
+    ui_print "Uninstalling hosts file is complete"
+    rm -f "$HOSTS_FILE"
+  fi
+
+}
+
+choose_to_install_surfingtile_module() {
+  ui_print "Install SurfingTile app ?"
+  ui_print "Volume Up: No"
+  ui_print "Volume Down: Yes (default)"
+
+  if choose_volume_key; then
+    ui_print "Skip installing SurfingTile app..."
+  else
+    install_surfingtile_module
+    install_Surfingtile_apk
+  fi
+}
+
+choose_to_install_web_app() {
+  ui_print "Install Web app ?"
+  ui_print "Volume Up: No"
+  ui_print "Volume Down: Yes (default)"
+
+  if choose_volume_key; then
+    ui_print "Skip installing Web app..."
+  else
+    ui_print "Installing Web app..."
+    install_Web_apk
+  fi
+}
+
+remove_old_surfingtile() {
+  OLD_TILE_MODDIR="/data/adb/modules/Surfingtile"
+  OLD_TILE_APP="$(pm path "com.yadli.surfingtile" 2>/dev/null | sed 's/package://')"
+
+  if [ -d "$OLD_TILE_MODDIR" ]; then
+    ui_print "Uninstalling old SurfingTile module..."
+    touch "${OLD_TILE_MODDIR}/remove" && ui_print "Reboot to take effect"
+  fi
+
+  if [ -n "$OLD_TILE_APP" ]; then
+    ui_print "Uninstalling old SurfingTile app..."
+    pm uninstall "com.yadli.surfingtile"
+  fi
 }
 
 unzip -qo "${ZIPFILE}" -x 'META-INF/*' -d "$MODPATH"
+
+remove_old_surfingtile
+
 if [ -d /data/adb/box_bll ]; then
   ui_print "Updating..."
   ui_print "↴"
@@ -172,10 +213,10 @@ if [ -d /data/adb/box_bll ]; then
   install_surfingtile_module
   
   if [ "$INSTALL_TILE_APK" = true ]; then
-    install_Surfingtile_apk
+    choose_to_install_surfingtile_module
   fi
   if [ "$INSTALL_APK" = true ]; then
-    install_Web_apk
+    choose_to_install_web_app
   fi
   
   extract_subscribe_urls
@@ -219,12 +260,7 @@ if [ -d /data/adb/box_bll ]; then
   rm -rf /data/adb/box_bll/scripts/box.upgrade
   rm -rf "$MODPATH/box_bll"
 
-  if choose_volume_key; then
-    ui_print "Hosts file mounted"
-  else
-    ui_print "Uninstalling hosts file is complete"
-    rm -f "$HOSTS_FILE"
-  fi
+  choose_to_umount_hosts_file
   
   sleep 1
   ui_print "Restarting service..."
@@ -234,9 +270,8 @@ else
   ui_print "Installing..."
   ui_print "↴"
   mv "$MODPATH/box_bll" /data/adb/
-  install_surfingtile_module
-  install_Surfingtile_apk
-  install_Web_apk
+  choose_to_install_surfingtile_module
+  choose_to_install_web_app
   ui_print "Module installation completed. Working directory:"
   ui_print "data/adb/box_bll/"
   ui_print "Please add your subscription to"
@@ -244,12 +279,7 @@ else
   ui_print "A reboot is required after first installation..."
   ui_print "Follow the steps from top to bottom"
   
-  if choose_volume_key; then
-    ui_print "Hosts file mounted"
-  else
-    ui_print "Uninstalling hosts file is complete"
-    rm -f "$HOSTS_FILE"
-  fi
+  choose_to_umount_hosts_file
   
 fi
 
