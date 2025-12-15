@@ -15,24 +15,17 @@ HOSTS_FILE="/data/adb/box_bll/clash/etc/hosts"
 HOSTS_PATH="/data/adb/box_bll/clash/etc"
 HOSTS_BACKUP="/data/adb/box_bll/clash/etc/hosts.bak"
 
-SURFING_TILE_ZIP="$MODPATH/Surfingtile.zip"
-SURFING_TILE_DIR_UPDATE="/data/adb/modules/Surfing_Tile"
-SURFING_TILE_DIR="/data/adb/modules_update/Surfing_Tile"
+SURFING_TILE_ZIP="$MODPATH/SurfingTile.zip"
+SURFING_TILE_DIR_UPDATE="/data/adb/modules/SurfingTile"
+SURFING_TILE_DIR="/data/adb/modules_update/SurfingTile"
 
 MODULE_PROP_PATH="/data/adb/modules/Surfing/module.prop"
 MODULE_VERSION_CODE=$(awk -F'=' '/versionCode/ {print $2}' "$MODULE_PROP_PATH")
 
-if [ "$MODULE_VERSION_CODE" -lt 1622 ]; then
-  INSTALL_APK=true
-  INSTALL_TILE_APK=true
+if [ "$MODULE_VERSION_CODE" -lt 1638 ]; then
+  INSTALL_TILE=true
 else
-  INSTALL_APK=false
-  INSTALL_TILE_APK=false
-fi
-if [ "$MODULE_VERSION_CODE" -lt 1623 ]; then
-  COPY_WEB=true
-else
-  COPY_WEB=false
+  INSTALL_TILE=false
 fi
 
 
@@ -88,7 +81,7 @@ restore_subscribe_urls() {
   fi
 }
 
-install_Web_apk() {
+install_web_apk() {
   if [ -f "$APK_FILE" ]; then
     cp "$APK_FILE" "$INSTALL_DIR/"
     ui_print "Installing Web.apk..."
@@ -99,7 +92,7 @@ install_Web_apk() {
   fi
 }
 
-install_Surfingtile_apk() {
+install_surfingtile_apk() {
   APK_SRC="$SURFING_TILE_DIR/system/app/com.surfing.tile/com.surfing.tile.apk"
   APK_TMP="$INSTALL_DIR/com.surfing.tile.apk"
   if [ -f "$APK_SRC" ]; then
@@ -142,7 +135,6 @@ choose_volume_key() {
 }
 
 choose_to_umount_hosts_file() {
-
   ui_print "Mount the hosts file to the system ?"
   ui_print "Volume Up: Mount"
   ui_print "Volume Down: Uninstall (default)"
@@ -154,31 +146,6 @@ choose_to_umount_hosts_file() {
     rm -f "$HOSTS_FILE"
   fi
 
-}
-
-choose_to_install_surfingtile_module() {
-  ui_print "Install SurfingTile app ?"
-  ui_print "Volume Up: No"
-  ui_print "Volume Down: Yes (default)"
-
-  if choose_volume_key; then
-    ui_print "Skip installing SurfingTile app..."
-  else
-    install_surfingtile_module
-    install_Surfingtile_apk
-  fi
-}
-
-choose_to_install_Web_apk() {
-  ui_print "Install Web app ?"
-  ui_print "Volume Up: No"
-  ui_print "Volume Down: Yes (default)"
-
-  if choose_volume_key; then
-    ui_print "Skip installing Web app..."
-  else
-    install_Web_apk
-  fi
 }
 
 remove_old_surfingtile() {
@@ -207,15 +174,15 @@ if [ -d /data/adb/box_bll ]; then
   /data/adb/box_bll/scripts/box.service stop > /dev/null 2>&1
   sleep 1.5
     
-  if [ "$INSTALL_TILE_APK" = true ] || [ -d "$SURFING_TILE_DIR_UPDATE" ]; then
+  if [ "$INSTALL_TILE" = "true" ]; then
+    rm -rf /data/adb/modules/Surfingtile 2>/dev/null
+    rm -rf /data/adb/modules/Surfing_Tile 2>/dev/null
     install_surfingtile_module
+    install_surfingtile_apk
   fi
-  if [ "$INSTALL_APK" = true ]; then
-    install_Web_apk
-  fi
-  
+
   extract_subscribe_urls
-  
+
   if [ -f "$HOSTS_FILE" ]; then
     cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"
   fi
@@ -223,18 +190,10 @@ if [ -d /data/adb/box_bll ]; then
   mkdir -p "$HOSTS_PATH"
   touch "$HOSTS_FILE"
   
-  cp /data/adb/box_bll/bin/clash /data/adb/box_bll/bin/clash.bak
-  
   cp /data/adb/box_bll/clash/config.yaml /data/adb/box_bll/clash/config.yaml.bak
   cp /data/adb/box_bll/scripts/box.config /data/adb/box_bll/scripts/box.config.bak
   cp -f "$MODPATH/box_bll/clash/config.yaml" /data/adb/box_bll/clash/
-  cp -f "$MODPATH/box_bll/clash/Toolbox.sh" /data/adb/box_bll/clash/
-  cp -f "$MODPATH/box_bll/bin/clash" /data/adb/box_bll/bin/
-  
-  if [ "$COPY_WEB" = true ]; then
-    cp -rf "$MODPATH/box_bll/clash/Web" /data/adb/box_bll/clash/
-  fi
-  
+  cp -f "$MODPATH/box_bll/clash/Toolbox.sh" /data/adb/box_bll/clash/  
   cp -f "$MODPATH/box_bll/scripts/"* /data/adb/box_bll/scripts/
   
   restore_subscribe_urls
@@ -265,8 +224,10 @@ else
   ui_print "Installing..."
   ui_print "↴"
   mv "$MODPATH/box_bll" /data/adb/
-  choose_to_install_surfingtile_module
-  choose_to_install_Web_apk
+  install_surfingtile_module
+  install_surfingtile_apk
+  install_web_apk
+  
   ui_print "Module installation completed. Working directory:"
   ui_print "data/adb/box_bll/"
   ui_print "Please add your subscription to"

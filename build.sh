@@ -9,12 +9,12 @@ else
     filename="Surfing_${version}_release.zip"
 fi
 
-cd Surfingtile || exit 1
-zip -r -o -X -ll ../Surfingtile.zip ./*
+cd SurfingTile || exit 1
+zip -r -o -X -ll ../SurfingTile.zip ./*
 cd ..
 
 zip -r -o -X -ll "$filename" ./ \
-    -x 'Surfingtile/*' \
+    -x 'SurfingTile/*' \
     -x '.git/*' \
     -x '.github/*' \
     -x 'folder/*' \
