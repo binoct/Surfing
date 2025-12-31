@@ -248,23 +248,15 @@ else
   
 fi
 
-if [ "$KSU" = true ]; then
-  sed -i 's/name=Surfingmagisk/name=SurfingKernelSU/g' "$MODPATH/module.prop"
-fi
-
-if [ "$APATCH" = true ]; then
-  sed -i 's/name=Surfingmagisk/name=SurfingAPatch/g' "$MODPATH/module.prop"
-fi
-
 mv -f "$MODPATH/Surfing_service.sh" "$service_dir/"
 rm -f "$SURFING_TILE_ZIP"
 
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm_recursive "$UPDATE_SURFING_TILE_DIR" 0 0 0755 0644
-set_perm_recursive "$BOX_BLL_PATH/" 0 3005 0755 0644
-set_perm_recursive "$BOX_BLL_PATH/scripts/" 0 3005 0755 0700
-set_perm_recursive "$BOX_BLL_PATH/bin/" 0 3005 0755 0700
-set_perm_recursive "$BOX_BLL_PATH/clash/etc/" 0 0 0755 0644
+set_perm_recursive "$BOX_BLL_PATH" 0 3005 0755 0644
+set_perm_recursive "$BOX_BLL_PATH/scripts" 0 3005 0755 0700
+set_perm_recursive "$BOX_BLL_PATH/bin" 0 3005 0755 0700
+set_perm_recursive "$BOX_BLL_PATH/clash/etc" 0 0 0755 0644
 set_perm "$service_dir/Surfing_service.sh" 0 0 0700
 
 chmod ugo+x "$BOX_BLL_PATH/scripts/"*
