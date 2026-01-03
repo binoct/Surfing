@@ -5,8 +5,11 @@ ASH_STANDALONE=1
 
 CURRENT_MODULES_DIR="/data/adb/modules"
 UPDATE_MODULES_DIR="/data/adb/modules_update"
-[ -n "$(magisk -v | grep lite)" ] && CURRENT_MODULES_DIR="/data/adb/lite_modules"
-[ -n "$(magisk -v | grep lite)" ] && UPDATE_MODULES_DIR="/data/adb/lite_modules_update"
+
+[ -n "$(magisk -v | grep lite)" ] && {
+  CURRENT_MODULES_DIR="/data/adb/lite_modules"
+  UPDATE_MODULES_DIR="/data/adb/lite_modules_update"
+}
 
 SURFING_PATH="$CURRENT_MODULES_DIR/Surfing"
 BOX_BLL_PATH="/data/adb/box_bll"
@@ -158,16 +161,26 @@ choose_to_umount_hosts_file() {
 
 remove_old_surfingtile() {
   OLD_TILE_MODDIR="$CURRENT_MODULES_DIR/Surfingtile"
-  OLD_TILE_APP="$(pm path "com.yadli.surfingtile" 2>/dev/null | sed 's/package://')"
 
   if [ -d "$OLD_TILE_MODDIR" ]; then
-    ui_print "Uninstalling old SurfingTile module..."
-    touch "${OLD_TILE_MODDIR}/remove" && ui_print "Reboot to take effect"
+    touch "$OLD_TILE_MODDIR/remove"
+    if [ -f "$OLD_TILE_MODDIR/update" ]; then
+      ui_print "Old SurfingTile module is"
+      ui_print "marked as update and may not get"
+      ui_print "uninstalled automatically"
+      ui_print "Please uninstall old SurfingTile"
+      ui_print "module manually after reboot"
+    else
+      ui_print "Old SurfingTile module will be"
+      ui_print "uninstalled after reboot"
+    fi
   fi
 
-  if [ -n "$OLD_TILE_APP" ]; then
-    ui_print "Uninstalling old SurfingTile app..."
-    pm uninstall "com.yadli.surfingtile"
+  if pm uninstall "com.yadli.surfingtile" > /dev/null 2>&1 || pm uninstall --user 0 "com.yadli.surfingtile" > /dev/null 2>&1; then
+    ui_print "Old SurfingTile app is uninstalled"
+  else
+    ui_print "Old SurfingTile app will be"
+    ui_print "uninstalled after reboot"
   fi
 }
 
