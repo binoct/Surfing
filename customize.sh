@@ -159,28 +159,7 @@ choose_to_umount_hosts_file() {
 
 }
 
-remove_old_surfingtile() {
-  OLD_TILE_MODDIR="$CURRENT_MODULES_DIR/Surfingtile"
-
-  if [ -d "$OLD_TILE_MODDIR" ]; then
-    touch "$OLD_TILE_MODDIR/remove"
-    if [ -f "$OLD_TILE_MODDIR/update" ]; then
-      ui_print "Old SurfingTile module is"
-      ui_print "marked as update and may not get"
-      ui_print "uninstalled automatically"
-      ui_print "Please uninstall old SurfingTile"
-      ui_print "module manually after reboot"
-    fi
-  fi
-
-  pm uninstall "com.yadli.surfingtile" > /dev/null 2>&1
-  pm uninstall --user 0 "com.yadli.surfingtile" > /dev/null 2>&1
-
-}
-
 unzip -qo "${ZIPFILE}" -x 'META-INF/*' -d "$MODPATH"
-
-remove_old_surfingtile
 
 if [ -d "$BOX_BLL_PATH" ]; then
   ui_print "Updating..."
@@ -194,6 +173,8 @@ if [ -d "$BOX_BLL_PATH" ]; then
     rm -rf /data/adb/lite_modules/Surfingtile 2>/dev/null
     rm -rf /data/adb/modules/Surfing_Tile 2>/dev/null
     rm -rf /data/adb/lite_modules/Surfing_Tile 2>/dev/null
+    pm uninstall "com.yadli.surfingtile" > /dev/null 2>&1
+    pm uninstall --user 0 "com.yadli.surfingtile" > /dev/null 2>&1
     install_surfingtile_module
     install_surfingtile_apk
   fi
