@@ -170,18 +170,12 @@ remove_old_surfingtile() {
       ui_print "uninstalled automatically"
       ui_print "Please uninstall old SurfingTile"
       ui_print "module manually after reboot"
-    else
-      ui_print "Old SurfingTile module will be"
-      ui_print "uninstalled after reboot"
     fi
   fi
 
-  if pm uninstall "com.yadli.surfingtile" > /dev/null 2>&1 || pm uninstall --user 0 "com.yadli.surfingtile" > /dev/null 2>&1; then
-    ui_print "Old SurfingTile app is uninstalled"
-  else
-    ui_print "Old SurfingTile app will be"
-    ui_print "uninstalled after reboot"
-  fi
+  pm uninstall "com.yadli.surfingtile" > /dev/null 2>&1
+  pm uninstall --user 0 "com.yadli.surfingtile" > /dev/null 2>&1
+
 }
 
 unzip -qo "${ZIPFILE}" -x 'META-INF/*' -d "$MODPATH"
