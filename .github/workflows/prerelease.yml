@@ -25,12 +25,12 @@ jobs:
         id: set_timestamp
         run: echo "TIMESTAMP=$(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
 
-      - name: Run build.sh
-        run: sh build.sh
-
       - name: Get Short Commit Hash
         if: env.isAlpha == 'true'
         run: echo "SHORT_HASH=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Run build.sh
+        run: sh build.sh
 
       - name: Delete current prerelease assets
         uses: andreaswilli/delete-release-assets-action@v3.0.0
