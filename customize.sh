@@ -126,6 +126,13 @@ install_surfingtile_module() {
   touch "$CURRENT_SURFING_TILE_DIR/update"
 }
 
+sync_version_from_module_prop() {
+  local dst_prop="$CURRENT_MODULES_DIR/Surfing/module.prop"
+  if [ -f "$MODPATH/module.prop" ] && [ -d "$CURRENT_MODULES_DIR/Surfing" ]; then
+    cp -f "$MODPATH/module.prop" "$dst_prop"
+  fi
+}
+
 choose_volume_key() {
     timeout_seconds=10
 
@@ -178,6 +185,8 @@ remove_old_surfingtile(){
 unzip -qo "${ZIPFILE}" -x 'META-INF/*' -d "$MODPATH"
 
 remove_old_surfingtile
+
+sync_version_from_module_prop
 
 if [ -d "$BOX_BLL_PATH" ]; then
   ui_print "Updating..."
