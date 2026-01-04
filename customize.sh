@@ -5,8 +5,11 @@ ASH_STANDALONE=1
 
 CURRENT_MODULES_DIR="/data/adb/modules"
 UPDATE_MODULES_DIR="/data/adb/modules_update"
-[ -n "$(magisk -v | grep lite)" ] && CURRENT_MODULES_DIR="/data/adb/lite_modules"
-[ -n "$(magisk -v | grep lite)" ] && UPDATE_MODULES_DIR="/data/adb/lite_modules_update"
+
+[ -n "$(magisk -v | grep lite)" ] && {
+  CURRENT_MODULES_DIR="/data/adb/lite_modules"
+  UPDATE_MODULES_DIR="/data/adb/lite_modules_update"
+}
 
 SURFING_PATH="$CURRENT_MODULES_DIR/Surfing"
 BOX_BLL_PATH="/data/adb/box_bll"
@@ -156,19 +159,20 @@ choose_to_umount_hosts_file() {
 
 }
 
-remove_old_surfingtile() {
-  OLD_TILE_MODDIR="$CURRENT_MODULES_DIR/Surfingtile"
-  OLD_TILE_APP="$(pm path "com.yadli.surfingtile" 2>/dev/null | sed 's/package://')"
+remove_old_surfingtile(){
 
-  if [ -d "$OLD_TILE_MODDIR" ]; then
-    ui_print "Uninstalling old SurfingTile module..."
-    touch "${OLD_TILE_MODDIR}/remove" && ui_print "Reboot to take effect"
-  fi
+  rm -rf /data/adb/modules/Surfingtile 2>/dev/null
+  rm -rf /data/adb/modules_update/Surfingtile 2>/dev/null
+  rm -rf /data/adb/lite_modules/Surfingtile 2>/dev/null
+  rm -rf /data/adb/lite_modules_update/Surfingtile 2>/dev/null
 
-  if [ -n "$OLD_TILE_APP" ]; then
-    ui_print "Uninstalling old SurfingTile app..."
-    pm uninstall "com.yadli.surfingtile"
-  fi
+  rm -rf /data/adb/modules/Surfing_Tile 2>/dev/null
+  rm -rf /data/adb/modules_update/Surfing_Tile 2>/dev/null
+  rm -rf /data/adb/lite_modules/Surfing_Tile 2>/dev/null
+  rm -rf /data/adb/lite_modules_update/Surfing_Tile 2>/dev/null
+
+  pm uninstall "com.yadli.surfingtile" > /dev/null 2>&1 || pm uninstall --user 0 "com.yadli.surfingtile" > /dev/null 2>&1
+
 }
 
 unzip -qo "${ZIPFILE}" -x 'META-INF/*' -d "$MODPATH"
@@ -183,10 +187,6 @@ if [ -d "$BOX_BLL_PATH" ]; then
   sleep 1.5
     
   if [ "$INSTALL_TILE" = "true" ]; then
-    rm -rf /data/adb/modules/Surfingtile 2>/dev/null
-    rm -rf /data/adb/lite_modules/Surfingtile 2>/dev/null
-    rm -rf /data/adb/modules/Surfing_Tile 2>/dev/null
-    rm -rf /data/adb/lite_modules/Surfing_Tile 2>/dev/null
     install_surfingtile_module
     install_surfingtile_apk
   fi
@@ -217,6 +217,7 @@ if [ -d "$BOX_BLL_PATH" ]; then
   nohup inotifyd "${SCRIPTS_PATH}/box.inotify" "$SURFING_PATH" > /dev/null 2>&1 &
   nohup inotifyd "${SCRIPTS_PATH}/net.inotify" "$NET_PATH" > /dev/null 2>&1 &
   nohup inotifyd "${SCRIPTS_PATH}/ctr.inotify" "$CTR_PATH" > /dev/null 2>&1 &
+  [ -d "$CURRENT_SURFING_TILE_DIR" ] && inotifyd "${SCRIPTS_DIR}/box.inotify" "/data/system" >/dev/null 2>&1 &
   sleep 1
   cp -f "$MODPATH/box_bll/clash/etc/hosts" "$BOX_BLL_PATH/clash/etc/"
   rm -rf "$BOX_BLL_PATH/clash/Model.bin"
