@@ -171,8 +171,7 @@ remove_old_surfingtile(){
   rm -rf /data/adb/lite_modules/Surfing_Tile 2>/dev/null
   rm -rf /data/adb/lite_modules_update/Surfing_Tile 2>/dev/null
 
-  pm uninstall "com.yadli.surfingtile" > /dev/null 2>&1
-  pm uninstall --user 0 "com.yadli.surfingtile" > /dev/null 2>&1
+  pm uninstall "com.yadli.surfingtile" > /dev/null 2>&1 || pm uninstall --user 0 "com.yadli.surfingtile" > /dev/null 2>&1
 
 }
 
