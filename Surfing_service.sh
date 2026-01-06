@@ -1,7 +1,10 @@
 #!/system/bin/sh
 
-modules_dir="/data/adb/modules/Surfing"
-[ -n "$(magisk -v | grep lite)" ] && MODULE_DIR="/data/adb/lite_modules/Surfing"
+BASE_MODULES_DIR="/data/adb/modules"
+[ -n "$(magisk -v | grep lite)" ] && BASE_MODULES_DIR="/data/adb/lite_modules"
+
+SURFING_DIR="${BASE_MODULES_DIR}/Surfing"
+SURFING_TILE_DIR="${BASE_MODULES_DIR}/SurfingTile"
 
 SCRIPTS_DIR="/data/adb/box_bll/scripts"
 
@@ -9,32 +12,34 @@ SCRIPTS_DIR="/data/adb/box_bll/scripts"
 until [ "$(getprop sys.boot_completed)" -eq 1 ]; do
   sleep 3
 done
-${SCRIPTS_DIR}/start.sh
+"${SCRIPTS_DIR}/start.sh"
 ) &
 
-HOSTS_PATH="/data/adb/box_bll/clash/etc/"
-HOSTS_FILE="/data/adb/box_bll/clash/etc/hosts"
+HOSTS_PATH="/data/adb/box_bll/clash/etc"
+HOSTS_FILE="${HOSTS_PATH}/hosts"
 SYSTEM_HOSTS="/system/etc/hosts"
 
-mkdir -p "$HOSTS_PATH" "/dev/tmp/"
+mkdir -p "$HOSTS_PATH" "/dev/tmp"
 
 sleep 1
 
-inotifyd ${SCRIPTS_DIR}/box.inotify ${modules_dir} > /dev/null 2>&1 &
-inotifyd ${SCRIPTS_DIR}/box.inotify "$HOSTS_PATH" > /dev/null 2>&1 &
+inotifyd "${SCRIPTS_DIR}/box.inotify" "$SURFING_DIR" > /dev/null 2>&1 &
+inotifyd "${SCRIPTS_DIR}/box.inotify" "$HOSTS_PATH" > /dev/null 2>&1 &
 
 mount -o bind "$HOSTS_FILE" "$SYSTEM_HOSTS"
 
 NET_DIR="/data/misc/net"
-while [ ! -f /data/misc/net/rt_tables ]; do
+CTR_FILE="/data/misc/net/rt_tables"
+
+while [ ! -f "$CTR_FILE" ]; do
   sleep 3
 done
 
-inotifyd ${SCRIPTS_DIR}/net.inotify "$NET_DIR" > /dev/null 2>&1 &
-inotifyd ${SCRIPTS_DIR}/ctr.inotify /data/misc/net/rt_tables > /dev/null 2>&1 &
+inotifyd "${SCRIPTS_DIR}/net.inotify" "$NET_DIR" > /dev/null 2>&1 &
+inotifyd "${SCRIPTS_DIR}/ctr.inotify" "$CTR_FILE" > /dev/null 2>&1 &
 
-if [ -d "/data/adb/modules/SurfingTile/" ]; then
-    inotifyd ${SCRIPTS_DIR}/box.inotify "/data/system" > /dev/null 2>&1 &
+if [ -d "$SURFING_TILE_DIR" ] && [ -f "$SURFING_TILE_DIR/module.prop" ]; then
+    inotifyd "${SCRIPTS_DIR}/box.inotify" "/data/system" > /dev/null 2>&1 &
 fi
 
 delete_op_coloros16_fw_rules() {
