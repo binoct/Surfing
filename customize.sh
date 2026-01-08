@@ -19,7 +19,7 @@ NET_PATH="/data/misc/net"
 CTR_PATH="/data/misc/net/rt_tables"
 CONFIG_FILE="$BOX_BLL_PATH/clash/config.yaml"
 BACKUP_FILE="$BOX_BLL_PATH/clash/proxies/subscribe_urls_backup.txt"
-APK_FILE="$MODPATH/webroot/Web.apk"
+APK_FILE="$MODPATH/webroot/com.android64bit.web.apk"
 INSTALL_DIR="/data/app"
 HOSTS_FILE="$BOX_BLL_PATH/clash/etc/hosts"
 HOSTS_PATH="$BOX_BLL_PATH/clash/etc"
@@ -95,11 +95,11 @@ restore_subscribe_urls() {
 install_web_apk() {
   if [ -f "$APK_FILE" ]; then
     cp "$APK_FILE" "$INSTALL_DIR/"
-    ui_print "Installing Web.apk..."
-    pm install "$INSTALL_DIR/Web.apk"
-    rm -rf "$INSTALL_DIR/Web.apk"
+    ui_print "Installing com.android64bit.web.apk..."
+    pm install "$INSTALL_DIR/com.android64bit.web.apk"
+    rm -rf "$INSTALL_DIR/com.android64bit.web.apk"
   else
-    ui_print "Web.apk not found"
+    ui_print "com.android64bit.web.apk not found"
   fi
 }
 
