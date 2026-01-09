@@ -134,22 +134,20 @@ sync_version_from_module_prop() {
 }
 
 choose_volume_key() {
-    timeout_seconds=10
+  timeout_seconds=10
+  ui_print "Waiting for input (${timeout_seconds}s)..."
 
-    ui_print "Waiting for input (${timeout_seconds}s)..."
+  read -r -t $timeout_seconds line < <(getevent -ql | awk '/KEY_VOLUME/ {print; exit}')
 
-    read -r -t $timeout_seconds line < <(getevent -ql | awk '/KEY_VOLUME/ {print; exit}')
-
-    if [ $? -eq 142 ]; then
-        ui_print "No input detected. Running default option..."
-        return 1
-    fi
-
-    if echo "$line" | grep -q "KEY_VOLUMEUP"; then
-        return 0
-    else
-        return 1
-    fi
+  if [ $? -eq 142 ]; then
+      ui_print "No input detected. Running default option..."
+      return 1
+  fi
+  if echo "$line" | grep -q "KEY_VOLUMEUP"; then
+      return 0
+  else
+      return 1
+  fi
 }
 
 choose_to_umount_hosts_file() {
@@ -193,7 +191,7 @@ if [ -d "$BOX_BLL_PATH" ]; then
   ui_print "↴"
   ui_print "Initializing services..."
   "$BOX_BLL_PATH/scripts/box.service" stop > /dev/null 2>&1
-  sleep 1.5
+  sleep 2
     
   if [ "$INSTALL_TILE" = "true" ]; then
     install_surfingtile_module
@@ -215,8 +213,24 @@ if [ -d "$BOX_BLL_PATH" ]; then
   cp -f "$MODPATH/box_bll/clash/Toolbox.sh" "$BOX_BLL_PATH/clash/"
   cp -f "$MODPATH/box_bll/scripts/"* "$BOX_BLL_PATH/scripts/"
   
+  OLD_CONFIG="$BOX_BLL_PATH/scripts/box.config.bak"
+  NEW_CONFIG="$BOX_BLL_PATH/scripts/box.config"
+  if [ -f "$OLD_CONFIG" ]; then
+    ui_print "Migrating network service control settings..."
+    
+    VARS="enable_network_service_control use_module_on_wifi_disconnect use_module_on_wifi use_ssid_matching use_wifi_list_mode blacklist_wifi_ssids whitelist_wifi_ssids ap_list gid_list user_packages_list proxy_mode proxy_method ipv6"
+    for var in $VARS; do
+      val=$(grep "^${var}=" "$OLD_CONFIG" | cut -d'=' -f2-)
+      
+      if [ -n "$val" ]; then
+        sed -i "s@^${var}=.*@${var}=${val}@" "$NEW_CONFIG"
+      fi
+    done
+    ui_print "Settings migrated successfully"
+  fi
+  
   restore_subscribe_urls
-
+  
   for pid in $(pidof inotifyd); do
     if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
       kill "$pid"
