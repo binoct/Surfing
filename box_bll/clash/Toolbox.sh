@@ -63,48 +63,88 @@ GIT_URL="https://api.github.com/repos/GitMetaio/Surfing/releases/latest"
 SAVE_DIR="/data/adb/box_bll/clash/rules/规则审查"
 
 rules=(
+# 广告拦截
 "广告拦截_Domain.yaml https://anti-ad.net/clash.yaml"
+
+# WebRTC
 "WebRTC_Classical.yaml https://raw.githubusercontent.com/GitMetaio/Surfing/refs/heads/rm/Home/rules/WebRTC.list"
-"CN_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geoip/cn.yaml"
+
+# CN
+"CN_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/cn.yaml"
 "CN_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/cn.yaml"
-"XiaoHongShu_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/XiaoHongShu/XiaoHongShu_OCD_Domain.yaml"
-"XiaoHongShu_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/XiaoHongShu/XiaoHongShu_OCD_IP.yaml"
-"DouYin_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/DouYin/DouYin_OCD_Domain.yaml"
-"DouYin_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/DouYin/DouYin_OCD_IP.yaml"
-"BiliBili_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/BiliBili/BiliBili_OCD_Domain.yaml"
-"BiliBili_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/BiliBili/BiliBili_OCD_IP.yaml"
-"Steam_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Steam/Steam_OCD_Domain.yaml"
-"Steam_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Steam/Steam_OCD_IP.yaml"
-"TikTok_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/TikTok/TikTok_OCD_Domain.yaml"
-"TikTok_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/TikTok/TikTok_OCD_IP.yaml"
-"Spotify_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Spotify/Spotify_OCD_Domain.yaml"
-"Spotify_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Spotify/Spotify_OCD_IP.yaml"
-"Facebook_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Facebook/Facebook_OCD_Domain.yaml"
-"Facebook_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Facebook/Facebook_OCD_IP.yaml"
-"Telegram_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Telegram/Telegram_OCD_Domain.yaml"
-"Telegram_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Telegram/Telegram_OCD_IP.yaml"
-"YouTube_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/YouTube/YouTube_OCD_Domain.yaml"
-"YouTube_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/YouTube/YouTube_OCD_IP.yaml"
-"Google_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Google/Google_OCD_Domain.yaml"
-"Google_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Google/Google_OCD_IP.yaml"
-"GoogleFCM_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/GoogleFCM/GoogleFCM_OCD_Domain.yaml"
-"GoogleFCM_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/GoogleFCM/GoogleFCM_OCD_IP.yaml"
-"Microsoft_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Microsoft/Microsoft_OCD_Domain.yaml"
-"Microsoft_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Microsoft/Microsoft_OCD_IP.yaml"
-"Apple_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Apple/Apple_OCD_Domain.yaml"
-"Apple_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Apple/Apple_OCD_IP.yaml"
-"OpenAI_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/OpenAI/OpenAI_OCD_Domain.yaml"
-"OpenAI_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/OpenAI/OpenAI_OCD_IP.yaml"
-"Netflix_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Netflix/Netflix_OCD_Domain.yaml"
-"Netflix_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Netflix/Netflix_OCD_IP.yaml"
-"Discord_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Discord/Discord_OCD_Domain.yaml"
-"Discord_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Discord/Discord_OCD_IP.yaml"
-"GitHub_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/GitHub/GitHub_OCD_Domain.yaml"
-"GitHub_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/GitHub/GitHub_OCD_IP.yaml"
-"Twitter_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Twitter/Twitter_OCD_Domain.yaml"
-"Twitter_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Twitter/Twitter_OCD_IP.yaml"
-"LAN_Domain.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Lan/Lan_OCD_Domain.yaml"
-"LAN_IPCIDR.yaml https://raw.githubusercontent.com/GitMetaio/rule/refs/heads/master/rule/Clash/Lan/Lan_OCD_IP.yaml"
+
+# 小红书
+"XiaoHongShu_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/xiaohongshu.yaml"
+"XiaoHongShu_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/xiaohongshu.yaml"
+
+# 抖音
+"DouYin_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/douyin.yaml"
+"DouYin_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/douyin.yaml"
+
+# 哔哩哔哩
+"BiliBili_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/bilibili.yaml"
+"BiliBili_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/bilibili.yaml"
+
+# Steam
+"Steam_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/steam.yaml"
+"Steam_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/steam.yaml"
+
+# TikTok
+"TikTok_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/tiktok.yaml"
+"TikTok_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/tiktok.yaml"
+
+# Spotify
+"Spotify_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/spotify.yaml"
+"Spotify_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/spotify.yaml"
+
+# Facebook
+"Facebook_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/facebook.yaml"
+"Facebook_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/facebook.yaml"
+
+# Telegram
+"Telegram_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/telegram.yaml"
+"Telegram_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/telegram.yaml"
+
+# YouTube
+"YouTube_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/youtube.yaml"
+
+# Google
+"Google_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/google.yaml"
+"Google_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/google.yaml"
+
+# Google FCM
+"GoogleFCM_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/googlefcm.yaml"
+
+# Microsoft
+"Microsoft_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/microsoft.yaml"
+"Microsoft_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/microsoft.yaml"
+
+# Apple
+"Apple_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/apple.yaml"
+"Apple_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/apple.yaml"
+
+# OpenAI
+"OpenAI_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/openai.yaml"
+
+# Netflix
+"Netflix_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/netflix.yaml"
+"Netflix_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/netflix.yaml"
+
+# Discord
+"Discord_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/discord.yaml"
+"Discord_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/discord.yaml"
+
+# GitHub
+"GitHub_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/github.yaml"
+"GitHub_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/github.yaml"
+
+# Twitter / X
+"Twitter_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/twitter.yaml"
+"Twitter_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/twitter.yaml"
+
+# LAN / Private
+"LAN_Domain.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/private.yaml"
+"LAN_IPCIDR.yaml https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo-lite/geoip/private.yaml"
 )
 
 printc() {
@@ -158,7 +198,7 @@ download_all_rules() {
             y|Y)
                 echo "↴" 
                 echo "正在下载规则文件..."
-                echo "https://github.com/GitMetaio/rule"
+                echo "https://github.com/MetaCubeX/meta-rules-dat"
 
                 for rule in "${rules[@]}"; do
                     name=$(echo "$rule" | awk '{print $1}')
@@ -185,9 +225,9 @@ download_all_rules() {
     done
 }
 
-CURRENT_VERSION="v13.5.9"
+CURRENT_VERSION="v13.5.10"
 UPDATE_LOG="更新日志: 
-1.优化已知问题"
+1.同步规则源至MetaCubeX"
 
 TOOLBOX_URL="https://raw.githubusercontent.com/GitMetaio/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
@@ -320,7 +360,7 @@ update_module() {
     echo "↴"
     if [ -z "$GITHUB_TOKEN" ] || [ "$GITHUB_TOKEN" = "你的个人令牌" ]; then
         use_token=false
-        echo "提示：当前未配置 GitHub 令牌"
+        echo "Tips：当前未配置 GitHub 令牌"
         echo "      使用匿名访问服务可能会受 IP风控 速率等限制！"
         echo " "
     else
@@ -328,9 +368,10 @@ update_module() {
     fi
     if [ -f "$MODULE_PROP" ]; then
         current_version=$(grep '^version=' "$MODULE_PROP" | cut -d'=' -f2)
-        echo "当前模块版本号: $current_version"
+        current_version_code=$(grep '^versionCode=' "$MODULE_PROP" | cut -d'=' -f2)
     else
         current_version=""
+        current_version_code=""
         echo "当前设备没有安装 Surfing 模块"
         echo "↴"
     fi
@@ -346,9 +387,17 @@ update_module() {
         echo "错误：API 速率受限 / 网络请求异常！"
         return
     fi
+    remote_json=$(curl -s "https://raw.githubusercontent.com/GitMetaio/Surfing/refs/heads/main/Surfing.json")
+    module_version_code=$(echo "$remote_json" \
+        | grep -o '"versionCode"[[:space:]]*:[[:space:]]*[0-9]\+' \
+        | grep -o '[0-9]\+')
+    if [ -z "$module_version_code" ]; then
+        echo "获取服务器失败！"
+        return
+    fi
     echo "获取成功！"
     echo "当前最新版本号: $module_version"
-    if [ -n "$current_version" ] && [ "$current_version" = "$module_version" ]; then
+    if [ -n "$current_version_code" ] && [ "$current_version_code" -ge "$module_version_code" ]; then
         return
     fi
     echo "↴"
@@ -373,11 +422,11 @@ update_module() {
     ')
     echo "$latest_changelog"
     echo
-    if [ -n "$current_version" ]; then
-        echo "发现新版本：$module_version（当前：$current_version）"
+    if [ -n "$current_version_code" ]; then
+        echo "发现新版本：$module_version「当前: $current_version」"
         echo " ↳ 请手动至客户端操作"
     else
-        echo "检测到新版本：$module_version（当前未安装）"
+        echo "检测到新版本：$module_version「当前未安装」"
         echo " ↳ 请手动至客户端操作"
     fi
 }
