@@ -225,9 +225,11 @@ download_all_rules() {
     done
 }
 
-CURRENT_VERSION="v13.5.10"
+CURRENT_VERSION="v13.5.11"
 UPDATE_LOG="更新日志: 
-1.同步规则源至MetaCubeX"
+1.完善卸载路径
+2.同步规则源至 MetaCubeX
+3.启动时自动发起重载 Clash 配置文件检查"
 
 TOOLBOX_URL="https://raw.githubusercontent.com/GitMetaio/Surfing/main/box_bll/clash/Toolbox.sh"
 TOOLBOX_FILE="/data/adb/box_bll/clash/Toolbox.sh"
@@ -337,24 +339,15 @@ restore_subscribe_urls() {
     fi
 }
 reload_configuration1() {
-   if [ ! -f "$MODULE_PROP" ]; then
-      echo "↴" 
-      echo "当前未安装模块！"
-      return
-   fi
-   if [ -f "/data/adb/modules/Surfing/disable" ]; then
-      echo "↴" 
-      echo "服务未运行，重载操作失败！"
-      return
-   fi
-      echo "↴"
-      echo "正在重载 clash 配置..."
-      curl -X PUT "$CLASH_RELOAD_URL" -d "{\"path\":\"$CLASH_RELOAD_PATH\"}"
-   if [ $? -eq 0 ]; then
-      echo "ok"
-   else
-      echo "重载失败！"
-   fi
+    echo "↴"
+    echo "正在重载clash配置..."
+    pid=$(pidof clash)
+    if [ -n "$pid" ]; then
+        kill -USR1 "$pid"
+        echo "配置重载成功 ✓"
+    else
+        echo "clash进程未运行，跳过重载"
+    fi
 }
 update_module() {
     echo "↴"
@@ -396,7 +389,7 @@ update_module() {
         return
     fi
     echo "获取成功！"
-    echo "当前最新版本号: $module_version"
+    echo "当前最新版本号: $module_version「local: $current_version」"
     if [ -n "$current_version_code" ] && [ "$current_version_code" -ge "$module_version_code" ]; then
         return
     fi
@@ -521,15 +514,15 @@ backup_file() {
     fi
 }
 
-reload_configuration() {
+reload_configuration1() {
     echo "↴"
-    echo "正在重载clash配置..."
+    echo "正在重载 Clash 配置..."
     pid=$(pidof clash)
     if [ -n "$pid" ]; then
         kill -USR1 "$pid"
         echo "配置重载成功 ✓"
     else
-        echo "clash进程未运行，跳过重载"
+        echo "Clash 进程未运行，跳过重载"
     fi
 }
 
@@ -630,50 +623,47 @@ show_menu() {
     printc yellow "$UPDATE_LOG"
     echo
 
-    printc magenta "1. 重载配置"
+    printc magenta "1. 清空数据库缓存"
     echo
-    printc magenta "2. 清空数据库缓存"
+    printc magenta "2. 更新控制台面板"
     echo
-    printc magenta "3. 更新控制台面板"
+    printc magenta "3. 更新数据库"
     echo
-    printc magenta "4. 更新数据库"
+    printc magenta "4. 更新核心"
     echo
-    printc magenta "5. 更新核心"
+    printc magenta "5. 少儿频道"
     echo
-    printc magenta "6. 少儿频道"
+    printc magenta "6. 控制台面板入口"
     echo
-    printc magenta "7. 控制台面板入口"
+    printc magenta "7. 整合客户端更新状态"
     echo
-    printc magenta "8. 整合客户端更新状态"
+    printc magenta "8. 禁用/启用 更新模块"
     echo
-    printc magenta "9. 禁用/启用 更新模块"
+    printc magenta "9. 检查仓库最新提交"
     echo
-    printc magenta "10. 检查仓库最新提交"
+    printc magenta "10. 规则审查"
     echo
-    printc magenta "11. 规则审查"
+    printc magenta "11. 项目地址"
     echo
-    printc magenta "12. 项目地址"
+    printc magenta "12. 挂载 hosts"
     echo
-    printc magenta "13. 挂载 hosts"
+    printc magenta "13. 一键卸载"
     echo
-    printc magenta "14. 一键卸载"
+    printc magenta "14. Debug"
     echo
-    printc magenta "15. Debug"
-    echo
-    printc magenta "16. Exit"
+    printc magenta "15. Exit"
     echo
     printc -n blue "正在等待输出: "
     read -r choice
     case $choice in
-      1) reload_configuration ;;
-      2) clear_cache ;;
-      3) update_web_panel ;;
-      4) update_geo_database ;;
-      5) update_core ;;
-      6) open_telegram_group ;;
-      7) show_web_panel_menu ;;
-      8) integrate_magisk_update ;;
-      9)
+      1) clear_cache ;;
+      2) update_web_panel ;;
+      3) update_geo_database ;;
+      4) update_core ;;
+      5) open_telegram_group ;;
+      6) show_web_panel_menu ;;
+      7) integrate_magisk_update ;;
+      8)
         if ! check_module_installed; then continue; fi
         check_update_status
         printc yellow "1. 禁用更新"
@@ -687,7 +677,7 @@ show_menu() {
           *) printc red "无效的输入！" ;;
         esac
         ;;
-      10)
+      9)
         echo "↴" 
         printc cyan "正在检查仓库更新..."
         all_up_to_date=true
@@ -714,12 +704,12 @@ show_menu() {
         echo
         printc cyan "检测已完毕..."
         ;;
-      11) download_all_rules ;;
-      12) open_project_page ;;
-      13) mount_hosts ;;
-      14) delete_files_and_dirs ;;
-      15) service_check ;;
-      16) exit 0 ;;
+      10) download_all_rules ;;
+      11) open_project_page ;;
+      12) mount_hosts ;;
+      13) delete_files_and_dirs ;;
+      14) service_check ;;
+      15) exit 0 ;;
       *) printc red "无效的输入！" ;;
     esac
   done
@@ -1315,25 +1305,43 @@ update_web_panel() {
     echo "$meta_version $yacd_version $zash_version" > "$WEB_PANEL_TIMESTAMP"
 }
 reload_configuration() {
-    if [ ! -f "$MODULE_PROP" ]; then
-        echo "↴" 
-        echo "当前未安装模块！"
-        return
-    fi
-    if [ -f "/data/adb/modules/Surfing/disable" ]; then
-        echo "↴" 
-        echo "服务未运行，重载操作失败！"
-        return
-    fi
     echo "↴"
-    echo "正在重载 clash 配置..."
-    curl -X PUT "$CLASH_RELOAD_URL" -d "{\"path\":\"$CLASH_RELOAD_PATH\"}"
-    if [ $? -eq 0 ]; then
-        echo "ok"
-    else
-        echo "重载失败！"
+    echo "Clash 配置检查..."
+
+    response=$(curl -s -w "\n%{http_code}" -X PUT \
+        "$CLASH_RELOAD_URL" \
+        -d "{\"path\":\"$CLASH_RELOAD_PATH\"}")
+
+    body=$(echo "$response" | sed '$d')
+    code=$(echo "$response" | tail -n1)
+
+    if [ "$code" = "400" ]; then
+        echo "配置文件语法存在错误："
+        msg=$(echo "$body" | sed -n 's/.*"message":"\([^"]*\)".*/\1/p')
+        if [ -n "$msg" ]; then
+            echo "$msg"
+        else
+            echo "$body"
+        fi
+        return
     fi
+
+    if [ "$code" = "200" ] || [ "$code" = "204" ]; then
+        if echo "$body" | grep -qi "error"; then
+            echo "配置重载失败！Clash 错误："
+            msg=$(echo "$body" | sed -n 's/.*"message":"\([^"]*\)".*/\1/p')
+            [ -n "$msg" ] && echo "$msg" || echo "$body"
+        else
+            echo "OK"
+        fi
+        return
+    fi
+
+    echo "配置重载失败！HTTP 状态码：$code"
+    msg=$(echo "$body" | sed -n 's/.*"message":"\([^"]*\)".*/\1/p')
+    [ -n "$msg" ] && echo "$msg" || [ -n "$body" ] && echo "$body"
 }
+reload_configuration
 update_core() {
     if [ "$NO_UPDATE_ENABLED" = "true" ]; then
         echo "↴"
@@ -1427,11 +1435,6 @@ open_project_page() {
     fi
 }
 delete_files_and_dirs() {
-    if [ ! -d "/data/adb/modules/Surfing/" ]; then
-        echo "↴"
-        echo "当前未安装模块！"
-        return
-    fi
     echo "↴"
     echo "警告：此操作将卸载删除 Surfing 模块，整体所有相关组件及数据，不可恢复！"
     echo
@@ -1473,6 +1476,16 @@ delete_files_and_dirs() {
             echo "↴"
             echo "正在删除..."
             
+            rm -rf "/data/adb/modules/Surfingtile" 2>/dev/null
+            rm -rf "/data/adb/modules_update/Surfingtile" 2>/dev/null
+            rm -rf "/data/adb/lite_modules/Surfingtile" 2>/dev/null
+            rm -rf "/data/adb/lite_modules_update/Surfingtile" 2>/dev/null
+            
+            rm -rf "/data/adb/modules/Surfing_Tile" 2>/dev/null
+            rm -rf "/data/adb/modules_update/Surfing_Tile" 2>/dev/null
+            rm -rf "/data/adb/lite_modules/Surfing_Tile" 2>/dev/null
+            rm -rf "/data/adb/lite_modules_update/Surfing_Tile" 2>/dev/null
+            
             rm -rf "/data/adb/modules_update/Surfing" 2>/dev/null
             rm -rf "/data/adb/modules/Surfing" 2>/dev/null
             rm -f "/data/adb/service.d/Surfing_service.sh" 2>/dev/null
@@ -1485,13 +1498,18 @@ delete_files_and_dirs() {
             rm -rf "$APP_DIR" 2>/dev/null
             rm -rf "/data/user/0/com.yadli.surfingtile" 2>/dev/null
             rm -rf "/data/data/com.yadli.surfingtile" 2>/dev/null
-            
             APP_DIR2=$(find /data/app -type d -name "*com.android64bit.web*" 2>/dev/null | grep com.android64bit.web)
             rm -rf "$APP_DIR2" 2>/dev/null
             rm -rf "/data/user/0/com.android64bit.web" 2>/dev/null
             rm -rf "/data/data/com.android64bit.web" 2>/dev/null
             
+            sleep 1
+            pm uninstall "com.yadli.surfingtile" > /dev/null 2>&1 || pm uninstall --user 0 "com.yadli.surfingtile" > /dev/null 2>&1
+            pm uninstall "com.android64bit.web" > /dev/null 2>&1 || pm uninstall --user 0 "com.android64bit.web" > /dev/null 2>&1
+            pm uninstall "com.surfing.tile" > /dev/null 2>&1 || pm uninstall --user 0 "com.surfing.tile" > /dev/null 2>&1
+            
             echo "卸载完成！"
+            echo "可能需要重启以变更."
             return
         elif [ -z "$input" ]; then
             echo "↴"
