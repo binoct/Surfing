@@ -469,7 +469,10 @@ case "$1" in
     fi
 
     find_packages_uid
-    intranet[${#intranet[@]}]=$(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127.0.0.1")
+    fake_ip_prefix=$(echo ${fake_ip_range_v4} | cut -d. -f1,2)
+    intranet_results=$(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127\.0\.0\.1|^${fake_ip_prefix}\.")
+    intranet[${#intranet[@]}]=$intranet_results
+    log Info "内网豁免列表已更新."
 
     if [ "${proxy_method}" = "TPROXY" ] ; then
       if (zcat /proc/config.gz | grep -q TPROXY) ; then
@@ -546,7 +549,10 @@ case "$1" in
     fi
 
     find_packages_uid
-    intranet[${#intranet[@]}]=$(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127.0.0.1")
+    fake_ip_prefix=$(echo ${fake_ip_range_v4} | cut -d. -f1,2)
+    intranet_results=$(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127\.0\.0\.1|^${fake_ip_prefix}\.")
+    intranet[${#intranet[@]}]=$intranet_results
+    log Info "内网豁免列表已更新."
 
     if [ "${proxy_method}" = "TPROXY" ] ; then
       log Info "重新应用 TPROXY 规则..."
