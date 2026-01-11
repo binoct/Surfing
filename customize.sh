@@ -39,7 +39,6 @@ else
   INSTALL_TILE=false
 fi
 
-
 if [ "$BOOTMODE" != true ]; then
   abort "Error: Please install via Magisk Manager / KernelSU Manager / APatch"
 elif [ "$KSU" = true ] && [ "$KSU_VER_CODE" -lt 10670 ]; then
@@ -165,7 +164,6 @@ choose_to_umount_hosts_file() {
 }
 
 remove_old_surfingtile(){
-
   rm -rf /data/adb/modules/Surfingtile 2>/dev/null
   rm -rf /data/adb/modules_update/Surfingtile 2>/dev/null
   rm -rf /data/adb/lite_modules/Surfingtile 2>/dev/null
@@ -177,7 +175,6 @@ remove_old_surfingtile(){
   rm -rf /data/adb/lite_modules_update/Surfing_Tile 2>/dev/null
 
   pm uninstall "com.yadli.surfingtile" > /dev/null 2>&1 || pm uninstall --user 0 "com.yadli.surfingtile" > /dev/null 2>&1
-
 }
 
 unzip -qo "${ZIPFILE}" -x 'META-INF/*' -d "$MODPATH"
@@ -191,21 +188,14 @@ if [ -d "$BOX_BLL_PATH" ]; then
   ui_print "↴"
   ui_print "Initializing services..."
   "$BOX_BLL_PATH/scripts/box.service" stop > /dev/null 2>&1
+  
   sleep 2
-    
-  if [ "$INSTALL_TILE" = "true" ]; then
-    install_surfingtile_module
-    install_surfingtile_apk
-  fi
+  
+  [ "$INSTALL_TILE" = "true" ] && install_surfingtile_module && install_surfingtile_apk
 
   extract_subscribe_urls
 
-  if [ -f "$HOSTS_FILE" ]; then
-    cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"
-  fi
-
-  mkdir -p "$HOSTS_PATH"
-  touch "$HOSTS_FILE"
+  [ -f "$HOSTS_FILE" ] && cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"; mkdir -p "$HOSTS_PATH" && touch "$HOSTS_FILE"
   
   cp "$BOX_BLL_PATH/clash/config.yaml" "$BOX_BLL_PATH/clash/config.yaml.bak"
   cp "$BOX_BLL_PATH/scripts/box.config" "$BOX_BLL_PATH/scripts/box.config.bak"
