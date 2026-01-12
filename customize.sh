@@ -6,10 +6,7 @@ ASH_STANDALONE=1
 CURRENT_MODULES_DIR="/data/adb/modules"
 UPDATE_MODULES_DIR="/data/adb/modules_update"
 
-[ -n "$(magisk -v | grep lite)" ] && {
-  CURRENT_MODULES_DIR="/data/adb/lite_modules"
-  UPDATE_MODULES_DIR="/data/adb/lite_modules_update"
-}
+magisk -v | grep -q lite && CURRENT_MODULES_DIR="/data/adb/lite_modules" && UPDATE_MODULES_DIR="/data/adb/lite_modules_update"
 
 SURFING_PATH="$CURRENT_MODULES_DIR/Surfing"
 BOX_BLL_PATH="/data/adb/box_bll"

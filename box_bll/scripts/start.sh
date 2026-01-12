@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 module_dir="/data/adb/modules/Surfing"
-[ -n "$(magisk -v | grep lite)" ] && module_dir="/data/adb/lite_modules/Surfing"
+magisk -v | grep -q lite && module_dir="/data/adb/lite_modules/Surfing"
 
 scripts=$(realpath "$0")
 scripts_dir=$(dirname "${scripts}")
@@ -31,6 +31,4 @@ if [ ! -f "${box_path}/manual" ] && [ ! -f "${module_dir}/disable" ]; then
   "${scripts_dir}/box.iptables" enable >> "${run_path}/run.log" 2>> "${run_path}/run_error.log"
 fi
 
-chown -R 0:0 /data/adb/box_bll/clash/etc/
-find /data/adb/box_bll/clash/etc/ -type d -exec chmod 755 {} \;
-find /data/adb/box_bll/clash/etc/ -type f -exec chmod 644 {} \;
+find /data/adb/box_bll/clash/etc/ -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
