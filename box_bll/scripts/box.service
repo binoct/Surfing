@@ -10,12 +10,6 @@ source ${scripts_dir}/box.config
 mkdir -p "${run_path}"
 mkdir -p "${box_path}/${bin_name}/log"
 
-# ${box_path}/bin/yq -i ".tproxy-port=${tproxy_port}" ${box_path}/clash/config.yaml
-# ${box_path}/bin/yq -i ".dns.listen=\"${clash_dns_listen}\"" ${box_path}/clash/config.yaml
-# ${box_path}/bin/yq -i ".dns.fake-ip-range=\"${clash_fake_ip_range}\"" ${box_path}/clash/config.yaml
-
-# ${box_path}/bin/yq -o=json -i "(.inbounds[] | select(.type == \"tproxy\") | .listen_port) = ${tproxy_port}" ${box_path}/sing-box/config.json
-
 find "${box_path}" -mtime +3 -type f -name "*.log" | xargs rm -f
 
 log() {
@@ -199,10 +193,16 @@ display_bin_status() {
   if bin_pid=$(busybox pidof "${bin_name}"); then
     log Info "${bin_name} 使用用户组: $(stat -c %U:%G /proc/${bin_pid})."
     log Info "${bin_name} 服务正在运行. ( PID: ${bin_pid} )"
-    log Info "${bin_name} 内存使用: $(awk '/VmRSS/ {print $2$3}' /proc/${bin_pid}/status)"
-    log Info "${bin_name} CPU 使用: $((/system/bin/ps -eo %CPU,NAME | grep ${bin_name} | awk '{print $1"%"}') 2>/dev/null || dumpsys cpuinfo | grep ${bin_name} | awk '{print $1}')"
+    mem_kb=$(awk '/VmRSS/ {print $2}' /proc/${bin_pid}/status)
+    mem_mb=$(awk -v kb="$mem_kb" 'BEGIN {printf "%.2f MB", kb/1024}')
+    log Info "${bin_name} 内存使用: ${mem_mb}"
+    cpu_usage=$(/system/bin/ps -eo %CPU,NAME 2>/dev/null | awk -v bin="$bin_name" '$2==bin {print $1"%"; exit}')
+    if [ -z "$cpu_usage" ]; then
+        cpu_usage=$(dumpsys cpuinfo | grep "$bin_name" | awk '{print $1}')
+    fi
+    log Info "${bin_name} CPU 使用: ${cpu_usage}"
     log Info "${bin_name} 服务已运行: $(display_run_time)"
-    echo -n ${bin_pid} > "${pid_file}"
+    echo -n "${bin_pid}" > "${pid_file}"
     return 0
   else
     log Warn "${bin_name} 服务已停止."
@@ -255,12 +255,12 @@ probe_tun_index() {
   while [ ! -f "/data/misc/net/rt_tables" ]; do
     sleep 3
   done
-  cat /data/misc/net/rt_tables | while read -r index name; do
+  while read -r index name; do
     if [ "${name}" = "${tun_device}" ]; then
       tun_table_index=${index}
       return 0
     fi
-  done
+  done < /data/misc/net/rt_tables
   return 1
 }
 
