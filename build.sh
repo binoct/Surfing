@@ -1,5 +1,37 @@
 #!/bin/sh
 
+CORE_DST="box_bll/bin/clash"
+CORE_TMP="clash_core.gz"
+
+MIHOMO_API="https://api.github.com/repos/MetaCubeX/mihomo/releases/latest"
+MIHOMO_BASE="https://github.com/MetaCubeX/mihomo/releases/download"
+MIHOMO_NAME="mihomo-android-arm64-v8"
+
+latest_version=$(curl -fsSL "$MIHOMO_API" \
+    | grep '"tag_name"' \
+    | sed -E 's/.*"([^"]+)".*/\1/')
+
+if [ -z "$latest_version" ]; then
+    echo "Failed to get latest mihomo version"
+    exit 1
+fi
+
+echo "Latest mihomo version: $latest_version"
+
+download_url="${MIHOMO_BASE}/${latest_version}/${MIHOMO_NAME}-${latest_version}.gz"
+
+echo "Downloading mihomo core..."
+curl -fL "$download_url" -o "$CORE_TMP"
+
+if [ ! -s "$CORE_TMP" ]; then
+    echo "Core download failed or file is empty"
+    exit 1
+fi
+
+gunzip -c "$CORE_TMP" > "$CORE_DST"
+
+rm -f "$CORE_TMP"
+
 APK_DIR="app/version/com.surfing.tile"
 TILE_DST="SurfingTile/system/app/com.surfing.tile"
 TILE_PROP="SurfingTile/module.prop"
