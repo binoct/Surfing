@@ -148,8 +148,8 @@ start_redirect() {
     log Info "所有应用的透明代理已启用(IPv4)."
   fi
   
-  ip6tables -A OUTPUT -p udp --dport 53 -j DROP
-  ip6tables -A OUTPUT -p tcp --dport 853 -j DROP
+  ip6tables -S OUTPUT | grep -q "dport 53 -j DROP" || ip6tables -A OUTPUT -p udp --dport 53 -j DROP
+  ip6tables -S OUTPUT | grep -q "dport 853 -j DROP" || ip6tables -A OUTPUT -p tcp --dport 853 -j DROP
   ${iptables} -t nat -I OUTPUT -j BOX_LOCAL
   ${iptables} -A OUTPUT -d 127.0.0.1 -p tcp -m owner --uid-owner ${box_user} --gid-owner ${box_group} -m tcp --dport ${redir_port} -j REJECT
 }
@@ -357,8 +357,8 @@ start_tproxy() {
     fi
   fi
   
-  ip6tables -A OUTPUT -p udp --dport 53 -j DROP
-  ip6tables -A OUTPUT -p tcp --dport 853 -j DROP
+  ip6tables -S OUTPUT | grep -q "dport 53 -j DROP" || ip6tables -A OUTPUT -p udp --dport 53 -j DROP
+  ip6tables -S OUTPUT | grep -q "dport 853 -j DROP" || ip6tables -A OUTPUT -p tcp --dport 853 -j DROP
   
   iptables -w 100 -t nat -A OUTPUT -d ${fake_ip_range_v4} -p icmp -j DNAT --to-destination 127.0.0.1
   iptables -w 100 -t nat -A PREROUTING -d ${fake_ip_range_v4} -p icmp -j DNAT --to-destination 127.0.0.1
@@ -469,9 +469,7 @@ case "$1" in
     fi
 
     find_packages_uid
-    fake_ip_prefix=$(echo ${fake_ip_range_v4} | cut -d. -f1,2)
-    intranet_results=$(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127\.0\.0\.1|^${fake_ip_prefix}\.")
-    intranet[${#intranet[@]}]=$intranet_results
+    intranet[${#intranet[@]}]=$(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127.0.0.1")
     log Info "内网豁免列表已更新."
 
     if [ "${proxy_method}" = "TPROXY" ] ; then
@@ -549,9 +547,7 @@ case "$1" in
     fi
 
     find_packages_uid
-    fake_ip_prefix=$(echo ${fake_ip_range_v4} | cut -d. -f1,2)
-    intranet_results=$(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127\.0\.0\.1|^${fake_ip_prefix}\.")
-    intranet[${#intranet[@]}]=$intranet_results
+    intranet[${#intranet[@]}]=$(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127.0.0.1")
     log Info "内网豁免列表已更新."
 
     if [ "${proxy_method}" = "TPROXY" ] ; then

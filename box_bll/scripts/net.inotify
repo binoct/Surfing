@@ -17,7 +17,6 @@ export TZ
 TMP_DIR="/dev/tmp"
 LINKCLEAR_LOCK="${TMP_DIR}/linkclear.lock"
 BOOT_STABLE_FLAG="${TMP_DIR}/boot_stable.flag"
-RULES_ADD_FLAG="${TMP_DIR}/rules_add_executed.flag"
 
 uptime_sec=$(awk '{print int($1)}' /proc/uptime)
 
@@ -39,13 +38,9 @@ clear_links() {
 
 rules_add() {
     iptables -t mangle -F LOCAL_IP_V4
-    local fake_prefix=$(echo ${fake_ip_range_v4} | cut -d. -f1,2)
     ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127\.0\.0\.1" | while read -r local_ipv4; do
-        case "$local_ipv4" in
-            ${fake_prefix}.*) continue ;;
-        esac
-        iptables -w 100 -t mangle -A LOCAL_IP_V4 -d "$local_ipv4" -j ACCEPT
-        iptables -w 100 -t nat -A LOCAL_IP_V4 -d "$local_ipv4" -j ACCEPT
+     iptables -w 100 -t mangle -A LOCAL_IP_V4 -d "$local_ipv4" -j ACCEPT
+     iptables -w 100 -t nat -A LOCAL_IP_V4 -d "$local_ipv4" -j ACCEPT
     done
     
     ip6tables -t mangle -F LOCAL_IP_V6
@@ -56,19 +51,7 @@ rules_add() {
 }
 
 if [ "$events" = "w" ]; then
-    if [ -f "$BOOT_STABLE_FLAG" ]; then
-        last_exec_time=$(stat -c %Y "$BOOT_STABLE_FLAG")
-        current_time=$(date +%s)
-        time_diff=$((current_time - last_exec_time))
-        
-        if [ "$time_diff" -lt 30 ]; then
-            exit 0
-        fi
-    fi
-    
-    sleep 3
     rules_add
-    
     sleep 1
     if [ "$ipv6" = "disable" ]; then
         disable_ipv6
@@ -79,17 +62,4 @@ if [ "$uptime_sec" -lt 360 ] && [ ! -f "$BOOT_STABLE_FLAG" ]; then
     sleep 60
     rules_add
     touch "$BOOT_STABLE_FLAG"
-fi
-
-if [ ! -f "/data/adb/modules/Surfing/disable" ]; then
-    if [ -f "$RULES_ADD_FLAG" ]; then
-        exit 0
-    fi
-    sleep 10
-    rules_add
-    touch "$RULES_ADD_FLAG" 
-else
-    if [ -f "$RULES_ADD_FLAG" ]; then
-        rm -f "$RULES_ADD_FLAG"
-    fi
 fi
