@@ -30,7 +30,7 @@ MODULE_PROP_PATH="$CURRENT_MODULES_DIR/Surfing/module.prop"
 MODULE_VERSION_CODE=0
 [ -f "$MODULE_PROP_PATH" ] && MODULE_VERSION_CODE=$(awk -F'=' '/versionCode/ {print $2}' "$MODULE_PROP_PATH")
 
-if [ "$MODULE_VERSION_CODE" -lt 1638 ]; then
+if [ "$MODULE_VERSION_CODE" -lt 1639 ]; then
   INSTALL_TILE=true
 else
   INSTALL_TILE=false
