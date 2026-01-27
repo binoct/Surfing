@@ -21,19 +21,23 @@ BOOT_STABLE_FLAG="${TMP_DIR}/boot_stable.flag"
 uptime_sec=$(awk '{print int($1)}' /proc/uptime)
 
 clear_links() {
-    [ ! -f "$BOOT_STABLE_FLAG" ] && return
-    
-    now=$(date +%s)
-    
-    if [ -f "$LINKCLEAR_LOCK" ]; then
-        last=$(cat "$LINKCLEAR_LOCK")
-        [ $((now - last)) -lt 15 ] && return
-    fi
-    echo "$now" > "$LINKCLEAR_LOCK"
-    
-    PORT=$(grep -E '^[[:space:]]*external-controller:' "$CLASH_CONFIG" \
-        | head -n1 | cut -d':' -f3 | cut -d'#' -f1 | tr -d '\r\n ')
-    curl -s -X DELETE "http://127.0.0.1:${PORT}/connections" >/dev/null 2>&1
+[ ! -f "$BOOT_STABLE_FLAG" ] && return
+
+now_ts=$(date +%s)
+if [ -f "$LINKCLEAR_LOCK" ]; then
+last=$(cat "$LINKCLEAR_LOCK")
+[ $((now_ts - last)) -lt 15 ] && return
+fi
+echo "$now_ts" > "$LINKCLEAR_LOCK"
+
+local PORT=$(grep -E '^[[:space:]]*external-controller:' "$CLASH_CONFIG" | head -n1 | awk -F ':' '{print $NF}' | cut -d'#' -f1 | tr -d ' "\r\n')
+local RAW_SECRET=$(grep -E '^[[:space:]]*secret:' "$CLASH_CONFIG" | head -n1 | cut -d':' -f2- | cut -d'#' -f1 | tr -d ' "' | tr -d '\r\n')
+
+local AUTH_HEADER=""
+[ -n "$RAW_SECRET" ] && AUTH_HEADER="-H \"Authorization: Bearer $RAW_SECRET\""
+
+local URL_CONN="http://127.0.0.1:${PORT}/connections"
+eval "curl -s $AUTH_HEADER -X DELETE \"$URL_CONN\"" >/dev/null 2>&1
 }
 
 rules_add() {
