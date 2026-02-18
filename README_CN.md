@@ -74,6 +74,12 @@
 
 > 通过管理器卸载本模块，会卸载所有相应的服务数据，Web 等 SurfingTile 磁贴应用数据
 
+## Group Telegram
+
+<a href="https://t.me/Surfingbox">
+  <img src="./folder/IMG_20260218_112257.jpg" alt="Group" width="100">
+</a>
+
 ## Wiki
 
 <details>
@@ -300,14 +306,6 @@
     <br>
     <strong>CHIZI-0618</strong>
   </a>
-</div>
-
-<div align="center">
-  <a href="https://github.com/MetaCubeX"><strong>MetaCubeX</strong></a>
-</div>
-
-<div align="center">
-  <a href="https://github.com/Loyalsoldier"><strong>Loyalsoldier</strong></a>
 </div>
 
 <div align="center">

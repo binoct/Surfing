@@ -72,6 +72,12 @@ Please decide whether to use the Surfing module only after clearly understanding
 
 > Uninstalling this module via the manager will remove all related service data, including Web and SurfingTile tile app data.
 
+## Group Telegram
+
+<a href="https://t.me/Surfingbox">
+  <img src="./folder/IMG_20260218_112257.jpg" alt="Group" width="100">
+</a>
+
 ## Wiki
 
 <details>
@@ -316,14 +322,6 @@ These are the **only network-related behaviors** in this project.
     <br>
     <strong>CHIZI-0618</strong>
   </a>
-</div>
-
-<div align="center">
-  <a href="https://github.com/MetaCubeX"><strong>MetaCubeX</strong></a>
-</div>
-
-<div align="center">
-  <a href="https://github.com/Loyalsoldier"><strong>Loyalsoldier</strong></a>
 </div>
 
 <div align="center">
