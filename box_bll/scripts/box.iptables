@@ -1,16 +1,16 @@
-#!/system/bin/sh  
-  
-export PATH="/data/adb/magisk:/data/adb/ksu/bin:/data/adb/ap/bin:$PATH:/data/data/com.termux/files/usr/bin"  
-  
-scripts=$(realpath $0)  
-scripts_dir=$(dirname ${scripts})  
-  
-source ${scripts_dir}/box.config  
+#!/system/bin/sh
 
-mark_id="16777216/16777216"  
-table_id="2024"  
-# routing_mark="233"  
+export PATH="/data/adb/magisk:/data/adb/ksu/bin:/data/adb/ap/bin:$PATH:/data/data/com.termux/files/usr/bin"
+
+scripts=$(realpath $0)
+scripts_dir=$(dirname ${scripts})
   
+source ${scripts_dir}/box.config
+
+mark_id="16777216/16777216"
+table_id="2024"
+# routing_mark="233"
+
 log() {
 export TZ=Asia/Shanghai
 now=$(date +"[%Y-%m-%d %H:%M:%S %Z]")
@@ -29,36 +29,44 @@ Error)
 ;;
 esac
 }
-  
+
+optimize_kernel() {
+  echo 65536 > /proc/sys/net/netfilter/nf_conntrack_max
+  echo 16384 > /proc/sys/net/netfilter/nf_conntrack_buckets
+  echo 30 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout
+  echo 15 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout_stream
+  log Info "内核性能优化完成."
+}
+
 uid_list=()  
 find_packages_uid() {  
-  for user_package in ${user_packages_list[@]} ; do  
-    user=$(echo ${user_package} | awk -F ':' '{print $1}')  
-    package=$(echo ${user_package} | awk -F ':' '{print $2}')  
-    uid="$(awk '{if($1=="'${package}'"){print $2}}' /data/system/packages.list)"  
+  for user_package in ${user_packages_list[@]} ; do
+    user=$(echo ${user_package} | awk -F ':' '{print $1}')
+    package=$(echo ${user_package} | awk -F ':' '{print $2}')
+    uid="$(awk '{if($1=="'${package}'"){print $2}}' /data/system/packages.list)"
     if [[ -n "${uid}" ]]; then  
-      uid_list[${#uid_list[@]}]=$(expr ${user} \* "100000" + ${uid})  
+      uid_list[${#uid_list[@]}]=$(expr ${user} \* "100000" + ${uid})
     fi  
   done  
 }  
   
-probe_user_group() {  
-  if bin_pid=$(busybox pidof ${bin_name}) ; then  
-    box_user=$(stat -c %U /proc/${bin_pid})  
-    box_group=$(stat -c %G /proc/${bin_pid})  
-    return 0  
-  else  
-    box_user=$(echo ${box_user_group} | awk -F ':' '{print $1}')  
-    box_group=$(echo ${box_user_group} | awk -F ':' '{print $2}')  
-    return 1  
-  fi  
-}  
+probe_user_group() {
+  if bin_pid=$(busybox pidof ${bin_name}) ; then
+    box_user=$(stat -c %U /proc/${bin_pid})
+    box_group=$(stat -c %G /proc/${bin_pid})
+    return 0
+  else
+    box_user=$(echo ${box_user_group} | awk -F ':' '{print $1}')
+    box_group=$(echo ${box_user_group} | awk -F ':' '{print $2}')
+    return 1
+  fi
+}
 
 start_redirect() {
-  ${iptables} -t nat -N BOX_EXTERNAL 
-  ${iptables} -t nat -F BOX_EXTERNAL 
-  ${iptables} -t nat -N BOX_LOCAL 
-  ${iptables} -t nat -F BOX_LOCAL 
+  ${iptables} -t nat -N BOX_EXTERNAL
+  ${iptables} -t nat -F BOX_EXTERNAL
+  ${iptables} -t nat -N BOX_LOCAL
+  ${iptables} -t nat -F BOX_LOCAL
   
   if [ "${bin_name}" = "clash" ]; then
     ${iptables} -t nat -A BOX_EXTERNAL -p udp --dport 53 -j REDIRECT --to-ports ${clash_dns_port}
@@ -68,7 +76,7 @@ start_redirect() {
   fi
   
   ${iptables} -t nat -N LOCAL_IP_V4
-  ${iptables} -t nat -F LOCAL_IP_V4 
+  ${iptables} -t nat -F LOCAL_IP_V4
   
   for subnet in ${intranet[@]} ; do
     ${iptables} -t nat -A BOX_EXTERNAL -d ${subnet} -j RETURN
@@ -467,8 +475,8 @@ case "$1" in
       log Error "检查Box用户组失败，请确保 ${bin_name} 核心已启动."
       return 1
     fi
-
     find_packages_uid
+    optimize_kernel
     intranet[${#intranet[@]}]=$(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127.0.0.1")
     log Info "内网豁免列表已更新."
 
