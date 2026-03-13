@@ -49,7 +49,7 @@ find_packages_uid() {
     fi  
   done  
 }  
-  
+
 probe_user_group() {
   if bin_pid=$(busybox pidof ${bin_name}) ; then
     box_user=$(stat -c %U /proc/${bin_pid})
@@ -259,13 +259,6 @@ start_tproxy() {
   fi
   
   if [ "${iptables}" = "ip6tables -w 100" ] ; then
-    ${iptables} -t mangle -I BOX_LOCAL 1 -d ${fake_ip_range_v6} -j MARK --set-xmark ${mark_id}
-  else
-    fake_v4_gw=$(echo ${fake_ip_range_v4} | cut -d'/' -f1 | sed 's/\.[0-9]*$/\.1/')
-    ${iptables} -t mangle -I BOX_LOCAL 1 -d ${fake_v4_gw} -j MARK --set-xmark ${mark_id}
-  fi
-  
-  if [ "${iptables}" = "ip6tables -w 100" ] ; then
     for subnet6 in ${intranet6[@]} ; do
       ${iptables} -t mangle -A BOX_LOCAL -d ${subnet6} -j RETURN
     done
@@ -406,10 +399,6 @@ stop_tproxy() {
   if [ "${iptables}" = "ip6tables -w 100" ] ; then
     ip6tables -D OUTPUT -p udp --dport 53 -j DROP
     ip6tables -D OUTPUT -p tcp --dport 853 -j DROP
-    ${iptables} -t mangle -D BOX_LOCAL -d ${fake_ip_range_v6} -j MARK --set-xmark ${mark_id}
-  else
-    fake_v4_gw=$(echo ${fake_ip_range_v4} | cut -d'/' -f1 | sed 's/\.[0-9]*$/\.1/')
-    ${iptables} -t mangle -D BOX_LOCAL -d ${fake_v4_gw} -j MARK --set-xmark ${mark_id}
   fi
   
   if [ "${iptables}" = "ip6tables -w 100" ] ; then
