@@ -16,7 +16,6 @@ NET_PATH="/data/misc/net"
 CTR_PATH="/data/misc/net/rt_tables"
 CONFIG_FILE="$BOX_BLL_PATH/clash/config.yaml"
 BACKUP_FILE="$BOX_BLL_PATH/clash/proxies/subscribe_urls_backup.txt"
-APK_FILE="$MODPATH/webroot/com.android64bit.web.apk"
 INSTALL_DIR="/data/app"
 HOSTS_FILE="$BOX_BLL_PATH/clash/etc/hosts"
 HOSTS_PATH="$BOX_BLL_PATH/clash/etc"
@@ -88,17 +87,6 @@ restore_subscribe_urls() {
   fi
 }
 
-install_web_apk() {
-  if [ -f "$APK_FILE" ]; then
-    cp "$APK_FILE" "$INSTALL_DIR/"
-    ui_print "Installing com.android64bit.web.apk..."
-    pm install "$INSTALL_DIR/com.android64bit.web.apk"
-    rm -rf "$INSTALL_DIR/com.android64bit.web.apk"
-  else
-    ui_print "com.android64bit.web.apk not found"
-  fi
-}
-
 install_surfingtile_apk() {
   APK_SRC="$UPDATE_SURFING_TILE_DIR/system/app/com.surfing.tile/com.surfing.tile.apk"
   APK_TMP="$INSTALL_DIR/com.surfing.tile.apk"
@@ -123,7 +111,7 @@ install_surfingtile_module() {
 }
 
 sync_version_from_module_prop() {
-  local dst_prop="$CURRENT_MODULES_DIR/Surfing/module.prop"
+  dst_prop="$CURRENT_MODULES_DIR/Surfing/module.prop"
   if [ -f "$MODPATH/module.prop" ] && [ -d "$CURRENT_MODULES_DIR/Surfing" ]; then
     cp -f "$MODPATH/module.prop" "$dst_prop"
   fi
@@ -133,9 +121,10 @@ choose_volume_key() {
   timeout_seconds=10
   ui_print "Waiting for input (${timeout_seconds}s)..."
 
-  read -r -t $timeout_seconds line < <(getevent -ql | awk '/KEY_VOLUME/ {print; exit}')
+  # 修复 POSIX sh 兼容性：使用 timeout 命令代替 read -t 和进程替换
+  line=$(timeout $timeout_seconds getevent -ql | awk '/KEY_VOLUME/ {print; exit}')
 
-  if [ $? -eq 142 ]; then
+  if [ -z "$line" ]; then
       ui_print "No input detected. Running default option..."
       return 1
   fi
@@ -192,7 +181,10 @@ if [ -d "$BOX_BLL_PATH" ]; then
 
   extract_subscribe_urls
 
-  [ -f "$HOSTS_FILE" ] && cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"; mkdir -p "$HOSTS_PATH" && touch "$HOSTS_FILE"
+  if [ -f "$HOSTS_FILE" ]; then
+    cp -f "$HOSTS_FILE" "$HOSTS_BACKUP"
+  fi
+  mkdir -p "$HOSTS_PATH" && touch "$HOSTS_FILE"
   
   cp "$BOX_BLL_PATH/clash/config.yaml" "$BOX_BLL_PATH/clash/config.yaml.bak"
   cp "$BOX_BLL_PATH/scripts/box.config" "$BOX_BLL_PATH/scripts/box.config.bak"
@@ -219,7 +211,7 @@ if [ -d "$BOX_BLL_PATH" ]; then
   restore_subscribe_urls
   
   for pid in $(pidof inotifyd); do
-    if grep -qE "box.inotify|net.inotify|ctr.inotify" /proc/${pid}/cmdline; then
+    if [ -f "/proc/${pid}/cmdline" ] && grep -qE "box.inotify|net.inotify|ctr.inotify" "/proc/${pid}/cmdline"; then
       kill "$pid"
     fi
   done
@@ -247,8 +239,7 @@ else
   mv "$MODPATH/box_bll" /data/adb/
   install_surfingtile_module
   install_surfingtile_apk
-  install_web_apk
-  
+
   ui_print "Module installation completed. Working directory:"
   ui_print "data/adb/box_bll/"
   ui_print "Please add your subscription to"

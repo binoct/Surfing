@@ -1,5 +1,7 @@
 #!/bin/sh
 
+isAlpha="${isAlpha:-false}"
+
 CORE_DST="box_bll/bin/clash"
 CORE_TMP="clash_core.gz"
 
@@ -40,29 +42,19 @@ APK_DIR="app/version/com.surfing.tile"
 TILE_DST="SurfingTile/system/app/com.surfing.tile"
 TILE_PROP="SurfingTile/module.prop"
 
-latest_apk=$(ls "$APK_DIR"/Tile_*_release.apk 2>/dev/null | sort -V | tail -n 1)
+latest_apk=$(find "$APK_DIR" -maxdepth 1 -name "Tile_*_release.apk" 2>/dev/null | sort -V | tail -n 1)
 
-apk_filename=$(basename "$latest_apk")
-
-tile_version=$(echo "$apk_filename" | sed -E 's/^Tile_([0-9.]+)_release\.apk$/\1/')
-
-cp -f "$latest_apk" "$TILE_DST/com.surfing.tile.apk"
-
-sed -i "s/^version=.*/version=v$tile_version/" "$TILE_PROP"
-
-WEB_APK_DIR="app/version/com.android64bit.web"
-WEB_DST="webroot"
-
-latest_web_apk=$(ls "$WEB_APK_DIR"/Web_*_release.apk 2>/dev/null | sort -V | tail -n 1)
-
-apk_web_filename=$(basename "$latest_web_apk")
-
-cp -f "$latest_web_apk" "$WEB_DST/com.android64bit.web.apk"
+if [ -f "$latest_apk" ]; then
+    apk_filename=$(basename "$latest_apk")
+    tile_version=$(echo "$apk_filename" | sed -E 's/^Tile_([0-9.]+)_release\.apk$/\1/')
+    cp -f "$latest_apk" "$TILE_DST/com.surfing.tile.apk"
+    sed -i "s/^version=.*/version=v$tile_version/" "$TILE_PROP"
+fi
 
 version=$(grep '^version=' module.prop | awk -F '=' '{print $2}' | sed 's/ (.*//')
 short_hash=${SHORT_HASH:-$(git rev-parse --short=7 HEAD)}
 
-if [ "$isAlpha" = true ]; then
+if [ "$isAlpha" = "true" ]; then
     new_version="${version} (alpha-${short_hash})"
     filename="Surfing_alpha_${short_hash}.zip"
 else
