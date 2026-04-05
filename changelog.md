@@ -1,3 +1,7 @@
+# v7.6.3
+- Enhance script robustness
+- Improve stability.
+
 # v7.6.2
 - 同步当前最新分支
 
