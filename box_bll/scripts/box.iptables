@@ -67,77 +67,79 @@ start_redirect() {
   ${iptables} -t nat -F BOX_EXTERNAL
   ${iptables} -t nat -N BOX_LOCAL
   ${iptables} -t nat -F BOX_LOCAL
-  
+
+#  if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ] 2>/dev/null; then
+#    ${iptables} -t nat -A BOX_LOCAL -p udp --dport 53 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
+#    ${iptables} -t nat -A BOX_LOCAL -p tcp --dport 53 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
+#  fi
+
   if [ "${bin_name}" = "clash" ]; then
     ${iptables} -t nat -A BOX_EXTERNAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
     ${iptables} -t nat -A BOX_LOCAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
     ${iptables} -t nat -A BOX_EXTERNAL -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
     ${iptables} -t nat -A BOX_LOCAL -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
   fi
-  
+
   ${iptables} -t nat -N LOCAL_IP_V4
   ${iptables} -t nat -F LOCAL_IP_V4
-  
+
   for subnet in "${intranet[@]}" ; do
     ${iptables} -t nat -A BOX_EXTERNAL -d "${subnet}" -j RETURN
     ${iptables} -t nat -A BOX_LOCAL -d "${subnet}" -j RETURN
   done
-  
+
   ${iptables} -t nat -A BOX_EXTERNAL -j LOCAL_IP_V4
   ${iptables} -t nat -A BOX_LOCAL -j LOCAL_IP_V4
-  
+
   ${iptables} -t nat -A BOX_EXTERNAL -p tcp -i lo -j REDIRECT --to-ports "${redir_port}"
-  
+
   if [ "${#ap_list[@]}" -ne 0 ] ; then
     for ap in "${ap_list[@]}" ; do
       ${iptables} -t nat -A BOX_EXTERNAL -p tcp -i "${ap}" -j REDIRECT --to-ports "${redir_port}"
     done
-    log Info "${ap_list[*]} 透明代理已启用."
+    log Info "${ap_list[*]} 透明代理已启用 (EXTERNAL)."
   fi
-  
+
   ${iptables} -t nat -I PREROUTING -j BOX_EXTERNAL
-  
-  ${iptables} -t nat -I BOX_LOCAL 1 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
-  
+
   if [ "${#ignore_out_list[@]}" -ne 0 ] ; then
     for ignore in "${ignore_out_list[@]}" ; do
       ${iptables} -t nat -A BOX_LOCAL -o "${ignore}" -j RETURN
     done
     log Info "${ignore_out_list[*]} 不走透明代理."
   fi
-  
+
   if [ "${proxy_mode}" = "blacklist" ] ; then
     if [ "${#uid_list[@]}" -eq 0 ]; then
-      # Global 模式
       ${iptables} -t nat -A BOX_LOCAL -p tcp -j REDIRECT --to-ports "${redir_port}"
       log Info "透明代理将应用至全局所有应用(IPv4)."
       log Info "所有应用的透明代理已启用(IPv4)."
     else
       ${iptables} -t nat -N BOX_BYPASS
       ${iptables} -t nat -F BOX_BYPASS
-      
+
       for appid in "${uid_list[@]}" ; do
         ${iptables} -t nat -A BOX_BYPASS -m owner --uid-owner "${appid}" -j RETURN
       done
-      
-      ${iptables} -t nat -I BOX_LOCAL 2 -j BOX_BYPASS 
-      
+
+      ${iptables} -t nat -A BOX_LOCAL -j BOX_BYPASS
+
       ${iptables} -t nat -A BOX_LOCAL -p tcp -j REDIRECT --to-ports "${redir_port}"
       log Info "代理模式: ${proxy_mode}, ${user_packages_list[*]} 未启用透明代理."
     fi
-    
+
     if [ "${#gid_list[@]}" -ne 0 ]; then
       for gid in "${gid_list[@]}" ; do
         ${iptables} -t nat -A BOX_LOCAL -m owner --gid-owner "${gid}" -j RETURN
       done
       log Info "代理模式: ${proxy_mode}, GID ${gid_list[*]} 未启用透明代理."
     fi
-    
+
   elif [ "${proxy_mode}" = "whitelist" ] ; then
     if [ "${#uid_list[@]}" -ne 0 ]; then
       for appid in "${uid_list[@]}" ; do
         ${iptables} -t nat -A BOX_LOCAL -p tcp -m owner --uid-owner "${appid}" -j REDIRECT --to-ports "${redir_port}"
-        ${iptables} -t nat -A BOX_LOCAL -p udp -m owner --uid-owner "${appid}" -j REDIRECT --to-ports "${redir_port}"
+        ${iptables} -t nat -A BOX_LOCAL -p udp -m owner --uid-owner "${appid}" -j REDIRECT --to-ports "${redir_port}" 2>/dev/null
       done
       ${iptables} -t nat -A BOX_LOCAL -p tcp -m owner --uid-owner 0 -j REDIRECT --to-ports "${redir_port}"
       ${iptables} -t nat -A BOX_LOCAL -p tcp -m owner --uid-owner 1052 -j REDIRECT --to-ports "${redir_port}"
@@ -155,11 +157,19 @@ start_redirect() {
     log Info "透明代理将应用至全局所有应用(IPv4)."
     log Info "所有应用的透明代理已启用(IPv4)."
   fi
-  
+
+  if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ] 2>/dev/null; then
+    ${iptables} -t nat -I BOX_LOCAL 1 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
+  fi
+
   ip6tables -S OUTPUT | grep -q "dport 53 -j DROP" || ip6tables -A OUTPUT -p udp --dport 53 -j DROP
   ip6tables -S OUTPUT | grep -q "dport 853 -j DROP" || ip6tables -A OUTPUT -p tcp --dport 853 -j DROP
+
   ${iptables} -t nat -I OUTPUT -j BOX_LOCAL
-  ${iptables} -A OUTPUT -d 127.0.0.1 -p tcp -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -m tcp --dport "${redir_port}" -j REJECT
+
+  if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ] 2>/dev/null; then
+    ${iptables} -A OUTPUT -d 127.0.0.1 -p tcp -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -m tcp --dport "${redir_port}" -j REJECT
+  fi
 }
 
 stop_redirect() {
@@ -193,14 +203,14 @@ start_tproxy() {
     ip rule add fwmark "${mark_id}" table "${table_id}" pref "${table_id}"
     ip route add local default dev lo table "${table_id}"
   fi
-  
+
   ${iptables} -t mangle -N BOX_EXTERNAL
   ${iptables} -t mangle -F BOX_EXTERNAL
-  
+
   ${iptables} -t mangle -A BOX_EXTERNAL -p tcp -m socket --transparent -j MARK --set-xmark "${mark_id}"
   ${iptables} -t mangle -A BOX_EXTERNAL -p udp -m socket --transparent -j MARK --set-xmark "${mark_id}"
   ${iptables} -t mangle -A BOX_EXTERNAL -m socket -j RETURN
-  
+
   if { [ "${mihomo_dns_forward}" = "true" ] && [ "${bin_name}" = "mihomo" ]; } || [ "${bin_name}" = "hysteria" ] || [ "${bin_name}" = "clash" ] ; then
     ${iptables} -t mangle -A BOX_EXTERNAL -p tcp --dport 53 -j RETURN
     ${iptables} -t mangle -A BOX_EXTERNAL -p udp --dport 53 -j RETURN
@@ -208,7 +218,7 @@ start_tproxy() {
     ${iptables} -t mangle -A BOX_EXTERNAL -p tcp --dport 53 -j TPROXY --on-port "${tproxy_port}" --tproxy-mark "${mark_id}"
     ${iptables} -t mangle -A BOX_EXTERNAL -p udp --dport 53 -j TPROXY --on-port "${tproxy_port}" --tproxy-mark "${mark_id}"
   fi
-  
+
   if [ "${iptables}" = "ip6tables -w 100" ] ; then
     for subnet6 in "${intranet6[@]}" ; do
       ${iptables} -t mangle -A BOX_EXTERNAL -d "${subnet6}" -j RETURN
@@ -224,10 +234,10 @@ start_tproxy() {
     ${iptables} -t mangle -F LOCAL_IP_V4
     ${iptables} -t mangle -A BOX_EXTERNAL -j LOCAL_IP_V4
   fi
-  
+
   ${iptables} -t mangle -A BOX_EXTERNAL -p tcp -i lo -j TPROXY --on-port "${tproxy_port}" --tproxy-mark "${mark_id}"
   ${iptables} -t mangle -A BOX_EXTERNAL -p udp -i lo -j TPROXY --on-port "${tproxy_port}" --tproxy-mark "${mark_id}"
-  
+
   if [ "${#ap_list[@]}" -ne 0 ] ; then
     for ap in "${ap_list[@]}" ; do
       ${iptables} -t mangle -A BOX_EXTERNAL -p tcp -i "${ap}" -j TPROXY --on-port "${tproxy_port}" --tproxy-mark "${mark_id}"
@@ -235,21 +245,24 @@ start_tproxy() {
     done
     log Info "${ap_list[*]} 透明代理已启用."
   fi
-  
+
   ${iptables} -t mangle -I PREROUTING -j BOX_EXTERNAL
-  
+
   ${iptables} -t mangle -N BOX_LOCAL
   ${iptables} -t mangle -F BOX_LOCAL
-  
-  ${iptables} -t mangle -A BOX_LOCAL -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
-  
+
+#  if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ] 2>/dev/null; then
+#    ${iptables} -t mangle -A BOX_LOCAL -p tcp --dport 53 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
+#    ${iptables} -t mangle -A BOX_LOCAL -p udp --dport 53 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
+#  fi
+
   if [ "${#ignore_out_list[@]}" -ne 0 ] ; then
     for ignore in "${ignore_out_list[@]}" ; do
       ${iptables} -t mangle -A BOX_LOCAL -o "${ignore}" -j RETURN
     done
     log Info "${ignore_out_list[*]} 忽略透明代理."
   fi
-  
+
   if { [ "${mihomo_dns_forward}" = "true" ] && [ "${bin_name}" = "mihomo" ]; } || [ "${bin_name}" = "hysteria" ] || [ "${bin_name}" = "clash" ] ; then
     ${iptables} -t mangle -A BOX_LOCAL -p tcp --dport 53 -j RETURN
     ${iptables} -t mangle -A BOX_LOCAL -p udp --dport 53 -j RETURN
@@ -257,7 +270,7 @@ start_tproxy() {
     ${iptables} -t mangle -A BOX_LOCAL -p tcp --dport 53 -j MARK --set-xmark "${mark_id}"
     ${iptables} -t mangle -A BOX_LOCAL -p udp --dport 53 -j MARK --set-xmark "${mark_id}"
   fi
-  
+
   if [ "${iptables}" = "ip6tables -w 100" ] ; then
     for subnet6 in "${intranet6[@]}" ; do
       ${iptables} -t mangle -A BOX_LOCAL -d "${subnet6}" -j RETURN
@@ -269,7 +282,7 @@ start_tproxy() {
     done
     ${iptables} -t mangle -A BOX_LOCAL -j LOCAL_IP_V4
   fi
-  
+
   if [ "${proxy_mode}" = "blacklist" ] ; then
     if [ "${#uid_list[@]}" -eq 0 ] ; then
       ${iptables} -t mangle -A BOX_LOCAL -p tcp -j MARK --set-xmark "${mark_id}"
@@ -278,13 +291,13 @@ start_tproxy() {
     else
       ${iptables} -t mangle -N BOX_BYPASS
       ${iptables} -t mangle -F BOX_BYPASS
-      
+
       for appid in "${uid_list[@]}" ; do
         ${iptables} -t mangle -A BOX_BYPASS -m owner --uid-owner "${appid}" -j ACCEPT
       done
-      
+
       ${iptables} -t mangle -I BOX_LOCAL 1 -j BOX_BYPASS
-      
+
       if [ "${iptables}" = "iptables -w 100" ]; then
          ${iptables} -t nat -N BOX_BYPASS
          ${iptables} -t nat -F BOX_BYPASS
@@ -293,19 +306,19 @@ start_tproxy() {
          done
          ${iptables} -t nat -I OUTPUT 1 -j BOX_BYPASS
       fi
-      
+
       ${iptables} -t mangle -A BOX_LOCAL -p tcp -j MARK --set-xmark "${mark_id}"
       ${iptables} -t mangle -A BOX_LOCAL -p udp -j MARK --set-xmark "${mark_id}"
       log Info "代理模式: Blacklist, 已绕过指定应用."
     fi
-    
+
     if [ "${#gid_list[@]}" -ne 0 ] ; then
       for gid in "${gid_list[@]}" ; do
         ${iptables} -t mangle -A BOX_LOCAL -m owner --gid-owner "${gid}" -j RETURN
       done
       log Info "已绕过 GID: ${gid_list[*]}."
     fi
-    
+
   elif [ "${proxy_mode}" = "whitelist" ] ; then
     if [ "${#uid_list[@]}" -ne 0 ] ; then
       for appid in "${uid_list[@]}" ; do
@@ -330,26 +343,30 @@ start_tproxy() {
     ${iptables} -t mangle -A BOX_LOCAL -p tcp -j MARK --set-xmark "${mark_id}"
     ${iptables} -t mangle -A BOX_LOCAL -p udp -j MARK --set-xmark "${mark_id}"
   fi
-  
+
   ${iptables} -t mangle -I BOX_LOCAL 1 -j CONNMARK --restore-mark
   ${iptables} -t mangle -I BOX_LOCAL 2 -m mark --mark "${mark_id}" -j ACCEPT
-  
+
+  if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ] 2>/dev/null; then
+    ${iptables} -t mangle -I BOX_LOCAL 1 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
+  fi
+
   ${iptables} -t mangle -A BOX_LOCAL -j CONNMARK --save-mark
-  
+
   ${iptables} -t mangle -I OUTPUT -j BOX_LOCAL
-  
+
   ${iptables} -t mangle -N DIVERT
   ${iptables} -t mangle -F DIVERT
   ${iptables} -t mangle -A DIVERT -j MARK --set-xmark "${mark_id}"
   ${iptables} -t mangle -A DIVERT -j ACCEPT
   ${iptables} -t mangle -I PREROUTING -p tcp -m socket -j DIVERT
-  
+
   if [ "${iptables}" = "ip6tables -w 100" ] ; then
     ${iptables} -A OUTPUT -d ::1 -p tcp -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -m tcp --dport "${tproxy_port}" -j REJECT
   else
     ${iptables} -A OUTPUT -d 127.0.0.1 -p tcp -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -m tcp --dport "${tproxy_port}" -j REJECT
   fi
-  
+
   if { [ "${mihomo_dns_forward}" = "true" ] && [ "${bin_name}" = "mihomo" ]; } || [ "${bin_name}" = "clash" ] ; then
     if [ "${iptables}" = "iptables -w 100" ] ; then
       ${iptables} -t nat -N CLASH_DNS_EXTERNAL
@@ -359,15 +376,18 @@ start_tproxy() {
 
       ${iptables} -t nat -N CLASH_DNS_LOCAL
       ${iptables} -t nat -F CLASH_DNS_LOCAL
-      ${iptables} -t nat -A CLASH_DNS_LOCAL -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
+      
+      if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ] 2>/dev/null; then
+        ${iptables} -t nat -A CLASH_DNS_LOCAL -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
+      fi
       ${iptables} -t nat -A CLASH_DNS_LOCAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
       ${iptables} -t nat -I OUTPUT -j CLASH_DNS_LOCAL
     fi
   fi
-  
+
   ip6tables -S OUTPUT | grep -q "dport 53 -j DROP" || ip6tables -A OUTPUT -p udp --dport 53 -j DROP
   ip6tables -S OUTPUT | grep -q "dport 853 -j DROP" || ip6tables -A OUTPUT -p tcp --dport 853 -j DROP
-  
+
   iptables -w 100 -t nat -A OUTPUT -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
   iptables -w 100 -t nat -A PREROUTING -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
 }
