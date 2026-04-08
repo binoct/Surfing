@@ -278,10 +278,10 @@ proxy-groups:
     icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@main/app/icon/No-ads-all.svg"
     type: select
     proxies:
+      - PASS
+      - REJECT-DROP 
       - ⛔️ 禁止·拒绝连接
       - 🌐 DNS_Hijack
-      - REJECT-DROP
-      - PASS
   - name: WebRTC
     icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@main/app/icon/WebRTC.svg"
     type: select
