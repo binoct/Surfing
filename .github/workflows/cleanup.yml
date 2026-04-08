@@ -1,0 +1,55 @@
+name: delete old workflow runs
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch: 
+
+jobs:
+  delete-runs:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Clean Workflow Runs
+        run: |
+          RUNS=$(gh run list --limit 1000 --repo ${{ github.repository }} --json createdAt,databaseId --jq '.[] | "\(.createdAt|split("T")[0]) \(.databaseId)"')
+
+          EVENT_NAME="${{ github.event_name }}"
+          THRESHOLD_DATE=$(date -d "7 days ago" +%Y-%m-%d)
+          PROTECTED_IDS=$(echo "$RUNS" | head -n 15 | awk '{print $2}')
+          
+          DELETE_COUNT=0
+
+          if [ "$EVENT_NAME" == "workflow_dispatch" ]; then
+            echo "Manual trigger detected. Ignoring date limits and protecting zero runs..."
+            THRESHOLD_DATE=$(date -d "tomorrow" +%Y-%m-%d)
+            PROTECTED_IDS=""
+          else
+            echo "Scheduled trigger detected. Applying 7-day limit and protecting latest 15 runs..."
+            echo "Threshold Date: $THRESHOLD_DATE"
+          fi
+
+          while read -r created_date run_id; do
+            [ -z "$run_id" ] && continue
+
+            if [ "$run_id" == "${{ github.run_id }}" ]; then continue; fi
+
+            if [[ "$created_date" < "$THRESHOLD_DATE" ]]; then
+              if ! echo "$PROTECTED_IDS" | grep -q "$run_id"; then
+                echo "Deleting ID: $run_id (Created: $created_date)"
+                gh run delete "$run_id" --repo ${{ github.repository }}
+                DELETE_COUNT=$((DELETE_COUNT + 1))
+              fi
+            fi
+          done <<< "$RUNS"
+
+          if [ "$DELETE_COUNT" -eq 0 ]; then
+            echo "No runs match the criteria."
+          else
+            echo "Cleanup completed. Total deleted: $DELETE_COUNT runs."
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
