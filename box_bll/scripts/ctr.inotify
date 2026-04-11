@@ -10,7 +10,7 @@ temp_log_file="${variab_dir}debug.log.tmp"
 last_check_file="${variab_dir}/last_check_time"
 last_wifi_state_file="${variab_dir}/last_wifi_state"
 
-log_enabled="true"
+log_enabled="false"
 
 if [ ! -d "$variab_dir" ]; then
     mkdir -p "$variab_dir"
