@@ -22,9 +22,17 @@ SYSTEM_HOSTS="/system/etc/hosts"
 mkdir -p "$HOSTS_PATH" "/dev/tmp"
 
 sleep 1
+safe_inotifyd() {
+    local script="$1"
+    local target="$2"
+    if ps -ef | grep "inotifyd $script $target" | grep -v grep > /dev/null; then
+        return 0
+    fi
+    nohup inotifyd "$script" "$target" > /dev/null 2>&1 &
+}
 
-nohup inotifyd "${SCRIPTS_DIR}/box.inotify" "$SURFING_DIR" > /dev/null 2>&1 &
-nohup inotifyd "${SCRIPTS_DIR}/box.inotify" "$HOSTS_PATH" > /dev/null 2>&1 &
+safe_inotifyd "${SCRIPTS_DIR}/box.inotify" "$SURFING_DIR" > /dev/null 2>&1 &
+safe_inotifyd "${SCRIPTS_DIR}/box.inotify" "$HOSTS_PATH" > /dev/null 2>&1 &
 
 mount -o bind "$HOSTS_FILE" "$SYSTEM_HOSTS"
 
@@ -35,11 +43,11 @@ while [ ! -f "$CTR_FILE" ]; do
   sleep 3
 done
 
-nohup inotifyd "${SCRIPTS_DIR}/net.inotify" "$NET_DIR" > /dev/null 2>&1 &
-nohup inotifyd "${SCRIPTS_DIR}/ctr.inotify" "$CTR_FILE" > /dev/null 2>&1 &
+safe_inotifyd "${SCRIPTS_DIR}/net.inotify" "$NET_DIR" > /dev/null 2>&1 &
+safe_inotifyd "${SCRIPTS_DIR}/ctr.inotify" "$CTR_FILE" > /dev/null 2>&1 &
 
 if [ -d "$SURFING_TILE_DIR" ] && [ -f "$SURFING_TILE_DIR/module.prop" ]; then
-    nohup inotifyd "${SCRIPTS_DIR}/box.inotify" "/data/system" > /dev/null 2>&1 &
+    safe_inotifyd "${SCRIPTS_DIR}/box.inotify" "/data/system" > /dev/null 2>&1 &
 fi
 
 delete_op_coloros16_fw_rules() {
