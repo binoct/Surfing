@@ -291,17 +291,24 @@ tun_forward_disable() {
 
 case "$1" in
     start)
-        if ! display_bin_status; then
-            if start_service; then
-                uptime_sec=$(cut -d. -f1 /proc/uptime)
-                uptime_sec=${uptime_sec:-0}
-                if [ "$uptime_sec" -lt 180 ]; then
-                    log Info "系统已重启，正在等待服务初始化..."
-                    sleep 5
-                fi
-                if wait_bin_listen; then
-                    tun_forward_enable
-                fi
+        if bin_pid=$(pgrep -x "${bin_name}"); then
+            log Info "${bin_name} 已经运行 (PID: ${bin_pid})"
+            exit 0
+        fi
+        pids=$(pgrep -f "$0 start" | sort -n)
+        my_pid=$$
+        leader_pid=$(echo "$pids" | head -n 1)
+        if [ "$my_pid" -ne "$leader_pid" ]; then
+            log Warn "Startup task already in progress, skipping (PID: $my_pid)."
+            exit 0
+        fi
+
+        log Info "Starting service (Leader PID: $my_pid)"
+        if start_service; then
+            uptime_sec=$(cut -d. -f1 /proc/uptime)
+            [ "${uptime_sec%.*}" -lt 180 ] && log Info "系统刚启动，等待初始化..." && sleep 5
+            if wait_bin_listen; then
+                tun_forward_enable
             fi
         fi
         ;;
@@ -310,14 +317,9 @@ case "$1" in
         tun_forward_disable
         ;;
     restart)
-        stop_service
+        $0 stop
         sleep 2
-        if start_service; then
-            sleep 2
-            if wait_bin_listen; then
-                tun_forward_enable
-            fi
-        fi
+        $0 start
         ;;
     status)
         display_bin_status
