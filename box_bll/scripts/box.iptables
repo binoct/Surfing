@@ -12,22 +12,22 @@ table_id="2024"
 # routing_mark="233"
 
 log() {
-export TZ=Asia/Shanghai
-now=$(date +"[%Y-%m-%d %H:%M:%S %Z]")
-case $1 in
-Info)
-[ -t 1 ] && echo -e "\033[1;32m${now} [信息]: $2\033[0m" || echo "${now} [Info]: $2"
-;;
-Warn)
-[ -t 1 ] && echo -e "\033[1;33m${now} [警告]: $2\033[0m" || echo "${now} [Warn]: $2"
-;;
-Error)
-[ -t 1 ] && echo -e "\033[1;31m${now} [错误]: $2\033[0m" || echo "${now} [Error]: $2"
-;;
-*)
-[ -t 1 ] && echo -e "\033[1;30m${now} [$1]: $2\033[0m" || echo "${now} [$1]: $2"
-;;
-esac
+    export TZ=Asia/Shanghai
+    local now=$(date +"[%Y-%m-%d %H:%M:%S %Z]")
+    case "$1" in
+        Info)
+            [ -t 1 ] && echo -e "\033[1;32m${now} [Info]: $2\033[0m" || echo "${now} [Info]: $2"
+            ;;
+        Warn)
+            [ -t 1 ] && echo -e "\033[1;33m${now} [Warn]: $2\033[0m" || echo "${now} [Warn]: $2"
+            ;;
+        Error)
+            [ -t 1 ] && echo -e "\033[1;31m${now} [Error]: $2\033[0m" || echo "${now} [Error]: $2"
+            ;;
+        *)
+            [ -t 1 ] && echo -e "\033[1;30m${now} [$1]: $2\033[0m" || echo "${now} [$1]: $2"
+            ;;
+    esac
 }
 
 optimize_kernel() {
@@ -48,16 +48,31 @@ find_packages_uid() {
       uid_list[${#uid_list[@]}]=$((user * 100000 + uid))
     fi  
   done  
-}  
+}
 
 probe_user_group() {
-  if bin_pid=$(busybox pidof "${bin_name}") ; then
-    box_user=$(stat -c %U "/proc/${bin_pid}")
-    box_group=$(stat -c %G "/proc/${bin_pid}")
+  local bin_pid=""
+  if bin_pid=$(pgrep -x "${bin_name}" 2>/dev/null) && [ -n "${bin_pid}" ]; then
+    bin_pid=$(echo "${bin_pid}" | head -n 1)
+  elif bin_pid=$(busybox pidof "${bin_name}" 2>/dev/null) && [ -n "${bin_pid}" ]; then
+    bin_pid=$(echo "${bin_pid}" | awk '{print $1}')
+  else
+    for p in /proc/[0-9]*; do
+      if [ -f "$p/cmdline" ] && grep -a -q "${bin_name}" "$p/cmdline"; then
+        bin_pid=$(basename "$p")
+        break
+      fi
+    done
+  fi
+  if [ -n "${bin_pid}" ] && [ -d "/proc/${bin_pid}" ]; then
+    box_user=$(stat -c %u "/proc/${bin_pid}")
+    box_group=$(stat -c %g "/proc/${bin_pid}")
+    log Info "[${bin_name}], PID: ${bin_pid}, 属主 UID: ${box_user}, 属组 GID: ${box_group}"
     return 0
   else
     box_user=$(echo "${box_user_group}" | awk -F ':' '{print $1}')
     box_group=$(echo "${box_user_group}" | awk -F ':' '{print $2}')
+    log Warn "未捕捉到 [${bin_name}] 进程，将使用配置文件的后备用户组 - UID: ${box_user}, GID: ${box_group}"
     return 1
   fi
 }
@@ -164,7 +179,7 @@ start_redirect() {
 
   ip6tables -S OUTPUT | grep -q "dport 53 -j DROP" || ip6tables -A OUTPUT -p udp --dport 53 -j DROP
   ip6tables -S OUTPUT | grep -q "dport 853 -j DROP" || ip6tables -A OUTPUT -p tcp --dport 853 -j DROP
-
+  
   ${iptables} -t nat -I OUTPUT -j BOX_LOCAL
 
   if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ] 2>/dev/null; then
@@ -179,14 +194,14 @@ stop_redirect() {
 
   ${iptables} -D OUTPUT -d 127.0.0.1 -p tcp -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -m tcp --dport "${redir_port}" -j REJECT
   ${iptables} -D OUTPUT -d 127.0.0.1 -p tcp -m owner --uid-owner 0 --gid-owner 3005 -m tcp --dport "${redir_port}" -j REJECT
-  
+
   ip6tables -D OUTPUT -p udp --dport 53 -j DROP
   ip6tables -D OUTPUT -p tcp --dport 853 -j DROP
-  
+
   ${iptables} -t nat -D BOX_LOCAL -j BOX_BYPASS
   ${iptables} -t nat -F BOX_BYPASS
   ${iptables} -t nat -X BOX_BYPASS
-  
+
   ${iptables} -t nat -F BOX_EXTERNAL
   ${iptables} -t nat -X BOX_EXTERNAL
   ${iptables} -t nat -F BOX_LOCAL
@@ -226,6 +241,8 @@ start_tproxy() {
     ${iptables} -t mangle -N LOCAL_IP_V6
     ${iptables} -t mangle -F LOCAL_IP_V6
     ${iptables} -t mangle -A BOX_EXTERNAL -j LOCAL_IP_V6
+
+    ${iptables} -t mangle -A BOX_EXTERNAL -j RETURN
   else
     for subnet in "${intranet[@]}" ; do
       ${iptables} -t mangle -A BOX_EXTERNAL -d "${subnet}" -j RETURN
@@ -276,6 +293,8 @@ start_tproxy() {
       ${iptables} -t mangle -A BOX_LOCAL -d "${subnet6}" -j RETURN
     done
     ${iptables} -t mangle -A BOX_LOCAL -j LOCAL_IP_V6
+
+    ${iptables} -t mangle -A BOX_LOCAL -j RETURN
   else
     for subnet in "${intranet[@]}" ; do
       ${iptables} -t mangle -A BOX_LOCAL -d "${subnet}" -j RETURN
@@ -318,7 +337,6 @@ start_tproxy() {
       done
       log Info "已绕过 GID: ${gid_list[*]}."
     fi
-
   elif [ "${proxy_mode}" = "whitelist" ] ; then
     if [ "${#uid_list[@]}" -ne 0 ] ; then
       for appid in "${uid_list[@]}" ; do
@@ -348,7 +366,7 @@ start_tproxy() {
   ${iptables} -t mangle -I BOX_LOCAL 2 -m mark --mark "${mark_id}" -j ACCEPT
 
   if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ] 2>/dev/null; then
-    ${iptables} -t mangle -I BOX_LOCAL 1 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
+    ${iptables} -t mangle -I BOX_LOCAL 3 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
   fi
 
   ${iptables} -t mangle -A BOX_LOCAL -j CONNMARK --save-mark
@@ -376,7 +394,7 @@ start_tproxy() {
 
       ${iptables} -t nat -N CLASH_DNS_LOCAL
       ${iptables} -t nat -F CLASH_DNS_LOCAL
-      
+
       if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ] 2>/dev/null; then
         ${iptables} -t nat -A CLASH_DNS_LOCAL -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
       fi
@@ -385,12 +403,15 @@ start_tproxy() {
     fi
   fi
 
-  ip6tables -S OUTPUT | grep -q "dport 53 -j DROP" || ip6tables -A OUTPUT -p udp --dport 53 -j DROP
-  ip6tables -S OUTPUT | grep -q "dport 853 -j DROP" || ip6tables -A OUTPUT -p tcp --dport 853 -j DROP
+  if [ "${iptables}" = "ip6tables -w 100" ] ; then
+    ip6tables -S OUTPUT | grep -q "dport 53 -j REJECT" || ip6tables -A OUTPUT -p udp --dport 53 -j REJECT
+    ip6tables -S OUTPUT | grep -q "dport 853 -j REJECT" || ip6tables -A OUTPUT -p tcp --dport 853 -j REJECT
+  fi
 
   iptables -w 100 -t nat -A OUTPUT -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
   iptables -w 100 -t nat -A PREROUTING -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
 }
+
 
 stop_tproxy() {
   if [ "${iptables}" = "ip6tables -w 100" ] ; then
@@ -400,50 +421,50 @@ stop_tproxy() {
     ip rule del fwmark "${mark_id}" table "${table_id}" pref "${table_id}"
     ip route del local default dev lo table "${table_id}"
   fi
-  
+
   ${iptables} -t mangle -D PREROUTING -j BOX_EXTERNAL
-  
+
   ${iptables} -t mangle -D OUTPUT -j BOX_LOCAL
-  
+
   ${iptables} -t mangle -D PREROUTING -p tcp -m socket -j DIVERT
 
   if [ "${iptables}" = "iptables -w 100" ] ; then
-    
+
     ${iptables} -t nat -D PREROUTING -j CLASH_DNS_EXTERNAL
     ${iptables} -t nat -D OUTPUT -j CLASH_DNS_LOCAL
-    
+
     ${iptables} -t nat -D OUTPUT -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
     ${iptables} -t nat -D PREROUTING -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
   fi
-  
+
   if [ "${iptables}" = "ip6tables -w 100" ] ; then
-    ip6tables -D OUTPUT -p udp --dport 53 -j DROP
-    ip6tables -D OUTPUT -p tcp --dport 853 -j DROP
+    ip6tables -D OUTPUT -p udp --dport 53 -j REJECT
+    ip6tables -D OUTPUT -p tcp --dport 853 -j REJECT
   fi
-  
+
   if [ "${iptables}" = "ip6tables -w 100" ] ; then
     ${iptables} -D OUTPUT -d ::1 -p tcp -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -m tcp --dport "${tproxy_port}" -j REJECT
   else
     ${iptables} -D OUTPUT -d 127.0.0.1 -p tcp -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -m tcp --dport "${tproxy_port}" -j REJECT
   fi
-  
+
   ${iptables} -t mangle -D BOX_LOCAL -j BOX_BYPASS
   ${iptables} -t mangle -F BOX_BYPASS
   ${iptables} -t mangle -X BOX_BYPASS
-  
+
   if [ "${iptables}" = "iptables -w 100" ] ; then
     ${iptables} -t nat -D OUTPUT -j BOX_BYPASS
     ${iptables} -t nat -F BOX_BYPASS
     ${iptables} -t nat -X BOX_BYPASS
   fi
-  
+
   ${iptables} -t mangle -F BOX_EXTERNAL
   ${iptables} -t mangle -X BOX_EXTERNAL
   ${iptables} -t mangle -F BOX_LOCAL
   ${iptables} -t mangle -X BOX_LOCAL
   ${iptables} -t mangle -F DIVERT
   ${iptables} -t mangle -X DIVERT
-  
+
   if [ "${iptables}" = "ip6tables -w 100" ] ; then
     ${iptables} -t mangle -F LOCAL_IP_V6
     ${iptables} -t mangle -X LOCAL_IP_V6
@@ -451,7 +472,7 @@ stop_tproxy() {
     ${iptables} -t mangle -F LOCAL_IP_V4
     ${iptables} -t mangle -X LOCAL_IP_V4
   fi
-  
+
   if [ "${iptables}" = "iptables -w 100" ] ; then
     ${iptables} -t nat -F CLASH_DNS_EXTERNAL
     ${iptables} -t nat -X CLASH_DNS_EXTERNAL
@@ -584,7 +605,7 @@ case "$1" in
     iptables="ip6tables -w 100" && stop_tproxy >> /dev/null 2>&1
     iptables="iptables -w 100" && stop_redirect >> /dev/null 2>&1
     log Warn "清理完成"
-
+    
     enable_ipv6
     log Info "IPv6 已恢复默认启用"
     return 0
@@ -597,7 +618,7 @@ case "$1" in
     iptables="iptables -w 100" && stop_redirect >> /dev/null 2>&1
     log Warn "旧规则已清理"
     sleep 3
-
+    
     if ! probe_user_group ; then
       log Error "检查Box用户组失败，请确保 ${bin_name} 核心已启动."
       return 1
@@ -611,7 +632,7 @@ case "$1" in
 
     if [ "${proxy_method}" = "TPROXY" ] ; then
       log Info "重新应用 TPROXY 规则..."
-
+      
       iptables="iptables -w 100"
       if start_tproxy; then
         log Info "重新创建 iptables 透明代理规则完成."
@@ -619,7 +640,7 @@ case "$1" in
         log Error "创建失败."
         stop_tproxy >> /dev/null 2>&1
       fi
-
+      
       if [ "${ipv6}" = "enable" ] ; then
         log Debug "IPv6: 正在使用"
         enable_ipv6
@@ -653,7 +674,7 @@ case "$1" in
     enable_ipv6
     log Warn "IPv6 已启用"
     ;;
-
+    
   disable_ipv6)
     disable_ipv6
     log Warn "IPv6 已禁用"
