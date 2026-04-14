@@ -1,3 +1,8 @@
+# v7.7.0
+- optimize iptables rule chain
+- fix WeChat network loading lag issue
+- introduce service process concurrency prevention to avoid potential memory leaks on some systems
+
 # v7.6.3
 - Enhance script robustness
 - Improve stability.
