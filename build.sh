@@ -68,10 +68,9 @@ TILE_DST="SurfingTile/system/app/com.surfing.tile"
 TILE_PROP="SurfingTile/module.prop"
 
 mkdir -p "$TILE_DST"
-latest_apk=$(find "$APK_DIR" -maxdepth 1 -name "Tile_*_release.apk" 2>/dev/null | sort -V | tail -n 1)
-
+latest_apk=$(find "$APK_DIR" -maxdepth 1 -name "SurfingTile_*_release.apk" 2>/dev/null | sort -V | tail -n 1)
 if [ -f "$latest_apk" ]; then
-    tile_version=$(basename "$latest_apk" | sed -E 's/^Tile_([0-9.]+)_release\.apk$/\1/')
+    tile_version=$(basename "$latest_apk" | sed -E 's/^SurfingTile_(.*)_release\.apk$/\1/')
     cp -f "$latest_apk" "$TILE_DST/com.surfing.tile.apk"
     sed -i "s/^version=.*/version=v$tile_version/" "$TILE_PROP"
 fi
