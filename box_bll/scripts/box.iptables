@@ -241,8 +241,6 @@ start_tproxy() {
     ${iptables} -t mangle -N LOCAL_IP_V6 > /dev/null 2>&1
     ${iptables} -t mangle -F LOCAL_IP_V6 > /dev/null 2>&1
     ${iptables} -t mangle -A BOX_EXTERNAL -j LOCAL_IP_V6 > /dev/null 2>&1
-
-    ${iptables} -t mangle -A BOX_EXTERNAL -j RETURN > /dev/null 2>&1
   else
     for subnet in "${intranet[@]}" ; do
       ${iptables} -t mangle -A BOX_EXTERNAL -d "${subnet}" -j RETURN > /dev/null 2>&1
@@ -268,11 +266,6 @@ start_tproxy() {
   ${iptables} -t mangle -N BOX_LOCAL > /dev/null 2>&1
   ${iptables} -t mangle -F BOX_LOCAL > /dev/null 2>&1
 
-#  if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ] 2>/dev/null; then
-#    ${iptables} -t mangle -A BOX_LOCAL -p tcp --dport 53 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
-#    ${iptables} -t mangle -A BOX_LOCAL -p udp --dport 53 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
-#  fi
-
   if [ "${#ignore_out_list[@]}" -ne 0 ] ; then
     for ignore in "${ignore_out_list[@]}" ; do
       ${iptables} -t mangle -A BOX_LOCAL -o "${ignore}" -j RETURN > /dev/null 2>&1
@@ -293,8 +286,6 @@ start_tproxy() {
       ${iptables} -t mangle -A BOX_LOCAL -d "${subnet6}" -j RETURN > /dev/null 2>&1
     done
     ${iptables} -t mangle -A BOX_LOCAL -j LOCAL_IP_V6 > /dev/null 2>&1
-
-    ${iptables} -t mangle -A BOX_LOCAL -j RETURN > /dev/null 2>&1
   else
     for subnet in "${intranet[@]}" ; do
       ${iptables} -t mangle -A BOX_LOCAL -d "${subnet}" -j RETURN > /dev/null 2>&1
