@@ -222,6 +222,7 @@ if [ -d "$BOX_BLL_PATH" ]; then
   [ -d "$CURRENT_SURFING_TILE_DIR" ] && inotifyd "${SCRIPTS_PATH}/box.inotify" "/data/system" >/dev/null 2>&1 &
   sleep 1
   cp -f "$MODPATH/box_bll/clash/etc/hosts" "$BOX_BLL_PATH/clash/etc/"
+  rm -f "$MODPATH/box_bll/clash/Toolbox.sh"
   rm -rf "$BOX_BLL_PATH/clash/Model.bin"
   rm -rf "$BOX_BLL_PATH/clash/smart_weight_data.csv"
   rm -rf "$BOX_BLL_PATH/scripts/box.upgrade"
