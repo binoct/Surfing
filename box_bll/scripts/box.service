@@ -171,7 +171,7 @@ display_run_time() {
 display_bin_status() {
     if bin_pid=$(busybox pidof "${bin_name}"); then
         log Info "${bin_name} 使用用户组: $(stat -c %U:%G /proc/"${bin_pid}")."
-        log Info "${bin_name} 服务正在运行. ( PID: ${bin_pid} )"
+        log Info "${bin_name} 服务正在运行. (PID: ${bin_pid})"
         mem_kb=$(awk '/VmRSS/ {print $2}' /proc/"${bin_pid}"/status)
         mem_mb=$(awk -v kb="$mem_kb" 'BEGIN {printf "%.2f MB", kb/1024}')
         log Info "${bin_name} 内存使用: ${mem_mb}"
@@ -193,7 +193,7 @@ start_service() {
     if check_permission; then
         log Info "${bin_name} 将以 ${box_user_group} 用户组启动."
         if start_bin; then
-            log Info "${bin_name} 服务正在运行. ( PID: $(cat "${pid_file}") )"
+            log Info "${bin_name} 服务正在运行. (PID: $(cat "${pid_file}"))"
             return 0
         else
             if bin_pid=$(pidof "${bin_name}"); then
@@ -289,6 +289,55 @@ tun_forward_disable() {
     log Warn "Tun 热点支持已禁用."
 }
 
+traffic_monitor() {
+    local action=$1
+    local config_file="/data/adb/box_bll/clash/config.yaml"
+    local stat_file="/dev/traffic_totals"
+
+    case "$action" in
+        "start")
+            local secret_token=$(sed -n '/^secret:/p' "$config_file" | sed 's/^secret:[[:space:]]*//; s/[[:space:]]*#.*$//; s/^["'\'']//; s/["'\'']$//')
+            local controller=$(sed -n '/^external-controller:/p' "$config_file" | sed 's/^external-controller:[[:space:]]*//; s/[[:space:]]*#.*$//; s/^["'\'']//; s/["'\'']$//')
+            local port=$(echo "$controller" | awk -F ':' '{print $NF}')
+            [ -z "$port" ] && port="9090"
+            {
+                echo "0 0" > "$stat_file"
+                chmod 644 "$stat_file"
+                chcon u:object_r:system_file:s0 "$stat_file" 2>/dev/null
+
+                local API="http://127.0.0.1:$port/traffic"
+                local AUTH=""
+                [ -n "$secret_token" ] && AUTH="Authorization: Bearer $secret_token"
+
+                local total_up=0
+                local total_down=0
+
+                curl -s -L -N ${AUTH:+-H "$AUTH"} "$API" | while read -r line; do
+                    local u=$(echo "$line" | sed -n 's/.*"up":\([0-9]*\).*/\1/p')
+                    local d=$(echo "$line" | sed -n 's/.*"down":\([0-9]*\).*/\1/p')
+                    [ -z "$u" ] || [ -z "$d" ] && continue
+                    total_up=$((total_up + u))
+                    total_down=$((total_down + d))
+                    echo "$total_up $total_down" > "$stat_file"
+                done
+            } >/dev/null 2>&1 & 
+
+            local current_pid=$!
+            log Info "流量监控已启动 (端口: $port, PID: $current_pid)."
+            ;;
+        "stop")
+            local controller=$(sed -n '/^external-controller:/p' "$config_file" | sed 's/^external-controller:[[:space:]]*//; s/[[:space:]]*#.*$//; s/^["'\'']//; s/["'\'']$//')
+            local port=$(echo "$controller" | awk -F ':' '{print $NF}')
+            [ -z "$port" ] && port="9090"
+
+            pgrep -f "curl.*:$port/traffic" | xargs kill -9 2>/dev/null
+
+            rm -f "$stat_file"
+            log Warn "流量监控已停止."
+            ;;
+    esac
+}
+
 case "$1" in
     start)
         if bin_pid=$(pgrep -x "${bin_name}"); then
@@ -309,12 +358,14 @@ case "$1" in
             [ "${uptime_sec%.*}" -lt 180 ] && log Info "系统刚启动，等待初始化..." && sleep 5
             if wait_bin_listen; then
                 tun_forward_enable
+                traffic_monitor "start"
             fi
         fi
         ;;
     stop)
         stop_service
         tun_forward_disable
+        traffic_monitor "stop"
         ;;
     restart)
         $0 stop
