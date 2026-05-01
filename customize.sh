@@ -172,9 +172,6 @@ if [ -d "$BOX_BLL_PATH" ]; then
   ui_print "Updating..."
   ui_print "↴"
   ui_print "Initializing services..."
-  "$BOX_BLL_PATH/scripts/box.service" stop > /dev/null 2>&1
-  
-  sleep 2
   
   [ "$INSTALL_TILE" = "true" ] && install_surfingtile_module && install_surfingtile_apk
 
@@ -232,9 +229,6 @@ if [ -d "$BOX_BLL_PATH" ]; then
 
   choose_to_umount_hosts_file
   
-  sleep 1
-  ui_print "Restarting service..."
-  "$BOX_BLL_PATH/scripts/box.service" start > /dev/null 2>&1
   ui_print "Update completed. No need to reboot..."
 else
   ui_print "Installing..."
