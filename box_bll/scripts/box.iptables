@@ -30,6 +30,14 @@ log() {
     esac
 }
 
+check_tproxy_support() {
+    if iptables -w 100 -t mangle -A PREROUTING -p tcp -j TPROXY --on-port 1234 --tproxy-mark 1 2>/dev/null; then
+        iptables -w 100 -t mangle -D PREROUTING -p tcp -j TPROXY --on-port 1234 --tproxy-mark 1 2>/dev/null
+        return 0
+    fi
+    return 1
+}
+
 optimize_kernel() {
   echo 30 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout
   echo 15 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout_stream
@@ -522,7 +530,7 @@ case "$1" in
     log Info "内网豁免列表已更新."
 
     if [ "${proxy_method}" = "TPROXY" ] ; then
-      if (zcat /proc/config.gz | grep -q TPROXY) ; then
+      if check_tproxy_support ; then
         log Info "使用 TPROXY: TCP+UDP"
         log Info "正在创建透明代理规则..."
         iptables="iptables -w 100"
