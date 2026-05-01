@@ -226,16 +226,12 @@ probe_tun_device() {
 }
 
 probe_tun_index() {
-    while [ ! -f "/data/misc/net/rt_tables" ]; do
-        sleep 3
-    done
-    while read -r index name; do
-        if [ "${name}" = "${tun_device}" ]; then
-            tun_table_index=${index}
-            return 0
-        fi
-    done < /data/misc/net/rt_tables
-    return 1
+    tun_table_index=${table_id:-2024}
+    if ifconfig | grep -q "${tun_device}"; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 tun_forward_ip_rules() {
