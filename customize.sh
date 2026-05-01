@@ -195,15 +195,18 @@ if [ -d "$BOX_BLL_PATH" ]; then
   NEW_CONFIG="$BOX_BLL_PATH/scripts/box.config"
   if [ -f "$OLD_CONFIG" ]; then
     ui_print "Migrating network service control settings..."
-    
+
+    TMP_CONFIG="${NEW_CONFIG}.tmp"
+    cp -f "$NEW_CONFIG" "$TMP_CONFIG"
+
     VARS="enable_network_service_control use_module_on_wifi_disconnect use_module_on_wifi use_ssid_matching use_wifi_list_mode blacklist_wifi_ssids whitelist_wifi_ssids ap_list gid_list user_packages_list proxy_mode proxy_method ipv6"
     for var in $VARS; do
       val=$(grep "^${var}=" "$OLD_CONFIG" | cut -d'=' -f2-)
-      
       if [ -n "$val" ]; then
-        sed -i "s@^${var}=.*@${var}=${val}@" "$NEW_CONFIG"
+        sed "s@^${var}=.*@${var}=${val}@" "$TMP_CONFIG" > "${TMP_CONFIG}.bak" && mv -f "${TMP_CONFIG}.bak" "$TMP_CONFIG"
       fi
     done
+    mv -f "$TMP_CONFIG" "$NEW_CONFIG"
     ui_print "Settings migrated successfully"
   fi
   
