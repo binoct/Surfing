@@ -31,8 +31,6 @@ log() {
 }
 
 optimize_kernel() {
-  echo 65536 > /proc/sys/net/netfilter/nf_conntrack_max
-  echo 16384 > /proc/sys/net/netfilter/nf_conntrack_buckets
   echo 30 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout
   echo 15 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout_stream
   log Info "内核性能优化完成."
