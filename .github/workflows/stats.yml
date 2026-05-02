@@ -1,0 +1,41 @@
+name: stats
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-stats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Update Count
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RESPONSE=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            https://api.github.com/repos/${{ github.repository }}/releases)
+          CURRENT_COUNT=$(echo "$RESPONSE" | jq '[.[]? | .assets[]? | .download_count] | add // 0')
+          TOTAL_COUNT=$((CURRENT_COUNT + 35000))
+
+          if [ $TOTAL_COUNT -ge 1000 ]; then
+            DISPLAY_COUNT=$(echo "scale=1; $TOTAL_COUNT/1000" | bc | sed 's/\.0$//')k
+          else
+            DISPLAY_COUNT=$TOTAL_COUNT
+          fi
+
+          jq ".message = \"$DISPLAY_COUNT\"" stats.json > temp.json && mv temp.json stats.json
+
+      - name: Push Changes
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add stats.json
+          git commit -m "chore: sync download metrics" || exit 0
+          git push

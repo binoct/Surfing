@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -40,12 +40,12 @@ jobs:
           deleteOnlyFromDrafts: false
 
       - name: Tag Repo
-        uses: richardsimko/update-tag@v1.1.6
+        uses: richardsimko/update-tag@v1
         with:
           tag_name: Prerelease-Alpha
 
       - name: Upload Prerelease
-        uses: softprops/action-gh-release@v2.6.1
+        uses: softprops/action-gh-release@v2
         if: success()
         with:
           tag_name: Prerelease-Alpha

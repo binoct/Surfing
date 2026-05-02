@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -45,7 +45,7 @@ jobs:
           echo "CHANGELOG=release_notes.txt" >> $GITHUB_ENV
 
       - name: Upload Release
-        uses: softprops/action-gh-release@v2.6.1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
           files: Surfing_${{ env.TAG_NAME }}_release.zip
