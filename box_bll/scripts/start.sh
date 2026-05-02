@@ -37,7 +37,7 @@ if [ ! -f "${box_path}/manual" ] && [ ! -f "${module_dir}/disable" ]; then
     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         if service list | grep -q "activity"; then
             if am broadcast -a com.surfing.tile.ACTION_WAKEUP_CLASH \
-                         -n com.surfing.tile/com.surfing.tile.service.Tilereceiver \
+                         -n com.surfing.tile/com.surfing.tile.service.BootReceiver \
                          -f 0x01000020 2>&1 | grep -q "Broadcast completed"; then
                 break
             fi
