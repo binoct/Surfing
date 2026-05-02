@@ -94,9 +94,8 @@
 - Web App：
     - 可用于通过菜单 → 配置覆写 → 填写订阅
     - 用于便携浏览及管理后台路由数据
-    - 启动时会自动更新核心文件
-
-<img src="./folder/Webapk.png" alt="Web UI" width="300">
+  
+<img src="./folder/app.png" alt="App UI" width="300">
 
 > 如遇面板显示内容异常 / 或内容无法显示  
 需通过 Google play 商店更新 com.google.android.webview 组件版本
@@ -207,84 +206,12 @@
 
 ### Quick Settings Tile Service
 ### 📱设备要求
-> 支持 Android8+ 建议运行在 Android10+ 上
+> 支持 Android10+
 
 - 需要工作在**系统空间**，并且持有 **Root** 权限
 - 对于 **KSU** 用户，则需要安装 **"元模块"** 才能拥有挂载权限
 - 磁贴全程围绕 **Clash API** 工作，请检查 API 设置是否正确
   - **路径:** → Web App → 菜单 → 磁贴设置
-
-### 功能说明
-- 支持应用过滤、网络过滤、部分配置覆写 UI 操作
-- 支持管理关闭核心连接池的冗余无用数据
-### 权限声明
-- **GPS 定位**   →    `已保存的无线网络列表` 获取
-- **应用列表**    →    `应用软件包列表` 获取
-
-> 应用的所有网络请求都是通过 HttpURLConnection 发起，并且完全用于与本地 Clash 核心服务进行通信。
-
-具体用途如下：
-
-### API 地址
-- 默认连接到 `http://127.0.0.1:9090`
-- 该地址可以在应用的 API 设置中修改
-
-### 功能
-
-### 1. 检查服务状态
-- 通过请求 `/version` 路径来判断 Clash 服务是否正在运行  
-- **方法**：`isApiAliveHttp`
-
-### 2. 获取和切换节点
-- 通过 `GET` 和 `PUT` 请求到 `/proxies/总模式` 路径  
-- 用于获取当前选择的代理节点  
-- 在双击磁贴时切换到下一个节点  
-- **方法**：`cycleTotalModeProxy`
-
-### 3. 管理连接
-- 通过 `GET` 和 `DELETE` 请求到 `/connections` 路径  
-- 获取当前的网络连接列表  
-- 清理无用的、过时的连接  
-- **方法**：
-  - `clearAllConnections`
-  - `probeAndCleanStaleConnections`
-
----
-
-### 文件中有两种不同的网络使用场景
-
-### 1. 与本地代理服务通信（核心功能）
-- **路径**：`SurfingTileService.java`
-- **地址**：`http://127.0.0.1:9090`  
-  （或在设置中指定的其他地址）
-- **目的**：  
-  应用的核心功能，使用该权限通过 HTTP（GET、PUT、DELETE 请求）
-  与运行在设备上的 Clash 后台服务进行通信，以实现：
-  - 检查服务状态
-  - 获取 / 切换代理节点
-  - 管理和清理网络连接等功能
-
-### 2. 从网络获取引言（界面功能）
-- **路径**：`AppFilterActivity.java`
-- **目的**：  
-  在应用过滤界面（`AppFilterActivity`）中，应用会从项目 GitHub 地址
-  并从中解析和随机显示一条引言，这是一个 UI体验 的**非核心功能**。
-
-`INTERNET` 权限的必要性体现在两个方面：
-
-1. 与本地代理核心进行交互（必须）
-2. 从远程服务器获取一个用于解析展示的文本
-
-这是项目中唯一**所有需要网络连接的地方**。
-
----
-
-### 3. FAQ
-- **应用过滤无法显示应用列表**：  
-  可先通关闭 SurfingTile 子模块的挂载，重启设备再次进入权限管理给予获取 应用列表权限 / GPS位置权限(WiFi SSID 获取)
-
-- **磁贴响应状态 No Sys** | **No Root**：  
-  当前不为系统应用身份 / 当前未持有ROOT权限
 
 - **部分工作路径示意**  
   <img src="folder/SurfingTileService.svg" style="width:60%">

@@ -94,9 +94,8 @@ Please decide whether to use the Surfing module only after clearly understanding
 - Web App:
     - Can be used via Menu → Config Override → Fill in subscription
     - Used for portable browsing and managing backend routing data
-    - Automatically updates core files on startup
 
-<img src="./folder/Webapk.png" alt="Web UI" width="300">
+<img src="./folder/app.png" alt="App UI" width="300">
 
 > If the panel content is displayed abnormally or cannot be displayed,  
 > please update the `com.google.android.webview` component via Google Play Store.
@@ -218,89 +217,12 @@ Android user group IDs:
 ### Quick Settings Tile Service
 
 ### 📱 Device Requirements
-> Supports Android 8+, recommended to run on Android 10+
+> Supports Android 10+
 
 - Must run in **system space** and require **Root** permission
 - For **KSU** users, you need to install the **"Meta Module"** to obtain mount permissions
 - The tile works entirely based on the **Clash API**, please check if the API settings are correct
   - **Path:** → Web App → Menu → Tile Settings
-
-### Features
-- Supports app filtering, network filtering, and partial config override via UI
-- Supports managing and clearing redundant useless data in the core connection pool
-
-### Permission Declaration
-- **GPS Location** → Used to obtain `Saved WiFi Network List`
-- **App List** → Used to obtain `Installed App Package List`
-
-> All network requests of this app are initiated via `HttpURLConnection`,  
-> and are strictly used to communicate with the local Clash core service.
-
-Detailed usage:
-
-### API Address
-- Default: `http://127.0.0.1:9090`
-- Can be modified in the app's API settings
-
-### Functions
-
-### 1. Check Service Status
-- Uses the `/version` endpoint to determine whether Clash is running  
-- **Method:** `isApiAliveHttp`
-
-### 2. Get and Switch Proxies
-- Uses `GET` and `PUT` requests to `/proxies/total_mode`  
-- Used to get the current selected proxy  
-- Double-tap the tile to switch to the next proxy  
-- **Method:** `cycleTotalModeProxy`
-
-### 3. Manage Connections
-- Uses `GET` and `DELETE` requests to `/connections`  
-- Fetch current network connections  
-- Clean up useless or stale connections  
-- **Methods:**
-  - `clearAllConnections`
-  - `probeAndCleanStaleConnections`
-
----
-
-### Two Different Network Usage Scenarios in This Project
-
-### 1. Communicating with Local Proxy Service (Core Function)
-- **Path:** `SurfingTileService.java`
-- **Address:** `http://127.0.0.1:9090`  
-  (or other address specified in settings)
-- **Purpose:**  
-  Core functionality of the app, using HTTP (GET, PUT, DELETE)
-  to communicate with the local Clash backend service for:
-  - Checking service status
-  - Getting / switching proxies
-  - Managing and cleaning connections
-
-### 2. Fetching Quotes from the Internet (UI Function)
-- **Path:** `AppFilterActivity.java`
-- **Purpose:**  
-  In the app filter UI (`AppFilterActivity`), the app fetches data from
-  the project's GitHub repository and randomly displays a quote.  
-  This is a **non-core UI feature**.
-
-The necessity of the `INTERNET` permission is reflected in two aspects:
-
-1. Interacting with the local proxy core (required)
-2. Fetching remote text content for display
-
-These are the **only network-related behaviors** in this project.
-
----
-
-### 3. FAQ
-
-- **App filter cannot display app list**:  
-  You can first disable the mount of the SurfingTile sub-module, reboot the device,
-  then re-enter permission management and grant App List permission / GPS permission (for WiFi SSID).
-
-- **Tile status shows No Sys | No Root**:  
-  Not running as a system app / Root permission not granted.
 
 - **Partial workflow diagrams**  
   <img src="folder/SurfingTileService.svg" style="width:60%">
