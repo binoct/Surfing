@@ -454,6 +454,11 @@ stop_tproxy() {
   fi
 
   if [ "${iptables}" = "ip6tables -w 100" ] ; then
+    if [ "${proxy_mode}" = "blacklist" ] && [ "${#uid_list[@]}" -ne 0 ]; then
+      for appid in "${uid_list[@]}" ; do
+        ip6tables -D OUTPUT -m owner --uid-owner "${appid}" -p udp --dport 53 -j ACCEPT > /dev/null 2>&1
+      done
+    fi
     ip6tables -D OUTPUT -p udp --dport 53 -j REJECT > /dev/null 2>&1
     ip6tables -D OUTPUT -p tcp --dport 853 -j REJECT > /dev/null 2>&1
     ${iptables} -D OUTPUT -d ::1 -p tcp -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -m tcp --dport "${tproxy_port}" -j REJECT > /dev/null 2>&1
