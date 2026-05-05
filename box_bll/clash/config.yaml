@@ -135,6 +135,10 @@ tun:
 #    - com.sec.imsservice # 三星专供 ↑ 范围
     # 非三星用户不必理会，三星用户需自行取消注释 不可使用include-package
 # —————————
+# Host
+hosts: # 如有需求可以使用模块自带的本地挂载，不建议放这里
+  services.googleapis.cn: services.googleapis.com
+# —————————
 # DNS模块
 # 请勿随意变动！
 dns:
