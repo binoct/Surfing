@@ -5,14 +5,13 @@ events=$1
 scripts=$(realpath "$0")
 scripts_dir=$(dirname "$scripts")
 
-source ${scripts_dir}/box.config
-source ${scripts_dir}/box.iptables
+. "${scripts_dir}/box.config"
+. "${scripts_dir}/box.iptables"
 
 CLASH_CONFIG="/data/adb/box_bll/clash/config.yaml"
 LINKCLEAR_LOG="/data/adb/box_bll/run/linkclear.log"
 
-TZ=Asia/Shanghai
-export TZ
+export TZ=Asia/Shanghai
 
 TMP_DIR="/dev/tmp"
 LINKCLEAR_LOCK="${TMP_DIR}/linkclear.lock"
@@ -21,36 +20,48 @@ BOOT_STABLE_FLAG="${TMP_DIR}/boot_stable.flag"
 uptime_sec=$(awk '{print int($1)}' /proc/uptime)
 
 clear_links() {
-[ ! -f "$BOOT_STABLE_FLAG" ] && return
+    [ ! -f "$BOOT_STABLE_FLAG" ] && return
 
-now_ts=$(date +%s)
-if [ -f "$LINKCLEAR_LOCK" ]; then
-last=$(cat "$LINKCLEAR_LOCK")
-[ $((now_ts - last)) -lt 15 ] && return
-fi
-echo "$now_ts" > "$LINKCLEAR_LOCK"
+    now_ts=$(date +%s)
+    if [ -f "$LINKCLEAR_LOCK" ]; then
+        last=$(cat "$LINKCLEAR_LOCK")
+        [ $((now_ts - last)) -lt 15 ] && return
+    fi
+    echo "$now_ts" > "$LINKCLEAR_LOCK"
 
-local PORT=$(grep -E '^[[:space:]]*external-controller:' "$CLASH_CONFIG" | head -n1 | awk -F ':' '{print $NF}' | cut -d'#' -f1 | tr -d ' "\r\n')
-local RAW_SECRET=$(grep -E '^[[:space:]]*secret:' "$CLASH_CONFIG" | head -n1 | cut -d':' -f2- | cut -d'#' -f1 | tr -d ' "' | tr -d '\r\n')
+    local PORT=$(grep -E '^[[:space:]]*external-controller:' "$CLASH_CONFIG" | head -n1 | awk -F ':' '{print $NF}' | cut -d'#' -f1 | tr -d ' "\r\n')
+    local RAW_SECRET=$(grep -E '^[[:space:]]*secret:' "$CLASH_CONFIG" | head -n1 | cut -d':' -f2- | cut -d'#' -f1 | tr -d ' "' | tr -d '\r\n')
 
-local AUTH_HEADER=""
-[ -n "$RAW_SECRET" ] && AUTH_HEADER="-H \"Authorization: Bearer $RAW_SECRET\""
-
-local URL_CONN="http://127.0.0.1:${PORT}/connections"
-eval "curl -s $AUTH_HEADER -X DELETE \"$URL_CONN\"" >/dev/null 2>&1
+    {
+        if [ -n "$RAW_SECRET" ]; then
+            curl -s -H "Authorization: Bearer $RAW_SECRET" -X DELETE "http://127.0.0.1:${PORT}/connections"
+        else
+            curl -s -X DELETE "http://127.0.0.1:${PORT}/connections"
+        fi
+    } >/dev/null 2>&1
 }
 
 rules_add() {
-    iptables -t mangle -F LOCAL_IP_V4
-    ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127\.0\.0\.1" | while read -r local_ipv4; do
-     iptables -w 100 -t mangle -A LOCAL_IP_V4 -d "$local_ipv4" -j ACCEPT
-     iptables -w 100 -t nat -A LOCAL_IP_V4 -d "$local_ipv4" -j ACCEPT
-    done
-    
-    ip6tables -t mangle -F LOCAL_IP_V6
-    ip -6 a | awk '/inet6/ {print $2}' | grep -vE "^fe80|^::1" | while read -r local_ipv6; do
-     ip6tables -w 100 -t mangle -A LOCAL_IP_V6 -d "$local_ipv6" -j ACCEPT
-    done
+    local ip4_list=$(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127\.0\.0\.1")
+    local ip6_list=$(ip -6 a | awk '/inet6/ {print $2}' | grep -vE "^fe80|^::1")
+    if iptables -w 100 -t mangle -L LOCAL_IP_V4 >/dev/null 2>&1; then
+        iptables -w 100 -t mangle -F LOCAL_IP_V4
+        for ip in $ip4_list; do
+            iptables -w 100 -t mangle -A LOCAL_IP_V4 -d "$ip" -j ACCEPT
+        done
+    fi
+    if iptables -w 100 -t nat -L LOCAL_IP_V4 >/dev/null 2>&1; then
+        iptables -w 100 -t nat -F LOCAL_IP_V4
+        for ip in $ip4_list; do
+            iptables -w 100 -t nat -A LOCAL_IP_V4 -d "$ip" -j ACCEPT
+        done
+    fi
+    if ip6tables -w 100 -t mangle -L LOCAL_IP_V6 >/dev/null 2>&1; then
+        ip6tables -w 100 -t mangle -F LOCAL_IP_V6
+        for ip in $ip6_list; do
+            ip6tables -w 100 -t mangle -A LOCAL_IP_V6 -d "$ip" -j ACCEPT
+        done
+    fi
     clear_links
 }
 
