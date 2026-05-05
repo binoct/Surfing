@@ -5,7 +5,7 @@ export PATH="/data/adb/magisk:/data/adb/ksu/bin:/data/adb/ap/bin:$PATH:/data/dat
 variab_dir="/dev/tmp/"
 module_dir="/data/adb/modules/Surfing"
 base_dir="/data/adb/box_bll"
-log_file="${base_dir}/run/Networkswitch.log"
+log_file="${base_dir}/run/debugnet.log"
 temp_log_file="${variab_dir}debug.log.tmp"
 last_check_file="${variab_dir}/last_check_time"
 last_wifi_state_file="${variab_dir}/last_wifi_state"
@@ -82,12 +82,53 @@ get_current_ip() {
     ip addr show wlan0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 }
 
+apply_wifi_bypass() {
+    local state="$1"
+
+    {
+        if [ "$state" = "enable" ]; then
+            for cmd in iptables "ip6tables -w 100"; do
+                for table in mangle nat filter; do
+                    [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
+                    $cmd $t_arg -N WIFI_BYPASS
+                    $cmd $t_arg -F WIFI_BYPASS
+                    $cmd $t_arg -A WIFI_BYPASS -j ACCEPT
+                done
+            done
+
+            for chain in BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL; do
+                for cmd in iptables "ip6tables -w 100"; do
+                    $cmd -t mangle -I $chain 1 -j WIFI_BYPASS
+                    $cmd -t nat -I $chain 1 -j WIFI_BYPASS
+                done
+            done
+            
+            iptables -w 100 -I BOX_DNS 1 -j WIFI_BYPASS
+            ip6tables -w 100 -I BOX_DNS 1 -j WIFI_BYPASS
+
+            touch "${variab_dir}/wifi_bypassed"
+
+        elif [ "$state" = "disable" ]; then
+            for chain in BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL; do
+                for cmd in iptables "ip6tables -w 100"; do
+                    while $cmd -t mangle -D $chain -j WIFI_BYPASS; do :; done
+                    while $cmd -t nat -D $chain -j WIFI_BYPASS; do :; done
+                done
+            done
+            while iptables -w 100 -D BOX_DNS -j WIFI_BYPASS; do :; done
+            while ip6tables -w 100 -D BOX_DNS -j WIFI_BYPASS; do :; done
+
+            rm "${variab_dir}/wifi_bypassed"
+        fi
+    } >/dev/null 2>&1
+}
+
 check_module_service() {
     if [ "$enable_network_service_control" = "true" ]; then
-        if [ -f "${module_dir}/disable" ]; then
-            current_state="disabled"
+        if [ -f "${variab_dir}/wifi_bypassed" ]; then
+            current_state="bypassed"
         else
-            current_state="enabled"
+            current_state="proxying"
         fi
 
         last_ssid=""
@@ -108,121 +149,99 @@ check_module_service() {
 
             if [ -n "$current_ip" ]; then
                 log_msg ""
-                log_msg "网络波动？网络发生变化！"
-                log_msg "WiFi已连接: ${ssid}"
-                log_msg "IP地址：${current_ip}"
+                log_msg "网络发生变化！"
+                log_msg "WiFi已连接: ${ssid}, IP地址：${current_ip}"
                 echo "ssid:${ssid}" > "$last_wifi_state_file"
                 echo "ip:${current_ip}" >> "$last_wifi_state_file"
                 
                 if [ "$use_module_on_wifi" = "false" ]; then
-                    if [ "$current_state" != "disabled" ]; then
-                        touch "${module_dir}/disable"
-                        log_msg "当前配置：禁用"
-                        log_msg "模块服务已禁用"
+                    if [ "$current_state" != "bypassed" ]; then
+                        apply_wifi_bypass "enable"
+                        log_msg "当前配置：WiFi下不代理"
+                        log_msg "已执行热切换 -> 全局直连"
                     else
-                        log_msg "当前配置：禁用"
-                        log_msg "当前服务已是禁用，无需操作"
+                        log_msg "当前配置：WiFi下不代理"
+                        log_msg "当前已是直连状态，无需操作"
                     fi
                 else
                     if [ "$use_ssid_matching" = "true" ]; then
                         if [ "$use_wifi_list_mode" = "blacklist" ]; then
-                            log_msg "黑名单模式：启用"
-                            log_msg "黑名单列表: ${blacklist_wifi_ssids}"
+                            log_msg "黑名单模式：启用. 黑名单列表: ${blacklist_wifi_ssids}"
                             if is_allowed_wifi "$ssid" "$blacklist_wifi_ssids"; then
-                                if [ "$current_state" != "disabled" ]; then
-                                    touch "${module_dir}/disable"
-                                    log_msg "当前配置：禁用"
-                                    log_msg "已命中列表，模块服务已禁用"
-
+                                if [ "$current_state" != "bypassed" ]; then
+                                    apply_wifi_bypass "enable"
+                                    log_msg "已命中黑名单，执行热切换 -> 全局直连"
                                 else
-                                    log_msg "当前配置：禁用"
-                                    log_msg "已命中列表，当前模块服务已是禁用，无需操作"
+                                    log_msg "已命中黑名单，当前已是直连状态，无需操作"
                                 fi
                             else
-                                if [ "$current_state" != "enabled" ]; then
-                                    rm "${module_dir}/disable" 2>/dev/null
-                                    log_msg "当前配置：启用"
-                                    log_msg "未命中列表，模块服务已启用"
+                                if [ "$current_state" != "proxying" ]; then
+                                    apply_wifi_bypass "disable"
+                                    log_msg "未命中黑名单，执行热切换 -> 恢复代理"
                                 else
-                                    log_msg "当前配置：启用"
-                                    log_msg "未命中列表，模块当前已是启用，无需操作"
+                                    log_msg "未命中黑名单，当前已是代理状态，无需操作"
                                 fi
                             fi
                         elif [ "$use_wifi_list_mode" = "whitelist" ]; then
-                            log_msg "白名单模式：启用"
-                            log_msg "白名单列表: ${whitelist_wifi_ssids}"
+                            log_msg "白名单模式：启用. 白名单列表: ${whitelist_wifi_ssids}"
                             if is_allowed_wifi "$ssid" "$whitelist_wifi_ssids"; then
-                                if [ "$current_state" != "enabled" ]; then
-                                    rm "${module_dir}/disable" 2>/dev/null
-                                    log_msg "当前配置：启用"
-                                    log_msg "已命中列表，模块服务已启用"
+                                if [ "$current_state" != "proxying" ]; then
+                                    apply_wifi_bypass "disable"
+                                    log_msg "已命中白名单，执行热切换 -> 恢复代理"
                                 else
-                                    log_msg "当前配置：启用"
-                                    log_msg "已命中列表，模块当前已是启用，无需操作"
+                                    log_msg "已命中白名单，当前已是代理状态，无需操作"
                                 fi
                             else
-                                if [ "$current_state" != "disabled" ]; then
-                                    touch "${module_dir}/disable"
-                                    log_msg "当前配置：禁用"
-                                    log_msg "未命中列表，已禁用模块服务"
+                                if [ "$current_state" != "bypassed" ]; then
+                                    apply_wifi_bypass "enable"
+                                    log_msg "未命中白名单，执行热切换 -> 全局直连"
                                 else
-                                    log_msg "当前配置：禁用"
-                                    log_msg "未命中列表，模块当前已是禁用，无需操作"
+                                    log_msg "未命中白名单，当前已是直连状态，无需操作"
                                 fi
                             fi
                         else
                             log_msg "警告：当前黑白名单模式选择为空"
-                            if [ "$current_state" != "enabled" ]; then
-                                rm "${module_dir}/disable" 2>/dev/null
-                                log_msg "当前配置：启用"
-                                log_msg "模块服务已启用（默认逻辑）"
+                            if [ "$current_state" != "proxying" ]; then
+                                apply_wifi_bypass "disable"
+                                log_msg "执行热切换 -> [恢复代理（默认逻辑）]"
                             else
-                                log_msg "当前配置：启用"
-                                log_msg "模块服务已是启用，无需操作（默认逻辑）"
+                                log_msg "模块当前已是代理状态，无需操作（默认逻辑）"
                             fi
                         fi
                     else
                         log_msg "使用常规WiFi模块设置"
-                        if [ "$current_state" != "enabled" ]; then
-                            rm "${module_dir}/disable" 2>/dev/null
-                            log_msg "当前配置：启用"
-                            log_msg "模块服务已启用"
+                        if [ "$current_state" != "proxying" ]; then
+                            apply_wifi_bypass "disable"
+                            log_msg "执行热切换 -> 恢复代理"
                         else
-                            log_msg "当前配置：启用"
-                            log_msg "模块服务已是启用，无需操作"
+                            log_msg "模块当前已是代理状态，无需操作"
                         fi
                     fi
                 fi
             else
                 log_msg "未获取到有效的IP地址，视为WiFi连接失败"
             fi
-
         elif [ "$wifi_status" = "not_wifi" ]; then
             log_msg ""
-            log_msg "网络波动？网络发生变化！"
-            log_msg "当前WiFi已断开！"
+            log_msg "网络发生变化！当前WiFi已断开！"
             if [ "$use_module_on_wifi_disconnect" = "true" ]; then
-                if [ "$current_state" != "enabled" ]; then
-                    rm "${module_dir}/disable" 2>/dev/null
-                    log_msg "当前配置：启用"
-                    log_msg "模块服务已启用"
+                if [ "$current_state" != "proxying" ]; then
+                    apply_wifi_bypass "disable"
+                    log_msg "断开WiFi后：执行热切换 -> 恢复代理"
                 else
-                    log_msg "当前配置：启用"
-                    log_msg "模块服务已是启用，无需操作"
+                    log_msg "断开WiFi后：当前已是代理状态，无需操作"
                 fi
             else
-                if [ "$current_state" != "disabled" ]; then
-                    touch "${module_dir}/disable"
-                    log_msg "当前配置：禁用"
-                    log_msg "模块服务已禁用"
+                if [ "$current_state" != "bypassed" ]; then
+                    apply_wifi_bypass "enable"
+                    log_msg "断开WiFi后：执行热切换 -> 全局直连"
                 else
-                    log_msg "当前配置：禁用"
-                    log_msg "当前模块服务已是禁用，无需操作"
+                    log_msg "断开WiFi后：当前已是直连状态，无需操作"
                 fi
             fi
         fi
     else
-        log_msg "网络波动？网络发生变化！"
+        log_msg "网络发生变化！"
         log_msg "网络控制模块服务已停用！"
         return
     fi
