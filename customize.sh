@@ -164,6 +164,8 @@ remove_old_surfingtile(){
 
 unzip -qo "${ZIPFILE}" -x 'META-INF/*' -d "$MODPATH"
 
+chmod 755 "$MODPATH/bin/busybox" && cd "$MODPATH/bin" && ./busybox --install -s . && cd "$MODPATH"
+
 remove_old_surfingtile
 
 sync_version_from_module_prop
@@ -252,6 +254,7 @@ mv -f "$MODPATH/Surfing_service.sh" "$service_dir/"
 rm -f "$SURFING_TILE_ZIP"
 
 set_perm_recursive "$MODPATH" 0 0 0755 0644
+set_perm_recursive "$MODPATH/bin" 0 0 0755 0755
 set_perm_recursive "$UPDATE_SURFING_TILE_DIR" 0 0 0755 0644
 set_perm_recursive "$BOX_BLL_PATH" 0 3005 0755 0644
 set_perm_recursive "$BOX_BLL_PATH/scripts" 0 3005 0755 0700
