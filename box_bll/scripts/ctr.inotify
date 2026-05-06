@@ -90,33 +90,33 @@ apply_wifi_bypass() {
             for cmd in iptables "ip6tables -w 100"; do
                 for table in mangle nat filter; do
                     [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
-                    $cmd $t_arg -N WIFI_BYPASS
-                    $cmd $t_arg -F WIFI_BYPASS
-                    $cmd $t_arg -A WIFI_BYPASS -j ACCEPT
+                    $cmd $t_arg -N NET_BYPASS
+                    $cmd $t_arg -F NET_BYPASS
+                    $cmd $t_arg -A NET_BYPASS -j ACCEPT
                 done
             done
 
             for chain in BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL; do
                 for cmd in iptables "ip6tables -w 100"; do
-                    $cmd -t mangle -I $chain 1 -j WIFI_BYPASS
-                    $cmd -t nat -I $chain 1 -j WIFI_BYPASS
+                    $cmd -t mangle -I $chain 1 -j NET_BYPASS
+                    $cmd -t nat -I $chain 1 -j NET_BYPASS
                 done
             done
             
-            iptables -w 100 -I BOX_DNS 1 -j WIFI_BYPASS
-            ip6tables -w 100 -I BOX_DNS 1 -j WIFI_BYPASS
+            iptables -w 100 -I BOX_DNS 1 -j NET_BYPASS
+            ip6tables -w 100 -I BOX_DNS 1 -j NET_BYPASS
 
             touch "${variab_dir}/wifi_bypassed"
 
         elif [ "$state" = "disable" ]; then
             for chain in BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL; do
                 for cmd in iptables "ip6tables -w 100"; do
-                    while $cmd -t mangle -D $chain -j WIFI_BYPASS; do :; done
-                    while $cmd -t nat -D $chain -j WIFI_BYPASS; do :; done
+                    while $cmd -t mangle -D $chain -j NET_BYPASS; do :; done
+                    while $cmd -t nat -D $chain -j NET_BYPASS; do :; done
                 done
             done
-            while iptables -w 100 -D BOX_DNS -j WIFI_BYPASS; do :; done
-            while ip6tables -w 100 -D BOX_DNS -j WIFI_BYPASS; do :; done
+            while iptables -w 100 -D BOX_DNS -j NET_BYPASS; do :; done
+            while ip6tables -w 100 -D BOX_DNS -j NET_BYPASS; do :; done
 
             rm "${variab_dir}/wifi_bypassed"
         fi
