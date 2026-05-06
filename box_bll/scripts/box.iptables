@@ -576,6 +576,21 @@ destroy_all_rules() {
     iptables="iptables -w 100" && stop_tproxy
     iptables="ip6tables -w 100" && stop_tproxy
     iptables="iptables -w 100" && stop_redirect
+
+    for cmd in iptables "ip6tables -w 100"; do
+        for table in mangle nat filter; do
+            [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
+            $cmd $t_arg -D BOX_DNS -j NET_BYPASS
+            $cmd $t_arg -D BOX_LOCAL -j NET_BYPASS
+            $cmd $t_arg -D BOX_EXTERNAL -j NET_BYPASS
+            $cmd $t_arg -D CLASH_DNS_LOCAL -j NET_BYPASS
+            $cmd $t_arg -D CLASH_DNS_EXTERNAL -j NET_BYPASS
+            $cmd $t_arg -F NET_BYPASS
+            $cmd $t_arg -X NET_BYPASS
+        done
+    done
+    rm -f /dev/tmp/wifi_bypassed
+
   } >/dev/null 2>&1
 }
 
@@ -747,7 +762,6 @@ case "$1" in
     log Warn "IPv6 协议栈已手动卸载."
     ;;
   *)
-    # [修改标注]: 语义优化，强调“指令非法”
     log Error "非法指令，请参考正确用法: $0 {enable|disable|renew|enable_ipv6|disable_ipv6}"
     ;;
 esac
