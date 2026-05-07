@@ -1,4 +1,5 @@
 #!/system/bin/sh
+
 export PATH="/data/adb/box_bll/bin:$PATH"
 
 BASE_MODULES_DIR="/data/adb/modules"
@@ -29,12 +30,10 @@ sleep 1
 safe_inotifyd() {
     local script="$1"
     local target="$2"
-    if pgrep -f "inotifyd $script $target" > /dev/null; then
-        return 0
-    fi
+    pkill -f "inotifyd $script $target" > /dev/null 2>&1
+    sleep 0.5
     nohup inotifyd "$script" "$target" > /dev/null 2>&1 &
 }
-
 
 safe_inotifyd "${SCRIPTS_DIR}/box.inotify" "$SURFING_DIR"
 safe_inotifyd "${SCRIPTS_DIR}/box.inotify" "$HOSTS_PATH"
