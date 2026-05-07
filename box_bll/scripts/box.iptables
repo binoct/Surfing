@@ -92,7 +92,7 @@ start_redirect() {
   ${iptables} -t nat -N BOX_LOCAL
   ${iptables} -t nat -F BOX_LOCAL
 
-  if [ "${bin_name}" = "clash" ]; then
+  if { [ "${mihomo_dns_forward}" = "true" ] && [ "${bin_name}" = "mihomo" ]; } || [ "${bin_name}" = "clash" ]; then
     ${iptables} -t nat -A BOX_EXTERNAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
 
     if [ "${proxy_mode}" = "blacklist" ]; then
@@ -170,10 +170,7 @@ start_redirect() {
     if [ "${#uid_list[@]}" -ne 0 ]; then
       for appid in "${uid_list[@]}" ; do
         ${iptables} -t nat -A BOX_LOCAL -p tcp -m owner --uid-owner "${appid}" -j REDIRECT --to-ports "${redir_port}"
-        ${iptables} -t nat -A BOX_LOCAL -p udp -m owner --uid-owner "${appid}" -j REDIRECT --to-ports "${redir_port}"
       done
-      ${iptables} -t nat -A BOX_LOCAL -p tcp -m owner --uid-owner 0 -j REDIRECT --to-ports "${redir_port}"
-      ${iptables} -t nat -A BOX_LOCAL -p udp -m owner --uid-owner 0 -j REDIRECT --to-ports "${redir_port}"
       log Info "代理模式: 白名单, 已代理指定应用."
     fi
   else
@@ -362,9 +359,6 @@ start_tproxy() {
         ${iptables} -t mangle -A BOX_LOCAL -p tcp -m owner --uid-owner "${appid}" -j MARK --set-xmark "${mark_id}"
         ${iptables} -t mangle -A BOX_LOCAL -p udp -m owner --uid-owner "${appid}" -j MARK --set-xmark "${mark_id}"
       done
-      ${iptables} -t mangle -A BOX_LOCAL -p tcp -m owner --uid-owner 0 -j MARK --set-xmark "${mark_id}"
-      ${iptables} -t mangle -A BOX_LOCAL -p udp -m owner --uid-owner 0 -j MARK --set-xmark "${mark_id}"
-
       [ "${iptables}" = "${SYS_IPTABLES} -w 100" ] && log Info "代理模式: 白名单, 已代理指定应用."
     fi
   fi
@@ -395,7 +389,7 @@ start_tproxy() {
             done
           elif [ "${proxy_mode}" = "whitelist" ]; then
             for appid in "${uid_list[@]}" ; do
-              ${iptables} -t nat -A CLASH_DNS_LOCAL -m owner --uid-owner "${appid}" -j ACCEPT
+              ${iptables} -t nat -A CLASH_DNS_LOCAL -m owner --uid-owner "${appid}" -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
             done
             ${iptables} -t nat -A CLASH_DNS_LOCAL -j RETURN
           fi
@@ -403,6 +397,7 @@ start_tproxy() {
           if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ]; then
             ${iptables} -t nat -A CLASH_DNS_LOCAL -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
           fi
+
           ${iptables} -t nat -A CLASH_DNS_LOCAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
           ${iptables} -t nat -I OUTPUT -j CLASH_DNS_LOCAL
 
@@ -416,13 +411,14 @@ start_tproxy() {
 
           ${iptables} -t mangle -N CLASH_DNS_LOCAL
           ${iptables} -t mangle -F CLASH_DNS_LOCAL
+
           if [ "${proxy_mode}" = "blacklist" ] && [ "${#uid_list[@]}" -ne 0 ]; then
             for appid in "${uid_list[@]}" ; do
               ${iptables} -t mangle -A CLASH_DNS_LOCAL -m owner --uid-owner "${appid}" -j RETURN
             done
           elif [ "${proxy_mode}" = "whitelist" ]; then
             for appid in "${uid_list[@]}" ; do
-              ${iptables} -t mangle -A CLASH_DNS_LOCAL -m owner --uid-owner "${appid}" -j ACCEPT
+              ${iptables} -t mangle -A CLASH_DNS_LOCAL -m owner --uid-owner "${appid}" -p udp --dport 53 -j MARK --set-xmark "${mark_id}"
             done
             ${iptables} -t mangle -A CLASH_DNS_LOCAL -j RETURN
           fi
@@ -430,6 +426,7 @@ start_tproxy() {
           if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ]; then
             ${iptables} -t mangle -A CLASH_DNS_LOCAL -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
           fi
+
           ${iptables} -t mangle -A CLASH_DNS_LOCAL -p udp --dport 53 -j MARK --set-xmark "${mark_id}"
           ${iptables} -t mangle -I OUTPUT -j CLASH_DNS_LOCAL
 
@@ -443,10 +440,8 @@ start_tproxy() {
   else
     local_loopback="127.0.0.1"
   fi
-
   ${iptables} -N BOX_DNS
   ${iptables} -F BOX_DNS
-
   if [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ]; then
     if [ "${proxy_mode}" = "blacklist" ]; then
       if [ "${#uid_list[@]}" -ne 0 ]; then
