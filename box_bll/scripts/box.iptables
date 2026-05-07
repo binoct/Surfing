@@ -1,6 +1,9 @@
 #!/system/bin/sh
+export PATH="/data/adb/box_bll/bin:$PATH"
 
-export PATH="/data/adb/magisk:/data/adb/ksu/bin:/data/adb/ap/bin:$PATH:/data/data/com.termux/files/usr/bin"
+SYS_IP="/system/bin/ip"
+SYS_IPTABLES="/system/bin/iptables"
+SYS_IP6TABLES="/system/bin/ip6tables"
 
 scripts=$(realpath "$0")
 scripts_dir=$(dirname "${scripts}")
@@ -31,8 +34,8 @@ log() {
 }
 
 check_tproxy_support() {
-    if iptables -w 100 -t mangle -A PREROUTING -p tcp -j TPROXY --on-port 1234 --tproxy-mark 1 2>/dev/null; then
-        iptables -w 100 -t mangle -D PREROUTING -p tcp -j TPROXY --on-port 1234 --tproxy-mark 1 2>/dev/null
+    if ${SYS_IPTABLES} -w 100 -t mangle -A PREROUTING -p tcp -j TPROXY --on-port 1234 --tproxy-mark 1 2>/dev/null; then
+        ${SYS_IPTABLES} -w 100 -t mangle -D PREROUTING -p tcp -j TPROXY --on-port 1234 --tproxy-mark 1 2>/dev/null
         return 0
     fi
     return 1
@@ -101,7 +104,7 @@ start_redirect() {
     elif [ "${proxy_mode}" = "whitelist" ]; then
       if [ "${#uid_list[@]}" -ne 0 ]; then
         for appid in "${uid_list[@]}" ; do
-          ${iptables} -t nat -A BOX_LOCAL -m owner --uid-owner "${appid}" -p udp --dport 53 -j ACCEPT
+          ${iptables} -t nat -A BOX_LOCAL -m owner --uid-owner "${appid}" -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
         done
       fi
       ${iptables} -t nat -A BOX_LOCAL -p udp --dport 53 -j RETURN
@@ -116,8 +119,10 @@ start_redirect() {
   ${iptables} -t nat -F LOCAL_IP_V4
 
   for subnet in "${intranet[@]}" ; do
-    ${iptables} -t nat -A BOX_EXTERNAL -d "${subnet}" -j RETURN
-    ${iptables} -t nat -A BOX_LOCAL -d "${subnet}" -j RETURN
+    ${iptables} -t nat -A BOX_EXTERNAL -d "${subnet}" -p udp ! --dport 53 -j RETURN
+    ${iptables} -t nat -A BOX_EXTERNAL -d "${subnet}" ! -p udp -j RETURN
+    ${iptables} -t nat -A BOX_LOCAL -d "${subnet}" -p udp ! --dport 53 -j RETURN
+    ${iptables} -t nat -A BOX_LOCAL -d "${subnet}" ! -p udp -j RETURN
   done
 
   ${iptables} -t nat -A BOX_EXTERNAL -j LOCAL_IP_V4
@@ -190,70 +195,71 @@ start_redirect() {
   fi
   ${iptables} -I OUTPUT -j BOX_DNS
 
-  ip6tables -w 100 -N BOX_DNS 2>/dev/null
-  ip6tables -w 100 -F BOX_DNS
+  ${SYS_IP6TABLES} -w 100 -N BOX_DNS 2>/dev/null
+  ${SYS_IP6TABLES} -w 100 -F BOX_DNS
 
   if [ "${proxy_mode}" = "blacklist" ]; then
     if [ "${#uid_list[@]}" -ne 0 ]; then
       for appid in "${uid_list[@]}" ; do
-        ip6tables -w 100 -A BOX_DNS -m owner --uid-owner "${appid}" -p udp --dport 53 -j RETURN
+        ${SYS_IP6TABLES} -w 100 -A BOX_DNS -m owner --uid-owner "${appid}" -p udp --dport 53 -j RETURN
       done
     fi
   fi
 
   if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ]; then
-    ip6tables -w 100 -A BOX_DNS -d ::1 -p tcp -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -m tcp --dport "${redir_port}" -j REJECT
+    ${SYS_IP6TABLES} -w 100 -A BOX_DNS -d ::1 -p tcp -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -m tcp --dport "${redir_port}" -j REJECT
   fi
 
   if [ "${proxy_mode}" = "blacklist" ]; then
-    ip6tables -w 100 -A BOX_DNS -p udp --dport 53 -j REJECT
+    ${SYS_IP6TABLES} -w 100 -A BOX_DNS -p udp --dport 53 -j REJECT
   elif [ "${proxy_mode}" = "whitelist" ]; then
     if [ "${#uid_list[@]}" -ne 0 ]; then
       for appid in "${uid_list[@]}" ; do
-        ip6tables -w 100 -A BOX_DNS -m owner --uid-owner "${appid}" -p udp --dport 53 -j REJECT
+        ${SYS_IP6TABLES} -w 100 -A BOX_DNS -m owner --uid-owner "${appid}" -p udp --dport 53 -j REJECT
       done
     fi
   fi
-  ip6tables -w 100 -A BOX_DNS -p tcp --dport 853 -j REJECT
+  ${SYS_IP6TABLES} -w 100 -A BOX_DNS -p tcp --dport 853 -j REJECT
 
-  ip6tables -w 100 -I OUTPUT -j BOX_DNS
+  ${SYS_IP6TABLES} -w 100 -I OUTPUT -j BOX_DNS
 }
 
 stop_redirect() {
   {
     ${iptables} -t nat -D PREROUTING -j BOX_EXTERNAL
     ${iptables} -t nat -D OUTPUT -j BOX_LOCAL
+
     ${iptables} -t nat -D BOX_LOCAL -j BOX_BYPASS
 
-    while ${iptables} -D OUTPUT -j BOX_DNS; do :; done
-    ${iptables} -F BOX_DNS
-    ${iptables} -X BOX_DNS
+    while ${SYS_IPTABLES} -w 100 -D OUTPUT -j BOX_DNS 2>/dev/null; do :; done
+    ${SYS_IPTABLES} -w 100 -F BOX_DNS 2>/dev/null
+    ${SYS_IPTABLES} -w 100 -X BOX_DNS 2>/dev/null
 
-    while ip6tables -w 100 -D OUTPUT -j BOX_DNS; do :; done
-    ip6tables -w 100 -F BOX_DNS
-    ip6tables -w 100 -X BOX_DNS
+    while ${SYS_IP6TABLES} -w 100 -D OUTPUT -j BOX_DNS 2>/dev/null; do :; done
+    ${SYS_IP6TABLES} -w 100 -F BOX_DNS 2>/dev/null
+    ${SYS_IP6TABLES} -w 100 -X BOX_DNS 2>/dev/null
 
     for chain in BOX_BYPASS BOX_EXTERNAL BOX_LOCAL LOCAL_IP_V4; do
-      ${iptables} -t nat -F "$chain"
-      ${iptables} -t nat -X "$chain"
+      ${iptables} -t nat -F "$chain" 2>/dev/null
+      ${iptables} -t nat -X "$chain" 2>/dev/null
     done
+
   } >/dev/null 2>&1
 }
 
 start_tproxy() {
   use_nat_table=true
-  if [ "${iptables}" = "ip6tables -w 100" ]; then
+  if [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ]; then
       if ! ${iptables} -t nat -L OUTPUT >/dev/null 2>&1; then
           use_nat_table=false
       fi
   fi
-
-  if [ "${iptables}" = "ip6tables -w 100" ]; then
-    ip -6 rule add fwmark "${mark_id}" table "${table_id}" pref "${table_id}"
-    ip -6 route add local default dev lo table "${table_id}"
+  if [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ]; then
+    ${SYS_IP} -6 rule add fwmark "${mark_id}" table "${table_id}" pref "${table_id}"
+    ${SYS_IP} -6 route add local default dev lo table "${table_id}"
   else
-    ip rule add fwmark "${mark_id}" table "${table_id}" pref "${table_id}"
-    ip route add local default dev lo table "${table_id}"
+    ${SYS_IP} rule add fwmark "${mark_id}" table "${table_id}" pref "${table_id}"
+    ${SYS_IP} route add local default dev lo table "${table_id}"
   fi
 
   ${iptables} -t mangle -N BOX_EXTERNAL
@@ -264,24 +270,18 @@ start_tproxy() {
 
   ${iptables} -t mangle -A BOX_EXTERNAL -m socket -j RETURN
 
-  if { [ "${mihomo_dns_forward}" = "true" ] && [ "${bin_name}" = "mihomo" ]; } || [ "${bin_name}" = "hysteria" ] || [ "${bin_name}" = "clash" ]; then
-    ${iptables} -t mangle -A BOX_EXTERNAL -p tcp --dport 53 -j RETURN
-    ${iptables} -t mangle -A BOX_EXTERNAL -p udp --dport 53 -j RETURN
-  else
-    ${iptables} -t mangle -A BOX_EXTERNAL -p tcp --dport 53 -j TPROXY --on-port "${tproxy_port}" --tproxy-mark "${mark_id}"
-    ${iptables} -t mangle -A BOX_EXTERNAL -p udp --dport 53 -j TPROXY --on-port "${tproxy_port}" --tproxy-mark "${mark_id}"
-  fi
-
-  if [ "${iptables}" = "ip6tables -w 100" ]; then
+  if [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ]; then
     for subnet6 in "${intranet6[@]}" ; do
-      ${iptables} -t mangle -A BOX_EXTERNAL -d "${subnet6}" -j RETURN
+      ${iptables} -t mangle -A BOX_EXTERNAL -d "${subnet6}" -p udp ! --dport 53 -j RETURN
+      ${iptables} -t mangle -A BOX_EXTERNAL -d "${subnet6}" ! -p udp -j RETURN
     done
     ${iptables} -t mangle -N LOCAL_IP_V6
     ${iptables} -t mangle -F LOCAL_IP_V6
     ${iptables} -t mangle -A BOX_EXTERNAL -j LOCAL_IP_V6
   else
     for subnet in "${intranet[@]}" ; do
-      ${iptables} -t mangle -A BOX_EXTERNAL -d "${subnet}" -j RETURN
+      ${iptables} -t mangle -A BOX_EXTERNAL -d "${subnet}" -p udp ! --dport 53 -j RETURN
+      ${iptables} -t mangle -A BOX_EXTERNAL -d "${subnet}" ! -p udp -j RETURN
     done
     ${iptables} -t mangle -N LOCAL_IP_V4
     ${iptables} -t mangle -F LOCAL_IP_V4
@@ -297,7 +297,7 @@ start_tproxy() {
       ${iptables} -t mangle -A BOX_EXTERNAL -p udp -i "${ap}" -j TPROXY --on-port "${tproxy_port}" --tproxy-mark "${mark_id}"
     done
 
-    [ "${iptables}" = "iptables -w 100" ] && log Info "外部接口 ${ap_list[*]} 透明代理已开启."
+    [ "${iptables}" = "${SYS_IPTABLES} -w 100" ] && log Info "外部接口 ${ap_list[*]} 透明代理已开启."
   fi
 
   ${iptables} -t mangle -I PREROUTING -j BOX_EXTERNAL
@@ -310,22 +310,19 @@ start_tproxy() {
       ${iptables} -t mangle -A BOX_LOCAL -o "${ignore}" -j RETURN
     done
 
-    [ "${iptables}" = "iptables -w 100" ] && log Info "已忽略出站接口: ${ignore_out_list[*]}."
+    [ "${iptables}" = "${SYS_IPTABLES} -w 100" ] && log Info "已忽略出站接口: ${ignore_out_list[*]}."
   fi
 
-  if { [ "${mihomo_dns_forward}" = "true" ] && [ "${bin_name}" = "mihomo" ]; } || [ "${bin_name}" = "hysteria" ] || [ "${bin_name}" = "clash" ]; then
-    ${iptables} -t mangle -A BOX_LOCAL -p tcp --dport 53 -j RETURN
-    ${iptables} -t mangle -A BOX_LOCAL -p udp --dport 53 -j RETURN
-  fi
-
-  if [ "${iptables}" = "ip6tables -w 100" ]; then
+  if [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ]; then
     for subnet6 in "${intranet6[@]}" ; do
-      ${iptables} -t mangle -A BOX_LOCAL -d "${subnet6}" -j RETURN
+      ${iptables} -t mangle -A BOX_LOCAL -d "${subnet6}" -p udp ! --dport 53 -j RETURN
+      ${iptables} -t mangle -A BOX_LOCAL -d "${subnet6}" ! -p udp -j RETURN
     done
     ${iptables} -t mangle -A BOX_LOCAL -j LOCAL_IP_V6
   else
     for subnet in "${intranet[@]}" ; do
-      ${iptables} -t mangle -A BOX_LOCAL -d "${subnet}" -j RETURN
+      ${iptables} -t mangle -A BOX_LOCAL -d "${subnet}" -p udp ! --dport 53 -j RETURN
+      ${iptables} -t mangle -A BOX_LOCAL -d "${subnet}" ! -p udp -j RETURN
     done
     ${iptables} -t mangle -A BOX_LOCAL -j LOCAL_IP_V4
   fi
@@ -335,7 +332,7 @@ start_tproxy() {
       ${iptables} -t mangle -A BOX_LOCAL -p tcp -j MARK --set-xmark "${mark_id}"
       ${iptables} -t mangle -A BOX_LOCAL -p udp -j MARK --set-xmark "${mark_id}"
 
-      [ "${iptables}" = "iptables -w 100" ] && log Info "代理模式: 全局透明代理 (所有应用已接管)."
+      [ "${iptables}" = "${SYS_IPTABLES} -w 100" ] && log Info "代理模式: 全局透明代理 (所有应用已接管)."
     else
       ${iptables} -t mangle -N BOX_BYPASS
       ${iptables} -t mangle -F BOX_BYPASS
@@ -357,7 +354,7 @@ start_tproxy() {
       ${iptables} -t mangle -A BOX_LOCAL -p tcp -j MARK --set-xmark "${mark_id}"
       ${iptables} -t mangle -A BOX_LOCAL -p udp -j MARK --set-xmark "${mark_id}"
 
-      [ "${iptables}" = "iptables -w 100" ] && log Info "代理模式: 黑名单, 已绕过指定应用."
+      [ "${iptables}" = "${SYS_IPTABLES} -w 100" ] && log Info "代理模式: 黑名单, 已绕过指定应用."
     fi
   elif [ "${proxy_mode}" = "whitelist" ]; then
     if [ "${#uid_list[@]}" -ne 0 ]; then
@@ -368,7 +365,7 @@ start_tproxy() {
       ${iptables} -t mangle -A BOX_LOCAL -p tcp -m owner --uid-owner 0 -j MARK --set-xmark "${mark_id}"
       ${iptables} -t mangle -A BOX_LOCAL -p udp -m owner --uid-owner 0 -j MARK --set-xmark "${mark_id}"
 
-      [ "${iptables}" = "iptables -w 100" ] && log Info "代理模式: 白名单, 已代理指定应用."
+      [ "${iptables}" = "${SYS_IPTABLES} -w 100" ] && log Info "代理模式: 白名单, 已代理指定应用."
     fi
   fi
 
@@ -409,7 +406,7 @@ start_tproxy() {
           ${iptables} -t nat -A CLASH_DNS_LOCAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
           ${iptables} -t nat -I OUTPUT -j CLASH_DNS_LOCAL
 
-          [ "${iptables}" = "iptables -w 100" ] && log Info "DNS 劫持转发已挂载至 NAT 链."
+          [ "${iptables}" = "${SYS_IPTABLES} -w 100" ] && log Info "DNS 劫持转发已挂载至 NAT 链."
       else
           ${iptables} -t mangle -N CLASH_DNS_EXTERNAL
           ${iptables} -t mangle -F CLASH_DNS_EXTERNAL
@@ -436,12 +433,12 @@ start_tproxy() {
           ${iptables} -t mangle -A CLASH_DNS_LOCAL -p udp --dport 53 -j MARK --set-xmark "${mark_id}"
           ${iptables} -t mangle -I OUTPUT -j CLASH_DNS_LOCAL
 
-          [ "${iptables}" = "iptables -w 100" ] && log Warn "内核不支持 IPv4 NAT，已改用 Mangle+TPROXY 模式劫持 DNS."
-          [ "${iptables}" = "ip6tables -w 100" ] && log Warn "内核不支持 IPv6 NAT，已改用 Mangle+TPROXY 模式劫持 DNS."
+          [ "${iptables}" = "${SYS_IPTABLES} -w 100" ] && log Warn "内核不支持 IPv4 NAT，已改用 Mangle+TPROXY 模式劫持 DNS."
+          [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ] && log Warn "内核不支持 IPv6 NAT，已改用 Mangle+TPROXY 模式劫持 DNS."
       fi
   fi
 
-  if [ "${iptables}" = "ip6tables -w 100" ]; then
+  if [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ]; then
     local_loopback="::1"
   else
     local_loopback="127.0.0.1"
@@ -450,7 +447,7 @@ start_tproxy() {
   ${iptables} -N BOX_DNS
   ${iptables} -F BOX_DNS
 
-  if [ "${iptables}" = "ip6tables -w 100" ]; then
+  if [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ]; then
     if [ "${proxy_mode}" = "blacklist" ]; then
       if [ "${#uid_list[@]}" -ne 0 ]; then
         for appid in "${uid_list[@]}" ; do
@@ -464,7 +461,7 @@ start_tproxy() {
     ${iptables} -A BOX_DNS -d "${local_loopback}" -p tcp -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -m tcp --dport "${tproxy_port}" -j REJECT
   fi
 
-  if [ "${iptables}" = "ip6tables -w 100" ]; then
+  if [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ]; then
     if [ "${proxy_mode}" = "blacklist" ]; then
       ${iptables} -A BOX_DNS -p udp --dport 53 -j REJECT
     elif [ "${proxy_mode}" = "whitelist" ]; then
@@ -485,20 +482,20 @@ start_tproxy() {
   ${iptables} -t mangle -A DIVERT -j ACCEPT
   ${iptables} -t mangle -I PREROUTING -p tcp -m socket -j DIVERT
 
-  [ "${iptables}" = "iptables -w 100" ] && log Info "TPROXY Mangle 链及 DIVERT 策略已挂载."
+  [ "${iptables}" = "${SYS_IPTABLES} -w 100" ] && log Info "TPROXY Mangle 链及 DIVERT 策略已挂载."
 
-  iptables -w 100 -t nat -A OUTPUT -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
-  iptables -w 100 -t nat -A PREROUTING -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
+  ${SYS_IPTABLES} -w 100 -t nat -A OUTPUT -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
+  ${SYS_IPTABLES} -w 100 -t nat -A PREROUTING -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
 }
 
 stop_tproxy() {
   {
-    if [ "${iptables}" = "ip6tables -w 100" ]; then
-      ip -6 rule del fwmark "${mark_id}" table "${table_id}" pref "${table_id}"
-      ip -6 route del local default dev lo table "${table_id}"
+    if [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ]; then
+      ${SYS_IP} -6 rule del fwmark "${mark_id}" table "${table_id}" pref "${table_id}"
+      ${SYS_IP} -6 route del local default dev lo table "${table_id}"
     else
-      ip rule del fwmark "${mark_id}" table "${table_id}" pref "${table_id}"
-      ip route del local default dev lo table "${table_id}"
+      ${SYS_IP} rule del fwmark "${mark_id}" table "${table_id}" pref "${table_id}"
+      ${SYS_IP} route del local default dev lo table "${table_id}"
     fi
 
     ${iptables} -t mangle -D PREROUTING -j BOX_EXTERNAL
@@ -514,14 +511,18 @@ stop_tproxy() {
       ${iptables} -t $table -X CLASH_DNS_LOCAL
     done
 
-    if [ "${iptables}" = "iptables -w 100" ]; then
-      ${iptables} -t nat -D OUTPUT -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
-      ${iptables} -t nat -D PREROUTING -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
+    if [ "${iptables}" = "${SYS_IPTABLES} -w 100" ]; then
+      ${SYS_IPTABLES} -t nat -D OUTPUT -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
+      ${SYS_IPTABLES} -t nat -D PREROUTING -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
     fi
 
-    while ${iptables} -D OUTPUT -j BOX_DNS; do :; done
-    ${iptables} -F BOX_DNS
-    ${iptables} -X BOX_DNS
+    while ${SYS_IPTABLES} -w 100 -D OUTPUT -j BOX_DNS 2>/dev/null; do :; done
+    ${SYS_IPTABLES} -w 100 -F BOX_DNS 2>/dev/null
+    ${SYS_IPTABLES} -w 100 -X BOX_DNS 2>/dev/null
+
+    while ${SYS_IP6TABLES} -w 100 -D OUTPUT -j BOX_DNS 2>/dev/null; do :; done
+    ${SYS_IP6TABLES} -w 100 -F BOX_DNS 2>/dev/null
+    ${SYS_IP6TABLES} -w 100 -X BOX_DNS 2>/dev/null
 
     ${iptables} -t mangle -D BOX_LOCAL -j BOX_BYPASS
     ${iptables} -t mangle -F BOX_BYPASS
@@ -538,7 +539,7 @@ stop_tproxy() {
     ${iptables} -t mangle -F DIVERT
     ${iptables} -t mangle -X DIVERT
 
-    if [ "${iptables}" = "ip6tables -w 100" ]; then
+    if [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ]; then
       ${iptables} -t mangle -F LOCAL_IP_V6
       ${iptables} -t mangle -X LOCAL_IP_V6
     else
@@ -564,33 +565,31 @@ enable_ipv6() {
 }
 
 if [ "${proxy_mode}" = "core" ]; then
-  iptables="iptables -w 100" && stop_tproxy >> /dev/null 2>&1
-  iptables="ip6tables -w 100" && stop_tproxy >> /dev/null 2>&1
-  iptables="iptables -w 100" && stop_redirect >> /dev/null 2>&1
+  iptables="${SYS_IPTABLES} -w 100" && stop_tproxy >> /dev/null 2>&1
+  iptables="${SYS_IP6TABLES} -w 100" && stop_tproxy >> /dev/null 2>&1
+  iptables="${SYS_IPTABLES} -w 100" && stop_redirect >> /dev/null 2>&1
   log Info "代理模式: ${proxy_mode}, 透明代理已禁用."
   return 0
 fi
 
 destroy_all_rules() {
   {
-    iptables="iptables -w 100" && stop_tproxy
-    iptables="ip6tables -w 100" && stop_tproxy
-    iptables="iptables -w 100" && stop_redirect
-
-    for cmd in iptables "ip6tables -w 100"; do
+    for cmd in "${SYS_IPTABLES}" "${SYS_IP6TABLES} -w 100"; do
         for table in mangle nat filter; do
             [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
             $cmd $t_arg -D BOX_DNS -j NET_BYPASS
             $cmd $t_arg -D BOX_LOCAL -j NET_BYPASS
             $cmd $t_arg -D BOX_EXTERNAL -j NET_BYPASS
-            $cmd $t_arg -D CLASH_DNS_LOCAL -j NET_BYPASS
-            $cmd $t_arg -D CLASH_DNS_EXTERNAL -j NET_BYPASS
             $cmd $t_arg -F NET_BYPASS
             $cmd $t_arg -X NET_BYPASS
         done
     done
-    rm -f /dev/tmp/wifi_bypassed
 
+    iptables="${SYS_IPTABLES} -w 100" && stop_tproxy
+    iptables="${SYS_IP6TABLES} -w 100" && stop_tproxy
+    iptables="${SYS_IPTABLES} -w 100" && stop_redirect
+
+    rm -f /dev/tmp/wifi_bypassed
   } >/dev/null 2>&1
 }
 
@@ -617,7 +616,7 @@ case "$1" in
     find_packages_uid
     optimize_kernel
 
-    for ip in $(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127.0.0.1"); do
+    for ip in $(${SYS_IP} -4 a | awk '/inet/ {print $2}' | grep -vE "^127.0.0.1"); do
       intranet[${#intranet[@]}]="$ip"
     done
     log Info "局域网路由豁免列表已同步更新."
@@ -626,26 +625,26 @@ case "$1" in
       if check_tproxy_support ; then
         log Info "流量劫持方案: TPROXY (全双工 TCP+UDP)"
         log Info "正在部署 IPv4 流量重定向策略..."
-        iptables="iptables -w 100"
+        iptables="${SYS_IPTABLES} -w 100"
         if start_tproxy; then
           log Info "IPv4 策略链注入成功，流量接管已就绪."
         else
           log Error "IPv4 策略链注入失败，正在回滚配置..."
-          iptables="iptables -w 100" && stop_tproxy >/dev/null 2>&1
+          iptables="${SYS_IPTABLES} -w 100" && stop_tproxy >/dev/null 2>&1
         fi
 
         if [ "${ipv6}" = "enable" ] ; then
           log Info "IPv6 协议栈已开启，正在构建转发逻辑..."
           enable_ipv6
-          iptables="ip6tables -w 100"
-          for ip6 in $(ip -6 a | awk '/inet6/ {print $2}' | grep -vE "^fe80|^::1"); do
+          iptables="${SYS_IP6TABLES} -w 100"
+          for ip6 in $(${SYS_IP} -6 a | awk '/inet6/ {print $2}' | grep -vE "^fe80|^::1"); do
             intranet6[${#intranet6[@]}]="$ip6"
           done
           if start_tproxy; then
             log Info "IPv6 流量接管成功，双栈环境已就绪."
           else
             log Error "IPv6 逻辑构建失败，已撤销对应规则."
-            iptables="ip6tables -w 100" && stop_tproxy >/dev/null 2>&1
+            iptables="${SYS_IP6TABLES} -w 100" && stop_tproxy >/dev/null 2>&1
           fi
         else
           log Warn "IPv6 协议栈已根据配置执行闭锁策略."
@@ -664,12 +663,12 @@ case "$1" in
         log Info "流量劫持方案: MIXED (混合模式 TCP+TUN)"
       fi
       log Info "正在部署全局重定向策略..."
-      iptables="iptables -w 100"
+      iptables="${SYS_IPTABLES} -w 100"
       if start_redirect; then
         log Info "IPv4 策略注入成功，流量接管已就绪."
       else
         log Error "策略注入失败，清理残留规则..."
-        iptables="iptables -w 100" && stop_redirect >/dev/null 2>&1
+        iptables="${SYS_IPTABLES} -w 100" && stop_redirect >/dev/null 2>&1
       fi
 
       if [ "${ipv6}" = "enable" ] ; then
@@ -695,7 +694,6 @@ case "$1" in
     ;;
 
   renew)
-    # [修改标注]: 语义优化，强调“重构”与“自愈”
     log Warn "正在触发规则链重构序列..."
     destroy_all_rules
     log Warn "旧规则已清理，等待服务重置..."
@@ -707,34 +705,33 @@ case "$1" in
     fi
 
     find_packages_uid
-    for ip in $(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127.0.0.1"); do
+    for ip in $(${SYS_IP} -4 a | awk '/inet/ {print $2}' | grep -vE "^127.0.0.1"); do
       intranet[${#intranet[@]}]="$ip"
     done
     log Info "网络拓扑变更已同步至豁免列表."
 
     if [ "${proxy_method}" = "TPROXY" ] ; then
       log Info "正在重新构建 TPROXY 矩阵..."
-      
-      iptables="iptables -w 100"
+      iptables="${SYS_IPTABLES} -w 100"
       if start_tproxy; then
         log Info "IPv4 规则链重构完成."
       else
         log Error "IPv4 重构失败，请检查防火墙状态."
-        iptables="iptables -w 100" && stop_tproxy >/dev/null 2>&1
+        iptables="${SYS_IPTABLES} -w 100" && stop_tproxy >/dev/null 2>&1
       fi
 
       if [ "${ipv6}" = "enable" ] ; then
         log Info "IPv6 转发逻辑同步重构中..."
         enable_ipv6
-        iptables="ip6tables -w 100"
-        for ip6 in $(ip -6 a | awk '/inet6/ {print $2}' | grep -vE "^fe80|^::1"); do
+        iptables="${SYS_IP6TABLES} -w 100"
+        for ip6 in $(${SYS_IP} -6 a | awk '/inet6/ {print $2}' | grep -vE "^fe80|^::1"); do
           intranet6[${#intranet6[@]}]="$ip6"
         done
         if start_tproxy; then
           log Info "IPv6 规则链重构完成."
         else
           log Error "IPv6 重构失败."
-          iptables="ip6tables -w 100" && stop_tproxy >/dev/null 2>&1
+          iptables="${SYS_IP6TABLES} -w 100" && stop_tproxy >/dev/null 2>&1
         fi
       else
         disable_ipv6
@@ -742,12 +739,12 @@ case "$1" in
       fi
     else
       log Info "正在重新构建 REDIRECT 矩阵..."
-      iptables="iptables -w 100"
+      iptables="${SYS_IPTABLES} -w 100"
       if start_redirect; then
         log Info "重定向规则链重构完成."
       else
         log Error "重构失败."
-        iptables="iptables -w 100" && stop_redirect >/dev/null 2>&1
+        iptables="${SYS_IPTABLES} -w 100" && stop_redirect >/dev/null 2>&1
       fi
     fi
     ;;

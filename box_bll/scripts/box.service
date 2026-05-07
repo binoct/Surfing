@@ -1,16 +1,20 @@
 #!/system/bin/sh
+export PATH="/data/adb/box_bll/bin:$PATH"
 
-export PATH="/data/adb/magisk:/data/adb/ksu/bin:/data/adb/ap/bin:$PATH:/data/data/com.termux/files/usr/bin"
+SYS_IP="/system/bin/ip"
+SYS_IPTABLES="/system/bin/iptables"
+SYS_IP6TABLES="/system/bin/ip6tables"
 
 scripts=$(realpath "$0")
 scripts_dir=$(dirname "$scripts")
 
 . "${scripts_dir}/box.config"
 
-mkdir -p "${run_path}"
-mkdir -p "${box_path}/${bin_name}/log"
-
-find "${box_path}" -mtime +3 -type f -name "*.log" -exec rm -f {} +
+{
+    mkdir -p "${run_path}"
+    mkdir -p "${box_path}/${bin_name}/log"
+    find "${box_path}" -mtime +3 -type f -name "*.log" -exec rm -f {} +
+} >/dev/null 2>&1
 
 log() {
     TZ=Asia/Shanghai
@@ -31,115 +35,109 @@ log() {
     esac
 }
 
+get_bin_pid() {
+    local name="$1"
+    pidof "$name" | awk '{print $1}'
+}
+
+get_bin_etime() {
+    local name="$1"
+    ps -eo etime,comm | awk -v bin="$name" '$2==bin {print $1; exit}'
+}
+
 check_permission() {
-    bin_path=$(command -v "${bin_name}" || [ -f "${box_path}/bin/${bin_name}" ] && echo "${box_path}/bin/${bin_name}")
+    bin_path=$(command -v "${bin_name}" 2>/dev/null)
+    [ -z "${bin_path}" ] && bin_path="${box_path}/bin/${bin_name}"
+
     box_user=$(echo "${box_user_group}" | awk -F ':' '{print $1}')
     box_group=$(echo "${box_user_group}" | awk -F ':' '{print $2}')
-    
-    chown "${box_user_group}" "${bin_path}"
-    chmod 0700 "${bin_path}"
-    chown -R "${box_user_group}" "${box_path}/${bin_name}" 2>/dev/null
+
+    {
+        chown "${box_user_group}" "${bin_path}"
+        chmod 0755 "${bin_path}"
+        chown -R "${box_user_group}" "${box_path}/${bin_name}"
+    } >/dev/null 2>&1
     return 0
 }
 
 start_bin() {
     ulimit -SHn 1000000
+    local log_out="/dev/null"
+    local check_args=""
+    local run_args=""
+
     case "${bin_name}" in
         sing-box)
-            if "${bin_path}" check -D "${box_path}/${bin_name}" > "${run_path}/check.log" 2>&1; then
-                log Info "正在启动 ${bin_name} 服务."
-                nohup busybox setuidgid "${box_user_group}" "${bin_path}" run -D "${box_path}/${bin_name}" > /dev/null 2> "${run_path}/error_${bin_name}.log" &
-                printf "%s" "$!" > "${pid_file}"
-                return 0
-            else
-                log Error "配置检查失败，请检查 ${run_path}/check.log 文件."
-                return 1
-            fi
+            check_args="check -D ${box_path}/${bin_name}"
+            run_args="run -D ${box_path}/${bin_name}"
             ;;
         clash|mihomo)
-            if "${bin_path}" -t -d "${box_path}/${bin_name}" > "${run_path}/check.log" 2>&1; then
-                log Info "正在启动 ${bin_name} 服务."
-                nohup busybox setuidgid "${box_user_group}" "${bin_path}" -d "${box_path}/${bin_name}" > "${box_path}/${bin_name}/log/${bin_name}_$(date +%Y%m%d%H%M).log" 2> "${run_path}/error_${bin_name}.log" &
-                printf "%s" "$!" > "${pid_file}"
-                return 0
-            else
-                log Error "配置检查失败，请检查 ${run_path}/check.log 文件."
-                return 1
-            fi
+            check_args="-t -d ${box_path}/${bin_name}"
+            run_args="-d ${box_path}/${bin_name}"
+            log_out="${box_path}/${bin_name}/log/${bin_name}_$(date +%Y%m%d%H%M).log"
             ;;
         xray)
             export XRAY_LOCATION_ASSET="${box_path}/${bin_name}"
-            if "${bin_path}" -test -confdir "${box_path}/${bin_name}" > "${run_path}/check.log" 2>&1; then
-                log Info "正在启动 ${bin_name} 服务."
-                nohup busybox setuidgid "${box_user_group}" "${bin_path}" -confdir "${box_path}/${bin_name}" > /dev/null 2> "${run_path}/error_${bin_name}.log" &
-                printf "%s" "$!" > "${pid_file}"
-                return 0
-            else
-                log Error "配置检查失败，请检查 ${run_path}/check.log 文件."
-                return 1
-            fi
+            check_args="-test -confdir ${box_path}/${bin_name}"
+            run_args="-confdir ${box_path}/${bin_name}"
             ;;
         v2ray)
             export V2RAY_LOCATION_ASSET="${box_path}/${bin_name}"
-            if "${bin_path}" test -d "${box_path}/${bin_name}" > "${run_path}/check.log" 2>&1; then
-                log Info "正在启动 ${bin_name} 服务."
-                nohup busybox setuidgid "${box_user_group}" "${bin_path}" run -d "${box_path}/${bin_name}" > /dev/null 2> "${run_path}/error_${bin_name}.log" &
-                printf "%s" "$!" > "${pid_file}"
-                return 0
-            else
-                log Error "配置检查失败，请检查 ${run_path}/check.log 文件."
-                return 1
-            fi
+            check_args="test -d ${box_path}/${bin_name}"
+            run_args="run -d ${box_path}/${bin_name}"
             ;;
         hysteria)
-            log Info "正在启动 ${bin_name} 服务."
-            nohup busybox setuidgid "${box_user_group}" "${bin_path}" -c "${box_path}/${bin_name}/config.yaml" > "${box_path}/${bin_name}/${bin_name}_$(date +%Y%m%d%H%M).log" 2> "${run_path}/error_${bin_name}.log" &
+            log Info "正在初始化 ${bin_name} 核心执行环境..."
+            log_out="${box_path}/${bin_name}/${bin_name}_$(date +%Y%m%d%H%M).log"
+
+            log Info "执行引擎: Busybox (setuidgid 权限隔离)"
+            setuidgid "${box_user_group}" "${bin_path}" -c "${box_path}/${bin_name}/config.yaml" > "${log_out}" 2> "${run_path}/error_${bin_name}.log" &
+
             printf "%s" "$!" > "${pid_file}"
             return 0
             ;;
         *)
-            log Error "错误: ${bin_name} 核心错误."
+            log Error "配置冲突: 未识别的执行核心 ${bin_name}."
             return 2
             ;;
     esac
-}
 
-find_netstat_path() {
-    if [ -f /system/bin/ss ]; then
-        alias netstat="/system/bin/ss"
-        return 0
-    elif [ -f /system/xbin/ss ]; then
-        alias netstat="/system/xbin/ss"
-        return 0
-    elif command -v busybox >/dev/null 2>&1; then
-        alias netstat="busybox netstat"
-        return 0
+    if [ "${bin_name}" != "hysteria" ]; then
+        if ${bin_path} ${check_args} > "${run_path}/check.log" 2>&1; then
+            log Info "配置校验通过，正在启动 ${bin_name} 核心进程..."
+
+            log Info "执行引擎: Busybox (setuidgid 权限隔离)"
+            setuidgid "${box_user_group}" "${bin_path}" ${run_args} > "${log_out}" 2> "${run_path}/error_${bin_name}.log" &
+
+            printf "%s" "$!" > "${pid_file}"
+            return 0
+        else
+            log Error "配置预校验失败，请检查 ${run_path}/check.log 中的语法错误."
+            return 1
+        fi
     fi
-    return 1
 }
 
 wait_bin_listen() {
-    wait_count=0
-    bin_pid=$(busybox pidof "${bin_name}")
-    if find_netstat_path; then
-        check_bin_cmd="netstat -tnulp | grep -q ${bin_name}"
-    else
-        check_bin_cmd="ls -lh /proc/${bin_pid}/fd | grep -q socket"
-    fi
-    while [ -n "${bin_pid}" ] && ! eval "${check_bin_cmd}" && [ "${wait_count}" -lt 100 ]; do
-        sleep 2
+    local wait_count=0
+    local max_wait=3
+    while [ "${wait_count}" -lt "${max_wait}" ]; do
+        bin_pid=$(get_bin_pid "${bin_name}")
+        if [ -n "${bin_pid}" ]; then
+            if ls -l "/proc/${bin_pid}/fd" 2>/dev/null | grep -q "socket:"; then
+                log Info "${bin_name} 核心网络套接字已成功绑定并就绪."
+                return 0
+            fi
+        fi
+        sleep 1
         wait_count=$((wait_count + 1))
     done
-    if [ -n "${bin_pid}" ] && eval "${check_bin_cmd}" ; then
-        log Info "${bin_name} 已开始监听"
-        return 0
-    else
-        return 1
-    fi
+    log Error "${bin_name} 核心响应超时，请检查 ${run_path}/error_${bin_name}.log."
+    return 1
 }
 
 display_run_time() {
-    run_time=$(busybox ps -eo etime,comm | awk -v bin="${bin_name}" '$2==bin {print $1; exit}')
+    run_time=$(get_bin_etime "${bin_name}")
     if echo "$run_time" | grep -qE "^[0-9]+h[0-9]+m?$"; then
         formatted=$(echo "$run_time" | sed -E 's/([0-9]+)h([0-9]+)m?/\1时\2分/')
         echo "$formatted"
@@ -169,51 +167,67 @@ display_run_time() {
 }
 
 display_bin_status() {
-    if bin_pid=$(busybox pidof "${bin_name}"); then
-        log Info "${bin_name} 使用用户组: $(stat -c %U:%G /proc/"${bin_pid}")."
-        log Info "${bin_name} 服务正在运行. (PID: ${bin_pid})"
+    bin_pid=$(get_bin_pid "${bin_name}")
+    if [ -n "${bin_pid}" ]; then
+        log Info "${bin_name} 当前运行上下文 (UID:GID): $(stat -c %U:%G /proc/"${bin_pid}")."
+        log Info "${bin_name} 当前活跃进程 (PID: ${bin_pid})."
         mem_kb=$(awk '/VmRSS/ {print $2}' /proc/"${bin_pid}"/status)
         mem_mb=$(awk -v kb="$mem_kb" 'BEGIN {printf "%.2f MB", kb/1024}')
-        log Info "${bin_name} 内存使用: ${mem_mb}"
+        log Info "${bin_name} 物理内存占用: ${mem_mb}"
         cpu_usage=$(/system/bin/ps -eo %CPU,NAME 2>/dev/null | awk -v bin="$bin_name" '$2==bin {print $1"%"; exit}')
-        if [ -z "$cpu_usage" ]; then
+        if [ -z "$cpu_usage" ] || [ "$cpu_usage" = "0%" ]; then
             cpu_usage=$(dumpsys cpuinfo | grep "$bin_name" | awk '{print $1}')
         fi
-        log Info "${bin_name} CPU 使用: ${cpu_usage}"
-        log Info "${bin_name} 服务已运行: $(display_run_time)"
+        log Info "${bin_name} CPU 资源占用: ${cpu_usage}"
+        log Info "${bin_name} 进程持续运行时间: $(display_run_time)"
         printf "%s" "${bin_pid}" > "${pid_file}"
         return 0
     else
-        log Warn "${bin_name} 服务已停止."
+        log Warn "未监测到 ${bin_name} 核心进程，服务当前已处于停止状态."
         return 1
     fi
 }
 
+clear_port_blockers() {
+    local check_ports="${redir_port} ${tproxy_port} ${clash_dns_port} 7890"
+
+    local ss_cache=$(/system/bin/ss -tulnp 2>/dev/null)
+
+    for port in $check_ports; do
+        [ -z "$port" ] && continue
+        local occupier_pid=$(echo "$ss_cache" | grep ":${port} " | grep -o 'pid=[0-9]*' | cut -d= -f2 | head -n 1)
+
+        if [ -n "$occupier_pid" ]; then
+            local occupier_name=$(cat /proc/$occupier_pid/comm 2>/dev/null || echo "未知进程")
+            log Warn "端口 ${port} 被 [${occupier_name}] (PID: ${occupier_pid}) 占用，已强制 kill"
+            kill -9 "$occupier_pid" 2>/dev/null
+            sleep 0.5
+        fi
+    done
+}
+
 start_service() {
     if check_permission; then
-        log Info "${bin_name} 将以 ${box_user_group} 用户组启动."
+        log Info "正在授权核心以 ${box_user_group} 用户组身份启动..."
+        clear_port_blockers
+
         if start_bin; then
-            log Info "${bin_name} 服务正在运行. (PID: $(cat "${pid_file}"))"
+            log Info "${bin_name} 核心已准备就绪 (PID: $(cat "${pid_file}"))."
             return 0
         else
-            if bin_pid=$(pidof "${bin_name}"); then
-                log Warn "${bin_name} 服务正在运行，但可能未在监听. ( PID: ${bin_pid} )"
-                return 0
-            else
-                log Error "启动 ${bin_name} 服务失败，请检查 ${run_path}/error_${bin_name}.log 文件."
-                rm -f "${pid_file}" >/dev/null 2>&1
-                return 1
-            fi
+            log Error "启动流程已中止."
+            rm -f "${pid_file}" >/dev/null 2>&1
+            return 1
         fi
     else
-        log Error "缺少 ${bin_name} 核心，请下载并放置在 ${box_path}/bin/ 目录中."
+        log Error "二进制核心缺失: 请将编译好的 ${bin_name} 放置于 ${box_path}/bin/ 目录."
         return 2
     fi
 }
 
 stop_service() {
     if display_bin_status; then
-        log Warn "正在停止 ${bin_name} 服务."
+        log Warn "正在下发 SIGTERM 信号终止 ${bin_name} 进程..."
         kill "$(cat "${pid_file}")" || killall "${bin_name}"
         sleep 1
         display_bin_status
@@ -235,35 +249,37 @@ probe_tun_index() {
 }
 
 tun_forward_ip_rules() {
-    ip rule "$1" iif lo goto 6000 pref 5000
-    ip rule "$1" iif "${tun_device}" lookup main suppress_prefixlength 0 pref 5010
-    ip rule "$1" iif "${tun_device}" goto 6000 pref 5020
-    ip rule "$1" from 10.0.0.0/8 lookup "${tun_table_index}" pref 5030
-    ip rule "$1" from 172.16.0.0/12 lookup "${tun_table_index}" pref 5040
-    ip rule "$1" from 192.168.0.0/16 lookup "${tun_table_index}" pref 5050
-    ip rule "$1" nop pref 6000
+    ${SYS_IP} rule "$1" iif lo goto 6000 pref 5000
+    ${SYS_IP} rule "$1" iif "${tun_device}" lookup main suppress_prefixlength 0 pref 5010
+    ${SYS_IP} rule "$1" iif "${tun_device}" goto 6000 pref 5020
+    ${SYS_IP} rule "$1" from 10.0.0.0/8 lookup "${tun_table_index}" pref 5030
+    ${SYS_IP} rule "$1" from 172.16.0.0/12 lookup "${tun_table_index}" pref 5040
+    ${SYS_IP} rule "$1" from 192.168.0.0/16 lookup "${tun_table_index}" pref 5050
+    ${SYS_IP} rule "$1" nop pref 6000
 }
 
 tun_forward_ip_rules_del() {
-    ip rule del pref 5000
-    ip rule del pref 5010
-    ip rule del pref 5020
-    ip rule del pref 5030
-    ip rule del pref 5040
-    ip rule del pref 5050
-    ip rule del pref 6000
+    {
+        ${SYS_IP} rule del pref 5000
+        ${SYS_IP} rule del pref 5010
+        ${SYS_IP} rule del pref 5020
+        ${SYS_IP} rule del pref 5030
+        ${SYS_IP} rule del pref 5040
+        ${SYS_IP} rule del pref 5050
+        ${SYS_IP} rule del pref 6000
+    } >/dev/null 2>&1
 }
 
 sing_tun_ip_rules() {
-    ip rule "$1" from all iif "${tun_device}" lookup main suppress_prefixlength 0 pref 8000
-    ip rule "$1" lookup main pref 7000
+    ${SYS_IP} rule "$1" from all iif "${tun_device}" lookup main suppress_prefixlength 0 pref 8000
+    ${SYS_IP} rule "$1" lookup main pref 7000
 }
 
 tun_forward_iptables_rules() {
-    iptables -w 100 "$1" FORWARD -o "${tun_device}" -j ACCEPT
-    iptables -w 100 "$1" FORWARD -i "${tun_device}" -j ACCEPT
-    ip6tables -w 100 "$1" FORWARD -o "${tun_device}" -j ACCEPT
-    ip6tables -w 100 "$1" FORWARD -i "${tun_device}" -j ACCEPT
+    ${SYS_IPTABLES} -w 100 "$1" FORWARD -o "${tun_device}" -j ACCEPT
+    ${SYS_IPTABLES} -w 100 "$1" FORWARD -i "${tun_device}" -j ACCEPT
+    ${SYS_IP6TABLES} -w 100 "$1" FORWARD -o "${tun_device}" -j ACCEPT
+    ${SYS_IP6TABLES} -w 100 "$1" FORWARD -i "${tun_device}" -j ACCEPT
 }
 
 tun_forward_enable() {
@@ -274,35 +290,39 @@ tun_forward_enable() {
     echo 2 > /proc/sys/net/ipv4/conf/all/rp_filter
 
     probe_tun_index && tun_forward_ip_rules "add"
-    probe_tun_device && tun_forward_iptables_rules "-I" && sing_tun_ip_rules "add" && log Info "Tun 热点支持已启用."
+    probe_tun_device && tun_forward_iptables_rules "-I" && sing_tun_ip_rules "add" && log Info "Tun 虚拟网卡转发与热点共享特性已激活."
     return 0
 }
 
 tun_forward_disable() {
-    sing_tun_ip_rules "del" >/dev/null 2>&1
-    tun_forward_ip_rules_del >/dev/null 2>&1
-    tun_forward_iptables_rules "-D" >/dev/null 2>&1
-    log Warn "Tun 热点支持已禁用."
+    {
+        sing_tun_ip_rules "del"
+        tun_forward_ip_rules_del
+        tun_forward_iptables_rules "-D"
+    } >/dev/null 2>&1
+    log Warn "Tun 虚拟网卡转发与热点共享特性已停用."
 }
 
 case "$1" in
     start)
-        if bin_pid=$(pgrep -x "${bin_name}"); then
-            log Info "${bin_name} 已经运行 (PID: ${bin_pid})"
+        bin_pid=$(get_bin_pid "${bin_name}")
+        if [ -n "${bin_pid}" ]; then
+            log Info "${bin_name} 核心已在后台稳健运行 (PID: ${bin_pid})."
             exit 0
         fi
+
         pids=$(pgrep -f "$0 start" | sort -n)
         my_pid=$$
         leader_pid=$(echo "$pids" | head -n 1)
         if [ "$my_pid" -ne "$leader_pid" ]; then
-            log Warn "Startup task already in progress, skipping (PID: $my_pid)."
+            log Warn "检测到已有启动进程 (PID: $leader_pid)，本次调用将静默退出以防冲突."
             exit 0
         fi
 
-        log Info "Starting service (Leader PID: $my_pid)"
+        log Info "开始执行核心服务启动序列 (主控 PID: $my_pid)..."
         if start_service; then
             uptime_sec=$(cut -d. -f1 /proc/uptime)
-            [ "${uptime_sec%.*}" -lt 180 ] && log Info "系统刚启动，等待初始化..." && sleep 5
+            [ "${uptime_sec%.*}" -lt 180 ] && log Info "系统处于冷启动初始阶段，正在等待环境就绪..." && sleep 5
             if wait_bin_listen; then
                 tun_forward_enable
             fi
@@ -313,6 +333,7 @@ case "$1" in
         tun_forward_disable
         ;;
     restart)
+        log Warn "正在执行服务热重启操作..."
         $0 stop
         sleep 2
         $0 start
@@ -321,7 +342,7 @@ case "$1" in
         display_bin_status
         ;;
     *)
-        log Error "$0 $1 用法: $0 {start|stop|restart|status}"
+        log Error "非法指令，请参考正确用法: $0 {start|stop|restart|status}"
         exit 1
         ;;
 esac

@@ -1,6 +1,5 @@
 #!/system/bin/sh
-
-export PATH="/data/adb/magisk:/data/adb/ksu/bin:/data/adb/ap/bin:$PATH:/data/data/com.termux/files/usr/bin"
+export PATH="/data/adb/box_bll/bin:$PATH"
 
 EVENT=$1
 MONITOR_DIR=$2

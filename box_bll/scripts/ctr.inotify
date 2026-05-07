@@ -1,6 +1,9 @@
 #!/system/bin/sh
+export PATH="/data/adb/box_bll/bin:$PATH"
 
-export PATH="/data/adb/magisk:/data/adb/ksu/bin:/data/adb/ap/bin:$PATH:/data/data/com.termux/files/usr/bin"
+SYS_IP="/system/bin/ip"
+SYS_IPTABLES="/system/bin/iptables"
+SYS_IP6TABLES="/system/bin/ip6tables"
 
 variab_dir="/dev/tmp/"
 module_dir="/data/adb/modules/Surfing"
@@ -84,10 +87,9 @@ get_current_ip() {
 
 apply_wifi_bypass() {
     local state="$1"
-
     {
         if [ "$state" = "enable" ]; then
-            for cmd in iptables "ip6tables -w 100"; do
+            for cmd in "${SYS_IPTABLES}" "${SYS_IP6TABLES} -w 100"; do
                 for table in mangle nat filter; do
                     [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
                     $cmd $t_arg -N NET_BYPASS
@@ -97,26 +99,25 @@ apply_wifi_bypass() {
             done
 
             for chain in BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL; do
-                for cmd in iptables "ip6tables -w 100"; do
+                for cmd in "${SYS_IPTABLES}" "${SYS_IP6TABLES} -w 100"; do
                     $cmd -t mangle -I $chain 1 -j NET_BYPASS
                     $cmd -t nat -I $chain 1 -j NET_BYPASS
                 done
             done
-            
-            iptables -w 100 -I BOX_DNS 1 -j NET_BYPASS
-            ip6tables -w 100 -I BOX_DNS 1 -j NET_BYPASS
+            ${SYS_IPTABLES} -w 100 -I BOX_DNS 1 -j NET_BYPASS
+            ${SYS_IP6TABLES} -w 100 -I BOX_DNS 1 -j NET_BYPASS
 
             touch "${variab_dir}/wifi_bypassed"
 
         elif [ "$state" = "disable" ]; then
             for chain in BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL; do
-                for cmd in iptables "ip6tables -w 100"; do
+                for cmd in "${SYS_IPTABLES}" "${SYS_IP6TABLES} -w 100"; do
                     while $cmd -t mangle -D $chain -j NET_BYPASS; do :; done
                     while $cmd -t nat -D $chain -j NET_BYPASS; do :; done
                 done
             done
-            while iptables -w 100 -D BOX_DNS -j NET_BYPASS; do :; done
-            while ip6tables -w 100 -D BOX_DNS -j NET_BYPASS; do :; done
+            while ${SYS_IPTABLES} -w 100 -D BOX_DNS -j NET_BYPASS; do :; done
+            while ${SYS_IP6TABLES} -w 100 -D BOX_DNS -j NET_BYPASS; do :; done
 
             rm "${variab_dir}/wifi_bypassed"
         fi
@@ -130,7 +131,6 @@ check_module_service() {
         else
             current_state="proxying"
         fi
-
         last_ssid=""
         last_ip=""
         if [ -f "$last_wifi_state_file" ]; then

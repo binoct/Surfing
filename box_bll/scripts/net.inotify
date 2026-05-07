@@ -1,4 +1,9 @@
 #!/system/bin/sh
+export PATH="/data/adb/box_bll/bin:$PATH"
+
+SYS_IP="/system/bin/ip"
+SYS_IPTABLES="/system/bin/iptables"
+SYS_IP6TABLES="/system/bin/ip6tables"
 
 events=$1
 
@@ -8,14 +13,25 @@ scripts_dir=$(dirname "$scripts")
 . "${scripts_dir}/box.config"
 . "${scripts_dir}/box.iptables"
 
-CLASH_CONFIG="/data/adb/box_bll/clash/config.yaml"
-LINKCLEAR_LOG="/data/adb/box_bll/run/linkclear.log"
-
 export TZ=Asia/Shanghai
+RUN_LOG="${run_path}/run.log"
+ERR_LOG="${run_path}/run_error.log"
+
+mkdir -p "${run_path}"
+
+log() {
+    local now=$(date +"[%Y-%m-%d %H:%M:%S %Z]")
+    local level=$1
+    local msg=$2
+    printf "%s [%s]: %s\n" "${now}" "${level}" "${msg}" >> "${RUN_LOG}"
+}
+
+CLASH_CONFIG="/data/adb/box_bll/clash/config.yaml"
 
 TMP_DIR="/dev/tmp"
 LINKCLEAR_LOCK="${TMP_DIR}/linkclear.lock"
 BOOT_STABLE_FLAG="${TMP_DIR}/boot_stable.flag"
+RULES_LOCK="${TMP_DIR}/rules_add.lock"
 
 uptime_sec=$(awk '{print int($1)}' /proc/uptime)
 
@@ -42,39 +58,44 @@ clear_links() {
 }
 
 rules_add() {
-    local ip4_list=$(ip -4 a | awk '/inet/ {print $2}' | grep -vE "^127\.0\.0\.1")
-    local ip6_list=$(ip -6 a | awk '/inet6/ {print $2}' | grep -vE "^fe80|^::1")
-    if iptables -w 100 -t mangle -L LOCAL_IP_V4 >/dev/null 2>&1; then
-        iptables -w 100 -t mangle -F LOCAL_IP_V4
-        for ip in $ip4_list; do
-            iptables -w 100 -t mangle -A LOCAL_IP_V4 -d "$ip" -j ACCEPT
-        done
+    local now_ts=$(date +%s)
+    if [ -f "$RULES_LOCK" ]; then
+        local last_ts=$(cat "$RULES_LOCK")
+        [ $((now_ts - last_ts)) -lt 2 ] && return
     fi
-    if iptables -w 100 -t nat -L LOCAL_IP_V4 >/dev/null 2>&1; then
-        iptables -w 100 -t nat -F LOCAL_IP_V4
-        for ip in $ip4_list; do
-            iptables -w 100 -t nat -A LOCAL_IP_V4 -d "$ip" -j ACCEPT
+    echo "$now_ts" > "$RULES_LOCK"
+
+    ${SYS_IP} -4 a | awk '/inet/ {print $2}' | grep -vE "^127.0.0.1" | while read -r local_ipv4; do
+        local added=false
+        for table in mangle nat; do
+            if ! ${SYS_IPTABLES} -w 100 -t $table -C LOCAL_IP_V4 -d "$local_ipv4" -p udp ! --dport 53 -j ACCEPT 2>/dev/null; then
+                ${SYS_IPTABLES} -w 100 -t $table -A LOCAL_IP_V4 -d "$local_ipv4" -p udp ! --dport 53 -j ACCEPT 2>/dev/null && added=true
+            fi
+            if ! ${SYS_IPTABLES} -w 100 -t $table -C LOCAL_IP_V4 -d "$local_ipv4" ! -p udp -j ACCEPT 2>/dev/null; then
+                ${SYS_IPTABLES} -w 100 -t $table -A LOCAL_IP_V4 -d "$local_ipv4" ! -p udp -j ACCEPT 2>/dev/null && added=true
+            fi
         done
-    fi
-    if ip6tables -w 100 -t mangle -L LOCAL_IP_V6 >/dev/null 2>&1; then
-        ip6tables -w 100 -t mangle -F LOCAL_IP_V6
-        for ip in $ip6_list; do
-            ip6tables -w 100 -t mangle -A LOCAL_IP_V6 -d "$ip" -j ACCEPT
-        done
-    fi
+        if [ "$added" = true ]; then
+            log Info "已更新 IPv4 动态防回环策略: $local_ipv4"
+        fi
+    done
+
+    ${SYS_IP} -6 a | awk '/inet6/ {print $2}' | grep -vE "^fe80|^::1" | while read -r local_ipv6; do
+        local added6=false
+        if ! ${SYS_IP6TABLES} -w 100 -t mangle -C LOCAL_IP_V6 -d "$local_ipv6" -p udp ! --dport 53 -j ACCEPT 2>/dev/null; then
+            ${SYS_IP6TABLES} -w 100 -t mangle -A LOCAL_IP_V6 -d "$local_ipv6" -p udp ! --dport 53 -j ACCEPT 2>/dev/null && added6=true
+        fi
+        if ! ${SYS_IP6TABLES} -w 100 -t mangle -C LOCAL_IP_V6 -d "$local_ipv6" ! -p udp -j ACCEPT 2>/dev/null; then
+            ${SYS_IP6TABLES} -w 100 -t mangle -A LOCAL_IP_V6 -d "$local_ipv6" ! -p udp -j ACCEPT 2>/dev/null && added6=true
+        fi
+        if [ "$added6" = true ]; then
+            log Info "已更新 IPv6 动态防回环策略: $local_ipv6"
+        fi
+    done
+
     clear_links
 }
 
-if [ "$events" = "w" ]; then
-    rules_add
-    sleep 1
-    if [ "$ipv6" = "disable" ]; then
-        disable_ipv6
-    fi
-fi
+[ "$events" = "w" ] && { rules_add; sleep 1; [ "$ipv6" = "disable" ] && disable_ipv6; }
 
-if [ "$uptime_sec" -lt 360 ] && [ ! -f "$BOOT_STABLE_FLAG" ]; then
-    sleep 60
-    rules_add
-    touch "$BOOT_STABLE_FLAG"
-fi
+{ [ "$uptime_sec" -lt 360 ] && [ ! -f "$BOOT_STABLE_FLAG" ]; } && { sleep 60; rules_add; touch "$BOOT_STABLE_FLAG"; }
