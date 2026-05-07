@@ -1,4 +1,5 @@
 #!/system/bin/sh
+export PATH="/data/adb/box_bll/bin:$PATH"
 
 module_dir="/data/adb/modules/Surfing"
 magisk -v | grep -q lite && module_dir="/data/adb/lite_modules/Surfing"
@@ -10,18 +11,19 @@ source "${scripts_dir}/box.config"
 
 wait_until_login() {
   local test_file="/sdcard/Android/.SURFINGTEST"
-  true > "$test_file"
-  while [ ! -f "$test_file" ]; do
-    true > "$test_file"
+  until [ -d "/sdcard/Android" ]; do
     sleep 1
   done
-  rm -f "$test_file"
-
+  true > "$test_file" 2>/dev/null
+  while [ ! -f "$test_file" ]; do
+    true > "$test_file" 2>/dev/null
+    sleep 1
+  done
+  rm -f "$test_file" 2>/dev/null
   while [ ! -f "/data/system/packages.xml" ]; do
     sleep 1
   done
 }
-
 wait_until_login
 
 if [ ! -f "${box_path}/manual" ] && [ ! -f "${module_dir}/disable" ]; then
