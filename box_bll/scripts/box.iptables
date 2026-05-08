@@ -84,26 +84,12 @@ start_redirect() {
 
   if { [ "${mihomo_dns_forward}" = "true" ] && [ "${bin_name}" = "mihomo" ]; } || [ "${bin_name}" = "clash" ]; then
     ${iptables} -t nat -A BOX_EXTERNAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
-
-    if [ "${proxy_mode}" = "blacklist" ]; then
-      if [ "${#uid_list[@]}" -ne 0 ]; then
-        for appid in "${uid_list[@]}" ; do
-          ${iptables} -t nat -A BOX_LOCAL -m owner --uid-owner "${appid}" -p udp --dport 53 -j RETURN
-        done
-      fi
-    elif [ "${proxy_mode}" = "whitelist" ]; then
-      if [ "${#uid_list[@]}" -ne 0 ]; then
-        for appid in "${uid_list[@]}" ; do
-          ${iptables} -t nat -A BOX_LOCAL -m owner --uid-owner "${appid}" -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
-        done
-      fi
-      ${iptables} -t nat -A BOX_LOCAL -p udp --dport 53 -j RETURN
-    fi
-
     ${iptables} -t nat -A BOX_LOCAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
+
     ${iptables} -t nat -A BOX_EXTERNAL -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
     ${iptables} -t nat -A BOX_LOCAL -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
   fi
+
 
   ${iptables} -t nat -N LOCAL_IP_V4
   ${iptables} -t nat -F LOCAL_IP_V4
@@ -186,29 +172,6 @@ stop_redirect() {
       ${iptables} -t nat -F "$chain" 2>/dev/null
       ${iptables} -t nat -X "$chain" 2>/dev/null
     done
-  } >/dev/null 2>&1
-}
-
-stop_redirect() {
-  {
-    ${iptables} -t nat -D PREROUTING -j BOX_EXTERNAL
-    ${iptables} -t nat -D OUTPUT -j BOX_LOCAL
-
-    ${iptables} -t nat -D BOX_LOCAL -j BOX_BYPASS
-
-    while ${SYS_IPTABLES} -w 100 -D OUTPUT -j BOX_DNS 2>/dev/null; do :; done
-    ${SYS_IPTABLES} -w 100 -F BOX_DNS 2>/dev/null
-    ${SYS_IPTABLES} -w 100 -X BOX_DNS 2>/dev/null
-
-    while ${SYS_IP6TABLES} -w 100 -D OUTPUT -j BOX_DNS 2>/dev/null; do :; done
-    ${SYS_IP6TABLES} -w 100 -F BOX_DNS 2>/dev/null
-    ${SYS_IP6TABLES} -w 100 -X BOX_DNS 2>/dev/null
-
-    for chain in BOX_BYPASS BOX_EXTERNAL BOX_LOCAL LOCAL_IP_V4; do
-      ${iptables} -t nat -F "$chain" 2>/dev/null
-      ${iptables} -t nat -X "$chain" 2>/dev/null
-    done
-
   } >/dev/null 2>&1
 }
 
@@ -341,17 +304,6 @@ start_tproxy() {
           ${iptables} -t nat -N CLASH_DNS_LOCAL
           ${iptables} -t nat -F CLASH_DNS_LOCAL
 
-          if [ "${proxy_mode}" = "blacklist" ] && [ "${#uid_list[@]}" -ne 0 ]; then
-            for appid in "${uid_list[@]}" ; do
-              ${iptables} -t nat -A CLASH_DNS_LOCAL -m owner --uid-owner "${appid}" -j RETURN
-            done
-          elif [ "${proxy_mode}" = "whitelist" ]; then
-            for appid in "${uid_list[@]}" ; do
-              ${iptables} -t nat -A CLASH_DNS_LOCAL -m owner --uid-owner "${appid}" -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
-            done
-            ${iptables} -t nat -A CLASH_DNS_LOCAL -j RETURN
-          fi
-
           if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ]; then
             ${iptables} -t nat -A CLASH_DNS_LOCAL -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
           fi
@@ -359,7 +311,7 @@ start_tproxy() {
           ${iptables} -t nat -A CLASH_DNS_LOCAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
           ${iptables} -t nat -I OUTPUT -j CLASH_DNS_LOCAL
 
-          [ "${iptables}" = "${SYS_IPTABLES} -w 100" ] && log Info "DNS 劫持转发已挂载至 NAT 链."
+          [ "${iptables}" = "${SYS_IPTABLES} -w 100" ] && log Info "DNS 全局劫持转发已挂载至 NAT 链."
       else
           ${iptables} -t mangle -N CLASH_DNS_EXTERNAL
           ${iptables} -t mangle -F CLASH_DNS_EXTERNAL
@@ -370,17 +322,6 @@ start_tproxy() {
           ${iptables} -t mangle -N CLASH_DNS_LOCAL
           ${iptables} -t mangle -F CLASH_DNS_LOCAL
 
-          if [ "${proxy_mode}" = "blacklist" ] && [ "${#uid_list[@]}" -ne 0 ]; then
-            for appid in "${uid_list[@]}" ; do
-              ${iptables} -t mangle -A CLASH_DNS_LOCAL -m owner --uid-owner "${appid}" -j RETURN
-            done
-          elif [ "${proxy_mode}" = "whitelist" ]; then
-            for appid in "${uid_list[@]}" ; do
-              ${iptables} -t mangle -A CLASH_DNS_LOCAL -m owner --uid-owner "${appid}" -p udp --dport 53 -j MARK --set-xmark "${mark_id}"
-            done
-            ${iptables} -t mangle -A CLASH_DNS_LOCAL -j RETURN
-          fi
-
           if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ]; then
             ${iptables} -t mangle -A CLASH_DNS_LOCAL -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
           fi
@@ -388,7 +329,7 @@ start_tproxy() {
           ${iptables} -t mangle -A CLASH_DNS_LOCAL -p udp --dport 53 -j MARK --set-xmark "${mark_id}"
           ${iptables} -t mangle -I OUTPUT -j CLASH_DNS_LOCAL
 
-          [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ] && log Info "正在使用 Mangle+TPROXY 模式劫持 DNS."
+          [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ] && log Info "正在使用 Mangle+TPROXY 模式全局劫持 DNS."
       fi
   fi
 
