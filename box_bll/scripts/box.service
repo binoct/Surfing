@@ -36,21 +36,18 @@ log() {
 }
 
 get_bin_pid() {
-    local name="$1"
-    pidof "$name" | awk '{print $1}'
+    pidof -s "$bin_name"
 }
 
 get_bin_etime() {
-    local name="$1"
-    ps -eo etime,comm | awk -v bin="$name" '$2==bin {print $1; exit}'
+    ps -eo etime,comm | awk -v bin="$bin_name" '$2==bin {print $1; exit}'
 }
 
 check_permission() {
     bin_path=$(command -v "${bin_name}" 2>/dev/null)
     [ -z "${bin_path}" ] && bin_path="${box_path}/bin/${bin_name}"
 
-    box_user=$(echo "${box_user_group}" | awk -F ':' '{print $1}')
-    box_group=$(echo "${box_user_group}" | awk -F ':' '{print $2}')
+    eval $(echo "${box_user_group}" | awk -F ':' '{print "box_user=" $1 ";box_group=" $2}')
 
     {
         chown "${box_user_group}" "${bin_path}"
@@ -122,9 +119,9 @@ wait_bin_listen() {
     local wait_count=0
     local max_wait=3
     while [ "${wait_count}" -lt "${max_wait}" ]; do
-        bin_pid=$(get_bin_pid "${bin_name}")
+        bin_pid=$(get_bin_pid)
         if [ -n "${bin_pid}" ]; then
-            if ls -l "/proc/${bin_pid}/fd" 2>/dev/null | grep -q "socket:"; then
+            if ls -l "/proc/${bin_pid}/fd" 2>/dev/null | awk '/socket:/{f=1; exit} END{exit !f}'; then
                 log Info "${bin_name} 核心网络套接字已成功绑定并就绪."
                 return 0
             fi
@@ -137,46 +134,31 @@ wait_bin_listen() {
 }
 
 display_run_time() {
-    run_time=$(get_bin_etime "${bin_name}")
-    if echo "$run_time" | grep -qE "^[0-9]+h[0-9]+m?$"; then
-        formatted=$(echo "$run_time" | sed -E 's/([0-9]+)h([0-9]+)m?/\1时\2分/')
-        echo "$formatted"
-        return
-    fi
-    if echo "$run_time" | grep -qE "^[0-9]+d[0-9]+h?$"; then
-        formatted=$(echo "$run_time" | sed -E 's/([0-9]+)d([0-9]+)h?/\1天\2时/')
-        echo "$formatted"
-        return
-    fi
-    if echo "$run_time" | grep -qE "^[0-9]+-[0-9]+:[0-9]+:[0-9]+$"; then
-        days=$(echo "$run_time" | cut -d'-' -f1)
-        time_part=$(echo "$run_time" | cut -d'-' -f2)
-        hours=$(echo "$time_part" | cut -d: -f1)
-        minutes=$(echo "$time_part" | cut -d: -f2)
-        echo "${days}天${hours}时${minutes}分"
-        return
-    fi
-    a=$(echo "$run_time" | cut -d: -f1)
-    b=$(echo "$run_time" | cut -d: -f2)
-    c=$(echo "$run_time" | cut -d: -f3)
-    if [ -z "$c" ]; then
-        echo "${a}分钟"
-    else
-        echo "${a}时${b}分"
-    fi
+    ps -eo etime,comm | awk -v bin="${bin_name}" '
+    $2==bin {
+        t=$1; 
+        if (t ~ /-/) {
+            split(t, d, "-"); split(d[2], tm, ":");
+            print d[1]"天"tm[1]"时"tm[2]"分"; exit
+        }
+        n=split(t, tm, ":");
+        if (n==3) { print tm[1]"时"tm[2]"分"; exit }
+        if (n==2) { print tm[1]"分钟"; exit }
+    }'
 }
 
 display_bin_status() {
-    bin_pid=$(get_bin_pid "${bin_name}")
+    bin_pid=$(get_bin_pid)
     if [ -n "${bin_pid}" ]; then
         log Info "${bin_name} 当前运行上下文 (UID:GID): $(stat -c %U:%G /proc/"${bin_pid}")."
         log Info "${bin_name} 当前活跃进程 (PID: ${bin_pid})."
-        mem_kb=$(awk '/VmRSS/ {print $2}' /proc/"${bin_pid}"/status)
-        mem_mb=$(awk -v kb="$mem_kb" 'BEGIN {printf "%.2f MB", kb/1024}')
+
+        mem_mb=$(awk '/VmRSS/ {printf "%.2f MB", $2/1024; exit}' /proc/"${bin_pid}"/status)
         log Info "${bin_name} 物理内存占用: ${mem_mb}"
+
         cpu_usage=$(/system/bin/ps -eo %CPU,NAME 2>/dev/null | awk -v bin="$bin_name" '$2==bin {print $1"%"; exit}')
         if [ -z "$cpu_usage" ] || [ "$cpu_usage" = "0%" ]; then
-            cpu_usage=$(dumpsys cpuinfo | grep "$bin_name" | awk '{print $1}')
+            cpu_usage=$(dumpsys cpuinfo | awk -v bin="$bin_name" '$0 ~ bin {print $1; exit}')
         fi
         log Info "${bin_name} CPU 资源占用: ${cpu_usage}"
         log Info "${bin_name} 进程持续运行时间: $(display_run_time)"
@@ -189,13 +171,12 @@ display_bin_status() {
 }
 
 clear_port_blockers() {
-    local check_ports="${redir_port} ${tproxy_port} ${clash_dns_port} 7890"
-
-    local ss_cache=$(/system/bin/ss -tulnp 2>/dev/null)
+    check_ports="${redir_port} ${tproxy_port} ${clash_dns_port} 7890"
+    ss_cache=$(/system/bin/ss -tulnp 2>/dev/null)
 
     for port in $check_ports; do
         [ -z "$port" ] && continue
-        local occupier_pid=$(echo "$ss_cache" | grep ":${port} " | grep -o 'pid=[0-9]*' | cut -d= -f2 | head -n 1)
+        local occupier_pid=$(echo "$ss_cache" | awk -v p=":${port} " '$0 ~ p && /pid=/ { match($0, /pid=[0-9]+/); print substr($0, RSTART+4, RLENGTH-4); exit }')
 
         if [ -n "$occupier_pid" ]; then
             local occupier_name=$(cat /proc/$occupier_pid/comm 2>/dev/null || echo "未知进程")
@@ -228,7 +209,7 @@ start_service() {
 stop_service() {
     if display_bin_status; then
         log Warn "正在下发 SIGTERM 信号终止 ${bin_name} 进程..."
-        kill "$(cat "${pid_file}")" || killall "${bin_name}"
+        kill "$(cat "${pid_file}")" 2>/dev/null || killall "${bin_name}"
         sleep 1
         display_bin_status
     fi
@@ -236,12 +217,12 @@ stop_service() {
 }
 
 probe_tun_device() {
-    ifconfig | grep -q "${tun_device}" || return 1
+    ifconfig | awk -v dev="${tun_device}" '$0 ~ dev {exit 0} END {exit 1}'
 }
 
 probe_tun_index() {
     tun_table_index=${table_id:-2024}
-    if ifconfig | grep -q "${tun_device}"; then
+    if ifconfig | awk -v dev="${tun_device}" '$0 ~ dev {exit 0} END {exit 1}'; then
         return 0
     else
         return 1
@@ -267,7 +248,7 @@ tun_forward_ip_rules_del() {
         ${SYS_IP} rule del pref 5040
         ${SYS_IP} rule del pref 5050
         ${SYS_IP} rule del pref 6000
-    } >/dev/null 2>&1
+    }
 }
 
 sing_tun_ip_rules() {
@@ -305,7 +286,7 @@ tun_forward_disable() {
 
 case "$1" in
     start)
-        bin_pid=$(get_bin_pid "${bin_name}")
+        bin_pid=$(get_bin_pid)
         if [ -n "${bin_pid}" ]; then
             log Info "${bin_name} 核心已在后台稳健运行 (PID: ${bin_pid})."
             exit 0

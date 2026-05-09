@@ -15,58 +15,95 @@ last_wifi_state_file="${variab_dir}/last_wifi_state"
 
 log_enabled="false"
 
-if [ ! -d "$variab_dir" ]; then
-    mkdir -p "$variab_dir"
-fi
-
 scripts=$(realpath "$0")
 scripts_dir=$(dirname "${scripts}")
 
 events=$1
-if [ "$events" != "w" ]; then
-    return
-fi
+
+[ "$events" != "w" ] && return
 
 . "${scripts_dir}/box.config"
 
-if [ "$enable_network_service_control" != "true" ]; then
-    exit 0
-fi
+[ "$enable_network_service_control" != "true" ] && exit 0
 
-. "${scripts_dir}/ctr.utils"
+get_current_ssid() {
+    local SSID=$(dumpsys wifi | awk -F'[":,]' '
+        /mWifiInfo/ {
+            for (i=1; i<=NF; i++) {
+                if ($i ~ /SSID/) {
+                    s = $(i+1); 
+                    gsub(/^[ \t]+|[ \t]+$/, "", s); 
+                    if (s != "" && s != "<unknown ssid>") { print s; exit }
+                }
+            }
+        }
+        /COMPLETED/ {
+            split($0, a, "\"");
+            s = a[2];
+            if (s != "" && s != "<unknown ssid>") { print s; exit }
+        }
+    ')
+    if [ -z "$SSID" ] || [ "$SSID" = "<unknown ssid>" ]; then
+        SSID=$(iwconfig wlan0 | awk -F'[:"]' '/ESSID/ {gsub(/[ \t]/, "", $3); if ($3 != "off/any") print $3}')
+    fi
+    [ -z "$SSID" ] && SSID="unknown"
+    printf "%s\n" "$SSID"
+}
+
+is_wifi_connected() {
+    local wifi_enabled=$(dumpsys wifi | awk '/Wi-Fi is enabled/ {print "enabled"; exit}')
+    local wifi_ip=$(ip -4 addr show wlan0 | awk '/inet / {sub(/\/.*/, "", $2); print $2; exit}')
+
+    if [ -n "$wifi_enabled" ] && [ -n "$wifi_ip" ]; then
+        printf "wifi\n"
+    else
+        printf "not_wifi\n"
+    fi
+}
+
+get_current_ip() {
+    ip -4 addr show wlan0 2>/dev/null | awk '/inet / {sub(/\/.*/, "", $2); print $2; exit}'
+}
+
+is_allowed_wifi() {
+    local ssid=$1
+    local allowed_ssids=$2
+    printf "%s" "$allowed_ssids" | awk -v target="$ssid" '
+        BEGIN { rs = 1 }
+        {
+            for (i=1; i<=NF; i++) {
+                if ($i == target) { rs = 0; exit }
+            }
+        }
+        END { exit rs }
+    '
+}
 
 log_msg() {
-    if [ "$log_enabled" = "true" ]; then
-        if [ -z "$1" ]; then
-            echo "" >> "$log_file"
-        else
-            echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$log_file"
-        fi
+    [ "$log_enabled" != "true" ] && return
+    if [ -z "$1" ]; then
+        echo "" >> "$log_file"
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$log_file"
     fi
 }
 
 clean_old_logs() {
-    retention_time=$((24 * 60 * 60))
-    current_time=$(date +%s)
+    local retention_sec=$((24 * 60 * 60))
+    local cutoff_date=$(date -d "@$(($(date +%s) - retention_sec))" "+%Y%m%d%H%M%S")
 
     if [ -f "$log_file" ]; then
-        awk -v now="$current_time" -v retention="$retention_time" '
+        awk -v cutoff="$cutoff_date" '
         {
-            log_date = $1 " " $2
-            cmd = "date -d \"" log_date "\" +%s"
-            cmd | getline log_time
-            close(cmd)
-            if (now - log_time < retention) print
+            t = $1 $2; gsub(/[- :]/, "", t)
+            if (t >= cutoff) print $0
         }' "$log_file" > "${log_file}.tmp" && mv "${log_file}.tmp" "$log_file"
     fi
 }
 clean_old_logs
 
 current_time=$(date +%s)
-last_check_time=0
-if [ -f "$last_check_file" ]; then
-    last_check_time=$(cat "$last_check_file")
-fi
+last_check_time=$(cat "$last_check_file" 2>/dev/null || echo 0)
 
 time_diff=$((current_time - last_check_time))
 stability_window=3
@@ -81,15 +118,11 @@ echo "$current_time" > "$last_check_file"
 wifi_status=$(is_wifi_connected)
 ssid=$(get_current_ssid)
 
-get_current_ip() {
-    ip addr show wlan0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
-}
-
 apply_wifi_bypass() {
     local state="$1"
     {
         if [ "$state" = "enable" ]; then
-            for cmd in "${SYS_IPTABLES}" "${SYS_IP6TABLES} -w 100"; do
+            for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
                 for table in mangle nat filter; do
                     [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
                     $cmd $t_arg -N NET_BYPASS
@@ -99,7 +132,7 @@ apply_wifi_bypass() {
             done
 
             for chain in BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL; do
-                for cmd in "${SYS_IPTABLES}" "${SYS_IP6TABLES} -w 100"; do
+                for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
                     $cmd -t mangle -I $chain 1 -j NET_BYPASS
                     $cmd -t nat -I $chain 1 -j NET_BYPASS
                 done
@@ -111,7 +144,7 @@ apply_wifi_bypass() {
 
         elif [ "$state" = "disable" ]; then
             for chain in BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL; do
-                for cmd in "${SYS_IPTABLES}" "${SYS_IP6TABLES} -w 100"; do
+                for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
                     while $cmd -t mangle -D $chain -j NET_BYPASS; do :; done
                     while $cmd -t nat -D $chain -j NET_BYPASS; do :; done
                 done
@@ -125,125 +158,60 @@ apply_wifi_bypass() {
 }
 
 check_module_service() {
-    if [ "$enable_network_service_control" = "true" ]; then
-        if [ -f "${variab_dir}/wifi_bypassed" ]; then
-            current_state="bypassed"
-        else
-            current_state="proxying"
-        fi
-        last_ssid=""
-        last_ip=""
-        if [ -f "$last_wifi_state_file" ]; then
-            last_ssid=$(grep 'ssid:' "$last_wifi_state_file" | cut -d: -f2)
-            last_ip=$(grep 'ip:' "$last_wifi_state_file" | cut -d: -f2)
-        fi
+    [ -f "${variab_dir}/wifi_bypassed" ] && current_state="bypassed" || current_state="proxying"
+    eval $(awk -F: '/ssid:/ {s=$2} /ip:/ {i=$2} END {printf "last_ssid=\"%s\";last_ip=\"%s\"", s, i}' "$last_wifi_state_file" 2>/dev/null)
 
-        if [ "$wifi_status" = "wifi" ] && [ -n "$ssid" ]; then
-            for i in 1 2 3; do
-                current_ip=$(get_current_ip)
-                if [ -n "$current_ip" ]; then
-                    break
-                fi
-                sleep 2
-            done
-
-            if [ -n "$current_ip" ]; then
-                log_msg ""
-                log_msg "网络发生变化！"
-                log_msg "WiFi已连接: ${ssid}, IP地址：${current_ip}"
-                echo "ssid:${ssid}" > "$last_wifi_state_file"
-                echo "ip:${current_ip}" >> "$last_wifi_state_file"
-                
-                if [ "$use_module_on_wifi" = "false" ]; then
-                    if [ "$current_state" != "bypassed" ]; then
-                        apply_wifi_bypass "enable"
-                        log_msg "当前配置：WiFi下不代理"
-                        log_msg "已执行热切换 -> 全局直连"
-                    else
-                        log_msg "当前配置：WiFi下不代理"
-                        log_msg "当前已是直连状态，无需操作"
-                    fi
-                else
-                    if [ "$use_ssid_matching" = "true" ]; then
-                        if [ "$use_wifi_list_mode" = "blacklist" ]; then
-                            log_msg "黑名单模式：启用. 黑名单列表: ${blacklist_wifi_ssids}"
-                            if is_allowed_wifi "$ssid" "$blacklist_wifi_ssids"; then
-                                if [ "$current_state" != "bypassed" ]; then
-                                    apply_wifi_bypass "enable"
-                                    log_msg "已命中黑名单，执行热切换 -> 全局直连"
-                                else
-                                    log_msg "已命中黑名单，当前已是直连状态，无需操作"
-                                fi
-                            else
-                                if [ "$current_state" != "proxying" ]; then
-                                    apply_wifi_bypass "disable"
-                                    log_msg "未命中黑名单，执行热切换 -> 恢复代理"
-                                else
-                                    log_msg "未命中黑名单，当前已是代理状态，无需操作"
-                                fi
-                            fi
-                        elif [ "$use_wifi_list_mode" = "whitelist" ]; then
-                            log_msg "白名单模式：启用. 白名单列表: ${whitelist_wifi_ssids}"
-                            if is_allowed_wifi "$ssid" "$whitelist_wifi_ssids"; then
-                                if [ "$current_state" != "proxying" ]; then
-                                    apply_wifi_bypass "disable"
-                                    log_msg "已命中白名单，执行热切换 -> 恢复代理"
-                                else
-                                    log_msg "已命中白名单，当前已是代理状态，无需操作"
-                                fi
-                            else
-                                if [ "$current_state" != "bypassed" ]; then
-                                    apply_wifi_bypass "enable"
-                                    log_msg "未命中白名单，执行热切换 -> 全局直连"
-                                else
-                                    log_msg "未命中白名单，当前已是直连状态，无需操作"
-                                fi
-                            fi
-                        else
-                            log_msg "警告：当前黑白名单模式选择为空"
-                            if [ "$current_state" != "proxying" ]; then
-                                apply_wifi_bypass "disable"
-                                log_msg "执行热切换 -> [恢复代理（默认逻辑）]"
-                            else
-                                log_msg "模块当前已是代理状态，无需操作（默认逻辑）"
-                            fi
-                        fi
-                    else
-                        log_msg "使用常规WiFi模块设置"
-                        if [ "$current_state" != "proxying" ]; then
-                            apply_wifi_bypass "disable"
-                            log_msg "执行热切换 -> 恢复代理"
-                        else
-                            log_msg "模块当前已是代理状态，无需操作"
-                        fi
-                    fi
-                fi
-            else
-                log_msg "未获取到有效的IP地址，视为WiFi连接失败"
+    if [ "$wifi_status" = "wifi" ] && [ -n "$ssid" ]; then
+        for i in 1 2 3; do
+            current_ip=$(get_current_ip)
+            [ -n "$current_ip" ] && break
+            sleep 2
+        done
+        if [ -n "$current_ip" ]; then
+            if [ "$ssid" = "$last_ssid" ] && [ "$current_ip" = "$last_ip" ]; then
+                return
             fi
-        elif [ "$wifi_status" = "not_wifi" ]; then
             log_msg ""
-            log_msg "网络发生变化！当前WiFi已断开！"
-            if [ "$use_module_on_wifi_disconnect" = "true" ]; then
-                if [ "$current_state" != "proxying" ]; then
-                    apply_wifi_bypass "disable"
-                    log_msg "断开WiFi后：执行热切换 -> 恢复代理"
-                else
-                    log_msg "断开WiFi后：当前已是代理状态，无需操作"
-                fi
-            else
+            log_msg "网络发生变化！"
+            log_msg "WiFi已连接: ${ssid}, IP地址：${current_ip}"
+            printf "ssid:%s\nip:%s\n" "$ssid" "$current_ip" > "$last_wifi_state_file"
+            if [ "$use_module_on_wifi" = "false" ]; then
                 if [ "$current_state" != "bypassed" ]; then
                     apply_wifi_bypass "enable"
-                    log_msg "断开WiFi后：执行热切换 -> 全局直连"
+                    log_msg "已执行热切换 -> 全局直连 (WiFi下不代理)"
+                fi
+            else
+                if [ "$use_ssid_matching" = "true" ]; then
+                    if [ "$use_wifi_list_mode" = "blacklist" ]; then
+                        if is_allowed_wifi "$ssid" "$blacklist_wifi_ssids"; then
+                            [ "$current_state" != "bypassed" ] && apply_wifi_bypass "enable" && log_msg "命中黑名单: 直连"
+                        else
+                            [ "$current_state" != "proxying" ] && apply_wifi_bypass "disable" && log_msg "未命中黑名单: 恢复代理"
+                        fi
+                    elif [ "$use_wifi_list_mode" = "whitelist" ]; then
+                        if is_allowed_wifi "$ssid" "$whitelist_wifi_ssids"; then
+                            [ "$current_state" != "proxying" ] && apply_wifi_bypass "disable" && log_msg "命中白名单: 恢复代理"
+                        else
+                            [ "$current_state" != "bypassed" ] && apply_wifi_bypass "enable" && log_msg "未命中白名单: 直连"
+                        fi
+                    fi
                 else
-                    log_msg "断开WiFi后：当前已是直连状态，无需操作"
+                    [ "$current_state" != "proxying" ] && apply_wifi_bypass "disable" && log_msg "常规模式: 恢复代理"
                 fi
             fi
+        else
+            log_msg "未获取到有效的IP地址，视为WiFi连接失败"
         fi
-    else
-        log_msg "网络发生变化！"
-        log_msg "网络控制模块服务已停用！"
-        return
+    elif [ "$wifi_status" = "not_wifi" ]; then
+        if [ "$last_ssid" != "DISCONNECTED" ]; then
+            log_msg "网络发生变化！WiFi已断开！"
+            echo "ssid:DISCONNECTED" > "$last_wifi_state_file"
+            if [ "$use_module_on_wifi_disconnect" = "true" ]; then
+                [ "$current_state" != "proxying" ] && apply_wifi_bypass "disable" && log_msg "切回流量：恢复代理"
+            else
+                [ "$current_state" != "bypassed" ] && apply_wifi_bypass "enable" && log_msg "切回流量：全局直连"
+            fi
+        fi
     fi
 }
 check_module_service

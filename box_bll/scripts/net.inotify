@@ -37,7 +37,6 @@ uptime_sec=$(awk '{print int($1)}' /proc/uptime)
 
 clear_links() {
     [ ! -f "$BOOT_STABLE_FLAG" ] && return
-
     now_ts=$(date +%s)
     if [ -f "$LINKCLEAR_LOCK" ]; then
         last=$(cat "$LINKCLEAR_LOCK")
@@ -45,9 +44,8 @@ clear_links() {
     fi
     echo "$now_ts" > "$LINKCLEAR_LOCK"
 
-    local PORT=$(grep -E '^[[:space:]]*external-controller:' "$CLASH_CONFIG" | head -n1 | awk -F ':' '{print $NF}' | cut -d'#' -f1 | tr -d ' "\r\n')
-    local RAW_SECRET=$(grep -E '^[[:space:]]*secret:' "$CLASH_CONFIG" | head -n1 | cut -d':' -f2- | cut -d'#' -f1 | tr -d ' "' | tr -d '\r\n')
-
+    local PORT=$(awk '/^[[:space:]]*external-controller:/ {gsub(/#.*/, ""); sub(/.*:/, ""); gsub(/[[:space:]"'\''\r\n\t]/, ""); print; exit}' "$CLASH_CONFIG")
+    local RAW_SECRET=$(awk -F'[:#]' '/^[[:space:]]*secret:/ {gsub(/[[:space:]"\r\n\t]/, "", $2); print $2; exit}' "$CLASH_CONFIG")
     {
         if [ -n "$RAW_SECRET" ]; then
             curl -s -H "Authorization: Bearer $RAW_SECRET" -X DELETE "http://127.0.0.1:${PORT}/connections"
@@ -68,18 +66,14 @@ rules_add() {
     ${SYS_IP} -4 a | awk '/inet/ {print $2}' | grep -vE "^127.0.0.1" | while read -r local_ipv4; do
         local added=false
         for table in mangle nat; do
-            if ! ${SYS_IPTABLES} -w 100 -t $table -C LOCAL_IP_V4 -d "$local_ipv4" -p udp ! --dport 53 -j ACCEPT 2>/dev/null; then
-                ${SYS_IPTABLES} -w 100 -t $table -A LOCAL_IP_V4 -d "$local_ipv4" -p udp ! --dport 53 -j ACCEPT 2>/dev/null && added=true
-            fi
-            if ! ${SYS_IPTABLES} -w 100 -t $table -C LOCAL_IP_V4 -d "$local_ipv4" ! -p udp -j ACCEPT 2>/dev/null; then
-                ${SYS_IPTABLES} -w 100 -t $table -A LOCAL_IP_V4 -d "$local_ipv4" ! -p udp -j ACCEPT 2>/dev/null && added=true
+            if ! ${SYS_IPTABLES} -w 100 -t $table -C LOCAL_IP_V4 -d "$local_ipv4" -j ACCEPT 2>/dev/null; then
+                ${SYS_IPTABLES} -w 100 -t $table -A LOCAL_IP_V4 -d "$local_ipv4" -j ACCEPT 2>/dev/null && added=true
             fi
         done
         if [ "$added" = true ]; then
             log Info "已更新 IPv4 动态防回环策略: $local_ipv4"
         fi
     done
-
     ${SYS_IP} -6 a | awk '/inet6/ {print $2}' | grep -vE "^fe80|^::1" | while read -r local_ipv6; do
         local added6=false
         if ! ${SYS_IP6TABLES} -w 100 -t mangle -C LOCAL_IP_V6 -d "$local_ipv6" -p udp ! --dport 53 -j ACCEPT 2>/dev/null; then
@@ -92,7 +86,6 @@ rules_add() {
             log Info "已更新 IPv6 动态防回环策略: $local_ipv6"
         fi
     done
-
     clear_links
 }
 
