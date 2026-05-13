@@ -96,8 +96,6 @@ zip -r -o -X "$filename" ./ \
     -x '.git/*' \
     -x '.github/*' \
     -x 'folder/*' \
-    -x 'build.sh' \
-    -x 'stats.json' \
     -x '.stats_state' \
     -x 'Surfing.json' \
 
