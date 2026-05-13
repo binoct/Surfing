@@ -423,14 +423,15 @@ fi
 
 destroy_all_rules() {
   {
-    for cmd in "${SYS_IPTABLES}" "${SYS_IP6TABLES} -w 100"; do
+    local target_chains="BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL"
+    for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
         for table in mangle nat filter; do
             [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
-            $cmd $t_arg -D BOX_DNS -j NET_BYPASS
-            $cmd $t_arg -D BOX_LOCAL -j NET_BYPASS
-            $cmd $t_arg -D BOX_EXTERNAL -j NET_BYPASS
-            $cmd $t_arg -F NET_BYPASS
-            $cmd $t_arg -X NET_BYPASS
+            for chain in $target_chains; do
+                while $cmd $t_arg -D $chain -j NET_BYPASS 2>/dev/null; do :; done
+            done
+            $cmd $t_arg -F NET_BYPASS 2>/dev/null
+            $cmd $t_arg -X NET_BYPASS 2>/dev/null
         done
     done
 
