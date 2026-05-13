@@ -10,7 +10,7 @@
         <img alt="Android" src="https://img.shields.io/badge/Module Latestsnapshot-F05033.svg?logo=android&logoColor=white">
     </a>
     <a href="https://github.com/GitMetaio/Surfing/releases">
-    <img alt="Downloads" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/GitMetaio/Surfing/main/stats.json">
+    <img alt="Downloads" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/GitMetaio/Surfing/data/stats.json">
 </a>
 </div>
 <br>
