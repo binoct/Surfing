@@ -123,49 +123,39 @@ ssid=$(get_current_ssid)
 
 apply_wifi_bypass() {
     local state="$1"
-    
     if [ "$state" = "enable" ]; then
         log_msg "[DEBUG] Executing iptables to ENABLE global bypass..."
-        {
-            for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
-                for table in mangle nat filter; do
-                    [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
-                    $cmd $t_arg -N NET_BYPASS
-                    $cmd $t_arg -F NET_BYPASS
-                    $cmd $t_arg -A NET_BYPASS -j ACCEPT
-                done
-            done
-
-            for chain in BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL; do
-                for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
-                    $cmd -t mangle -I $chain 1 -j NET_BYPASS
-                    $cmd -t nat -I $chain 1 -j NET_BYPASS
-                done
-            done
-            ${SYS_IPTABLES} -w 100 -I BOX_DNS 1 -j NET_BYPASS
-            ${SYS_IP6TABLES} -w 100 -I BOX_DNS 1 -j NET_BYPASS
-        } >/dev/null 2>&1
+        local target_chains="BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL"
         
-        # 记录执行结果
-        if [ $? -eq 0 ]; then
-            touch "${variab_dir}/wifi_bypassed"
-            log_msg "[INFO] Iptables bypass rules injected SUCCESS."
-        else
-            log_msg "[ERROR] Iptables bypass rules injection FAILED."
-        fi
-
+        for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
+            for table in mangle nat filter; do
+                [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
+                $cmd $t_arg -N NET_BYPASS 2>/dev/null
+                $cmd $t_arg -F NET_BYPASS 2>/dev/null
+                $cmd $t_arg -A NET_BYPASS -j ACCEPT 2>/dev/null
+            done
+            for chain in $target_chains; do
+                for table in mangle nat; do
+                    if $cmd -t $table -L $chain -n >/dev/null 2>&1; then
+                        while $cmd -t $table -D $chain -j NET_BYPASS 2>/dev/null; do :; done
+                        $cmd -t $table -I $chain 1 -j NET_BYPASS 2>/dev/null
+                    fi
+                done
+            done
+        done
+        touch "${variab_dir}/wifi_bypassed"
+        log_msg "[INFO] Iptables bypass rules injected SUCCESS."
     elif [ "$state" = "disable" ]; then
         log_msg "[DEBUG] Executing iptables to DISABLE global bypass..."
-        {
-            for chain in BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL; do
-                for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
-                    while $cmd -t mangle -D $chain -j NET_BYPASS; do :; done
-                    while $cmd -t nat -D $chain -j NET_BYPASS; do :; done
+        local target_chains="BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL"
+        
+        for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
+            for chain in $target_chains; do
+                for table in mangle nat; do
+                    while $cmd -t $table -D $chain -j NET_BYPASS 2>/dev/null; do :; done
                 done
             done
-            while ${SYS_IPTABLES} -w 100 -D BOX_DNS -j NET_BYPASS; do :; done
-            while ${SYS_IP6TABLES} -w 100 -D BOX_DNS -j NET_BYPASS; do :; done
-        } >/dev/null 2>&1
+        done
         rm -f "${variab_dir}/wifi_bypassed"
         log_msg "[INFO] Iptables bypass rules cleaned SUCCESS."
     fi
