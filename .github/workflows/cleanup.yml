@@ -29,7 +29,7 @@ jobs:
             PROTECT_COUNT=15
           fi
 
-          WORKFLOWS=$(gh workflow list --all --limit 100 --json id --jq '.[].id')
+          WORKFLOWS=$(gh workflow list --repo ${{ github.repository }} --all --limit 100 --json id --jq '.[].id')
 
           for wf in $WORKFLOWS; do
             echo "----------------------------------------"
