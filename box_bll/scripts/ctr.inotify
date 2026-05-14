@@ -22,7 +22,7 @@ events=$1
 [ "$events" != "w" ] && return
 
 . "${scripts_dir}/box.config"
-
+[ -f "${module_dir}/disable" ] && exit 0
 [ "$enable_network_service_control" != "true" ] && exit 0
 
 get_current_ssid() {
