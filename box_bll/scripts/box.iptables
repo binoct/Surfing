@@ -279,12 +279,12 @@ start_tproxy() {
     fi
   fi
 
-  ${iptables} -t mangle -I BOX_LOCAL 1 -j CONNMARK --restore-mark
-  ${iptables} -t mangle -I BOX_LOCAL 2 -m mark --mark "${mark_id}" -j ACCEPT
-
   if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ]; then
-    ${iptables} -t mangle -I BOX_LOCAL 3 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
+    ${iptables} -t mangle -I BOX_LOCAL 1 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
   fi
+
+  ${iptables} -t mangle -I BOX_LOCAL 2 -j CONNMARK --restore-mark
+  ${iptables} -t mangle -I BOX_LOCAL 3 -m mark --mark "${mark_id}" -j ACCEPT
 
   if [ "$use_nat_table" = "true" ]; then
     ${iptables} -t mangle -I BOX_LOCAL 4 -p udp --dport 53 -j RETURN
