@@ -109,7 +109,8 @@ current_time=$(date +%s)
 last_check_time=$(cat "$last_check_file" 2>/dev/null || echo 0)
 
 time_diff=$((current_time - last_check_time))
-stability_window=3
+
+stability_window=1.5
 
 if [ "$time_diff" -lt "$stability_window" ]; then
     log_msg "[DEBUG] Skip check: (${time_diff}s), entering stability window."
@@ -175,14 +176,15 @@ check_module_service() {
 
         if [ -n "$current_ip" ]; then
             if [ "$ssid" = "$last_ssid" ] && [ "$current_ip" = "$last_ip" ]; then
-                return
+                log_msg "[INFO] Config updated, re-evaluating network rules..."
+            else
+                log_msg ""
+                log_msg "[INFO] Network status changed!"
+                log_msg "[INFO] WiFi Connected - SSID: [${ssid}], IP: [${current_ip}]"
             fi
 
-            log_msg ""
-            log_msg "[INFO] Network status changed!"
-            log_msg "[INFO] WiFi Connected - SSID: [${ssid}], IP: [${current_ip}]"
             printf "ssid:%s\nip:%s\n" "$ssid" "$current_ip" > "$last_wifi_state_file"
-            
+
             if [ "$use_module_on_wifi" = "false" ]; then
                 if [ "$current_state" != "bypassed" ]; then
                     log_msg "[ACTION] 'use_module_on_wifi' is false. Switching to BYPASS mode."
