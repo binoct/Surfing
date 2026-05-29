@@ -42,9 +42,34 @@ check_tproxy_support() {
 }
 
 optimize_kernel() {
-  echo 30 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout
-  echo 15 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout_stream
-  log Info "系统内核性能优化完成."
+  local file_timeout="/proc/sys/net/netfilter/nf_conntrack_udp_timeout"
+  local file_stream="/proc/sys/net/netfilter/nf_conntrack_udp_timeout_stream"
+
+  if [ -f "$file_timeout" ]; then
+    sysctl -w net.netfilter.nf_conntrack_udp_timeout=30 >/dev/null 2>&1 || echo 30 > "$file_timeout" 2>/dev/null
+
+    if [ -f "$file_stream" ]; then
+        sysctl -w net.netfilter.nf_conntrack_udp_timeout_stream=15 >/dev/null 2>&1 || echo 15 > "$file_stream" 2>/dev/null
+    fi
+
+    local check_val=$(cat "$file_timeout" 2>/dev/null)
+    if [ "$check_val" = "30" ]; then
+      log Info "内核调优成功: UDP Conntrack 回收加速 (30s/15s) 已生效."
+    else
+      if command -v magiskpolicy >/dev/null 2>&1; then
+          magiskpolicy --live "allow su proc_net file write" 2>/dev/null
+          echo 30 > "$file_timeout" 2>/dev/null
+      fi
+      check_val=$(cat "$file_timeout" 2>/dev/null)
+      if [ "$check_val" = "30" ]; then
+          log Info "内核调优成功: 已通过 SELinux 热补丁强行写入 UDP 超时策略."
+      else
+          log Warn "内核调优受阻: 系统底层限制严格，UDP 积压风险可能存在."
+      fi
+    fi
+  else
+    log Warn "内核调优跳过: 无法唤醒 nf_conntrack 模块，当前内核可能被精简."
+  fi
 }
 
 uid_list=()
