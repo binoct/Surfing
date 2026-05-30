@@ -146,10 +146,10 @@ dns:
   fake-ip-range6: fdfe:dcba:9876::/64
   enhanced-mode: fake-ip # redir-host
   fake-ip-filter:
-    - "RULE-SET,CN_域"
-    - "RULE-SET,Private_域"
-    - "RULE-SET,GoogleFCM_域"
-    - "RULE-SET,自定义规则"
+    - "RULE-SET:CN_域"
+    - "RULE-SET:Private_域"
+    - "RULE-SET:GoogleFCM_域"
+    - "RULE-SET:自定义规则"
   proxy-server-nameserver:
     - https://1.12.12.12:443/dns-query#🌐 本机·本地直连&h3=false
     - https://120.53.53.53:443/dns-query#🌐 本机·本地直连&h3=false
