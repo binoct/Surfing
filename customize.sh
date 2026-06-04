@@ -186,7 +186,7 @@ if [ -d "$BOX_BLL_PATH" ]; then
     ui_print "Migrating network service control settings..."
     TMP_CONFIG="${NEW_CONFIG}.tmp"
     cp -f "$NEW_CONFIG" "$TMP_CONFIG"
-    VARS="enable_network_service_control use_module_on_wifi_disconnect use_module_on_wifi use_ssid_matching use_wifi_list_mode blacklist_wifi_ssids whitelist_wifi_ssids ap_list gid_list user_packages_list proxy_mode proxy_method ipv6"
+    VARS="enable_network_service_control use_iptables_bypass use_module_on_wifi_disconnect use_module_on_wifi use_ssid_matching use_wifi_list_mode blacklist_wifi_ssids whitelist_wifi_ssids ap_list gid_list user_packages_list proxy_mode proxy_method ipv6"
     for var in $VARS; do
       val=$(grep "^${var}=" "$OLD_CONFIG" | cut -d'=' -f2-)
       [ -n "$val" ] && sed "s@^${var}=.*@${var}=${val}@" "$TMP_CONFIG" > "${TMP_CONFIG}.bak" && mv -f "${TMP_CONFIG}.bak" "$TMP_CONFIG"
