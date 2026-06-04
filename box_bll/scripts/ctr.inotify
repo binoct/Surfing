@@ -12,8 +12,6 @@ log_file="${base_dir}/run/DebugNet.log"
 last_check_file="${variab_dir}/last_check_time"
 last_wifi_state_file="${variab_dir}/last_wifi_state"
 
-log_enabled="false"
-
 scripts=$(realpath "$0")
 scripts_dir=$(dirname "${scripts}")
 
@@ -83,7 +81,7 @@ is_allowed_wifi() {
 }
 
 log_msg() {
-    [ "$log_enabled" != "true" ] && return
+    [ "$netfilt_logs" != "true" ] && return
     if [ -z "$1" ]; then
         echo "" >> "$log_file"
     else
@@ -124,41 +122,54 @@ ssid=$(get_current_ssid)
 
 apply_wifi_bypass() {
     local state="$1"
-    if [ "$state" = "enable" ]; then
-        log_msg "[DEBUG] Executing iptables to ENABLE global bypass..."
-        local target_chains="BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL"
-        
-        for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
-            for table in mangle nat filter; do
-                [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
-                $cmd $t_arg -N NET_BYPASS 2>/dev/null
-                $cmd $t_arg -F NET_BYPASS 2>/dev/null
-                $cmd $t_arg -A NET_BYPASS -j ACCEPT 2>/dev/null
+    local disable_file="/data/adb/modules/Surfing/disable"
+    local target_chains="BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL"
+
+    if [ "$use_iptables_bypass" = "true" ]; then
+        if [ "$state" = "enable" ]; then
+            log_msg "[DEBUG] Executing iptables to ENABLE global bypass..."
+            for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
+                for table in mangle nat filter; do
+                    [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
+                    $cmd $t_arg -N NET_BYPASS 2>/dev/null
+                    $cmd $t_arg -F NET_BYPASS 2>/dev/null
+                    $cmd $t_arg -A NET_BYPASS -j ACCEPT 2>/dev/null
+                done
+                for chain in $target_chains; do
+                    for table in mangle nat; do
+                        if $cmd -t $table -L $chain -n >/dev/null 2>&1; then
+                            while $cmd -t $table -D $chain -j NET_BYPASS 2>/dev/null; do :; done
+                            $cmd -t $table -I $chain 1 -j NET_BYPASS 2>/dev/null
+                        fi
+                    done
+                done
             done
-            for chain in $target_chains; do
-                for table in mangle nat; do
-                    if $cmd -t $table -L $chain -n >/dev/null 2>&1; then
+            touch "${variab_dir}/wifi_bypassed"
+            log_msg "[INFO] Iptables bypass rules injected SUCCESS."
+        elif [ "$state" = "disable" ]; then
+            log_msg "[DEBUG] Executing iptables to DISABLE global bypass..."
+            for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
+                for chain in $target_chains; do
+                    for table in mangle nat; do
                         while $cmd -t $table -D $chain -j NET_BYPASS 2>/dev/null; do :; done
-                        $cmd -t $table -I $chain 1 -j NET_BYPASS 2>/dev/null
-                    fi
+                    done
                 done
             done
-        done
-        touch "${variab_dir}/wifi_bypassed"
-        log_msg "[INFO] Iptables bypass rules injected SUCCESS."
-    elif [ "$state" = "disable" ]; then
-        log_msg "[DEBUG] Executing iptables to DISABLE global bypass..."
-        local target_chains="BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL"
-        
-        for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
-            for chain in $target_chains; do
-                for table in mangle nat; do
-                    while $cmd -t $table -D $chain -j NET_BYPASS 2>/dev/null; do :; done
-                done
-            done
-        done
-        rm -f "${variab_dir}/wifi_bypassed"
-        log_msg "[INFO] Iptables bypass rules cleaned SUCCESS."
+            rm -f "${variab_dir}/wifi_bypassed"
+            log_msg "[INFO] Iptables bypass rules cleaned SUCCESS."
+        fi
+    else
+        if [ "$state" = "enable" ]; then
+            log_msg "[DEBUG] Creating disable file to STOP global service..."
+            touch "$disable_file"
+            touch "${variab_dir}/wifi_bypassed"
+            log_msg "[INFO] Module service stop event triggered SUCCESS."
+        elif [ "$state" = "disable" ]; then
+            log_msg "[DEBUG] Removing disable file to START global service..."
+            rm -f "$disable_file"
+            rm -f "${variab_dir}/wifi_bypassed"
+            log_msg "[INFO] Module service start event triggered SUCCESS."
+        fi
     fi
     return 0
 }
