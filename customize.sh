@@ -30,7 +30,7 @@ MODULE_PROP_PATH="$CURRENT_MODULES_DIR/Surfing/module.prop"
 MODULE_VERSION_CODE=0
 [ -f "$MODULE_PROP_PATH" ] && MODULE_VERSION_CODE=$(awk -F'=' '/versionCode/ {print $2}' "$MODULE_PROP_PATH")
 
-if [ "$MODULE_VERSION_CODE" -lt 1646 ]; then
+if [ "$MODULE_VERSION_CODE" -lt 1647 ]; then
   INSTALL_TILE=true
 else
   INSTALL_TILE=false
@@ -186,7 +186,7 @@ if [ -d "$BOX_BLL_PATH" ]; then
     ui_print "Migrating network service control settings..."
     TMP_CONFIG="${NEW_CONFIG}.tmp"
     cp -f "$NEW_CONFIG" "$TMP_CONFIG"
-    VARS="enable_network_service_control use_iptables_bypass use_module_on_wifi_disconnect use_module_on_wifi use_ssid_matching use_wifi_list_mode blacklist_wifi_ssids whitelist_wifi_ssids ap_list gid_list user_packages_list proxy_mode proxy_method ipv6"
+    VARS="enable_network_service_control bypass_via_iptables enable_cellular_proxy enable_wifi_proxy enable_ssid_filter use_wifi_list_mode blacklist_wifi_ssids whitelist_wifi_ssids ap_list gid_list user_packages_list proxy_mode proxy_method ipv6"
     for var in $VARS; do
       val=$(grep "^${var}=" "$OLD_CONFIG" | cut -d'=' -f2-)
       [ -n "$val" ] && sed "s@^${var}=.*@${var}=${val}@" "$TMP_CONFIG" > "${TMP_CONFIG}.bak" && mv -f "${TMP_CONFIG}.bak" "$TMP_CONFIG"
