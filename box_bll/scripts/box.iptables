@@ -464,7 +464,6 @@ destroy_all_rules() {
     iptables="${SYS_IP6TABLES} -w 100" && stop_tproxy
     iptables="${SYS_IPTABLES} -w 100" && stop_redirect
 
-    rm -f /dev/tmp/wifi_bypassed
   } >/dev/null 2>&1
 }
 

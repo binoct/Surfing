@@ -7,6 +7,7 @@ SYS_IP6TABLES="/system/bin/ip6tables"
 
 variab_dir="/dev/tmp/"
 module_dir="/data/adb/modules/Surfing"
+disable_file="${module_dir}/disable"
 base_dir="/data/adb/box_bll"
 log_file="${base_dir}/run/DebugNet.log"
 last_check_file="${variab_dir}/last_check_time"
@@ -20,7 +21,7 @@ events=$1
 [ "$events" != "w" ] && return
 
 . "${scripts_dir}/box.config"
-[ -f "${module_dir}/disable" ] && exit 0
+
 [ "$enable_network_service_control" != "true" ] && exit 0
 
 get_current_ssid() {
@@ -40,10 +41,9 @@ get_current_ssid() {
             if (s != "" && s != "<unknown ssid>") { print s; exit }
         }
     ')
-    if [ -z "$SSID" ] || [ "$SSID" = "<unknown ssid>" ]; then
-        SSID=$(iwconfig wlan0 | awk -F'[:"]' '/ESSID/ {gsub(/[ \t]/, "", $3); if ($3 != "off/any") print $3}')
+    if [ -z "$SSID" ] || [ "$SSID" = "<unknown ssid>" ] || [ "$SSID" = "0x" ]; then
+            SSID="unknown"
     fi
-    [ -z "$SSID" ] && SSID="unknown"
     printf "%s\n" "$SSID"
 }
 
@@ -82,6 +82,10 @@ is_allowed_wifi() {
 
 log_msg() {
     [ "$netfilt_logs" != "true" ] && return
+
+    local log_dir=$(dirname "$log_file")
+    [ ! -d "$log_dir" ] && mkdir -p "$log_dir"
+
     if [ -z "$1" ]; then
         echo "" >> "$log_file"
     else
@@ -105,16 +109,13 @@ clean_old_logs
 
 current_time=$(date +%s)
 last_check_time=$(cat "$last_check_file" 2>/dev/null || echo 0)
-
 time_diff=$((current_time - last_check_time))
-
-stability_window=1.5
+stability_window=2
 
 if [ "$time_diff" -lt "$stability_window" ]; then
     log_msg "[DEBUG] Skip check: (${time_diff}s), entering stability window."
     return
 fi
-
 echo "$current_time" > "$last_check_file"
 
 wifi_status=$(is_wifi_connected)
@@ -122,54 +123,69 @@ ssid=$(get_current_ssid)
 
 apply_wifi_bypass() {
     local state="$1"
-    local disable_file="/data/adb/modules/Surfing/disable"
     local target_chains="BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL"
 
-    if [ "$use_iptables_bypass" = "true" ]; then
-        if [ "$state" = "enable" ]; then
-            log_msg "[DEBUG] Executing iptables to ENABLE global bypass..."
-            for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
-                for table in mangle nat filter; do
-                    [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
-                    $cmd $t_arg -N NET_BYPASS 2>/dev/null
-                    $cmd $t_arg -F NET_BYPASS 2>/dev/null
-                    $cmd $t_arg -A NET_BYPASS -j ACCEPT 2>/dev/null
-                done
-                for chain in $target_chains; do
-                    for table in mangle nat; do
-                        if $cmd -t $table -L $chain -n >/dev/null 2>&1; then
-                            while $cmd -t $table -D $chain -j NET_BYPASS 2>/dev/null; do :; done
-                            $cmd -t $table -I $chain 1 -j NET_BYPASS 2>/dev/null
-                        fi
-                    done
-                done
-            done
-            touch "${variab_dir}/wifi_bypassed"
-            log_msg "[INFO] Iptables bypass rules injected SUCCESS."
-        elif [ "$state" = "disable" ]; then
-            log_msg "[DEBUG] Executing iptables to DISABLE global bypass..."
+    clean_legacy_rules() {
+        if ${SYS_IPTABLES} -t mangle -L NET_BYPASS >/dev/null 2>&1; then
+            log_msg "[DEBUG] Found legacy bypass rules. Cleaning up..."
             for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
                 for chain in $target_chains; do
                     for table in mangle nat; do
                         while $cmd -t $table -D $chain -j NET_BYPASS 2>/dev/null; do :; done
                     done
                 done
+                for table in mangle nat filter; do
+                    [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
+                    $cmd $t_arg -F NET_BYPASS 2>/dev/null
+                    $cmd $t_arg -X NET_BYPASS 2>/dev/null
+                done
             done
-            rm -f "${variab_dir}/wifi_bypassed"
-            log_msg "[INFO] Iptables bypass rules cleaned SUCCESS."
         fi
-    else
+    }
+
+    if [ "$use_iptables_bypass" != "true" ]; then
         if [ "$state" = "enable" ]; then
-            log_msg "[DEBUG] Creating disable file to STOP global service..."
+            [ -f "${variab_dir}/wifi_bypassed" ] && return 0
+            log_msg "[DEBUG] IPTables bypass disabled. Stopping service..."
             touch "$disable_file"
             touch "${variab_dir}/wifi_bypassed"
-            log_msg "[INFO] Module service stop event triggered SUCCESS."
-        elif [ "$state" = "disable" ]; then
-            log_msg "[DEBUG] Removing disable file to START global service..."
+        else
+            clean_legacy_rules
+            [ ! -f "${variab_dir}/wifi_bypassed" ] && return 0
+            log_msg "[DEBUG] IPTables bypass disabled. Starting service..."
             rm -f "$disable_file"
             rm -f "${variab_dir}/wifi_bypassed"
-            log_msg "[INFO] Module service start event triggered SUCCESS."
         fi
+        return 0
+    fi
+
+    if [ "$state" = "enable" ]; then
+        [ -f "${variab_dir}/wifi_bypassed" ] && return 0
+        log_msg "[DEBUG] Executing iptables to ENABLE global bypass..."
+        for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
+            for table in mangle nat filter; do
+                [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
+                $cmd $t_arg -N NET_BYPASS 2>/dev/null
+                $cmd $t_arg -F NET_BYPASS 2>/dev/null
+                $cmd $t_arg -A NET_BYPASS -j ACCEPT 2>/dev/null
+            done
+            for chain in $target_chains; do
+                for table in mangle nat; do
+                    if $cmd -t $table -L $chain -n >/dev/null 2>&1; then
+                        while $cmd -t $table -D $chain -j NET_BYPASS 2>/dev/null; do :; done
+                        $cmd -t $table -I $chain 1 -j NET_BYPASS 2>/dev/null
+                    fi
+                done
+            done
+        done
+        rm -f "$disable_file" 
+        touch "${variab_dir}/wifi_bypassed"
+        log_msg "[INFO] Iptables bypass rules injected SUCCESS."
+    elif [ "$state" = "disable" ]; then
+        clean_legacy_rules
+        rm -f "$disable_file"
+        rm -f "${variab_dir}/wifi_bypassed"
+        log_msg "[INFO] Iptables bypass rules cleaned SUCCESS."
     fi
     return 0
 }
@@ -184,7 +200,6 @@ check_module_service() {
             [ -n "$current_ip" ] && break
             sleep 2
         done
-
         if [ -n "$current_ip" ]; then
             if [ "$ssid" = "$last_ssid" ] && [ "$current_ip" = "$last_ip" ]; then
                 log_msg "[INFO] Config updated, re-evaluating network rules..."
@@ -193,85 +208,50 @@ check_module_service() {
                 log_msg "[INFO] Network status changed!"
                 log_msg "[INFO] WiFi Connected - SSID: [${ssid}], IP: [${current_ip}]"
             fi
-
             printf "ssid:%s\nip:%s\n" "$ssid" "$current_ip" > "$last_wifi_state_file"
 
+            if [ "$events" = "w" ]; then
+                force_refresh="true"
+            else
+                force_refresh="false"
+            fi
+
             if [ "$use_module_on_wifi" = "false" ]; then
-                if [ "$current_state" != "bypassed" ]; then
-                    log_msg "[ACTION] 'use_module_on_wifi' is false. Switching to BYPASS mode."
+                if [ "$current_state" != "bypassed" ] || [ "$force_refresh" = "true" ]; then
                     apply_wifi_bypass "enable"
-                else
-                    log_msg "[DEBUG] 'use_module_on_wifi' is false. Already bypassed. Skip."
+                fi
+            elif [ "$use_ssid_matching" = "true" ]; then
+                if [ "$use_wifi_list_mode" = "blacklist" ]; then
+                    if is_allowed_wifi "$ssid" "$blacklist_wifi_ssids"; then
+                        if [ "$current_state" != "bypassed" ] || [ "$force_refresh" = "true" ]; then
+                            apply_wifi_bypass "enable"
+                        fi
+                    else
+                        if [ "$current_state" != "proxying" ] || [ "$force_refresh" = "true" ]; then
+                            apply_wifi_bypass "disable"
+                        fi
+                    fi
+                elif [ "$use_wifi_list_mode" = "whitelist" ]; then
+                    if is_allowed_wifi "$ssid" "$whitelist_wifi_ssids"; then
+                        if [ "$current_state" != "proxying" ] || [ "$force_refresh" = "true" ]; then
+                            apply_wifi_bypass "disable"
+                        fi
+                    else
+                        if [ "$current_state" != "bypassed" ] || [ "$force_refresh" = "true" ]; then
+                            apply_wifi_bypass "enable"
+                        fi
+                    fi
                 fi
             else
-                if [ "$use_ssid_matching" = "true" ]; then
-                    if [ "$use_wifi_list_mode" = "blacklist" ]; then
-                        if is_allowed_wifi "$ssid" "$blacklist_wifi_ssids"; then
-                            if [ "$current_state" != "bypassed" ]; then
-                                log_msg "[ACTION] Blacklist hit [${ssid}]. Switching to BYPASS mode."
-                                apply_wifi_bypass "enable"
-                            else
-                                log_msg "[DEBUG] Blacklist hit [${ssid}]. Already bypassed. Skip."
-                            fi
-                        else
-                            if [ "$current_state" != "proxying" ]; then
-                                log_msg "[ACTION] Blacklist miss [${ssid}]. Restoring PROXY mode."
-                                apply_wifi_bypass "disable"
-                            else
-                                log_msg "[DEBUG] Blacklist miss [${ssid}]. Already proxying. Skip."
-                            fi
-                        fi
-                    elif [ "$use_wifi_list_mode" = "whitelist" ]; then
-                        if is_allowed_wifi "$ssid" "$whitelist_wifi_ssids"; then
-                            if [ "$current_state" != "proxying" ]; then
-                                log_msg "[ACTION] Whitelist hit [${ssid}]. Restoring PROXY mode."
-                                apply_wifi_bypass "disable"
-                            else
-                                log_msg "[DEBUG] Whitelist hit [${ssid}]. Already proxying. Skip."
-                            fi
-                        else
-                            if [ "$current_state" != "bypassed" ]; then
-                                log_msg "[ACTION] Whitelist miss [${ssid}]. Switching to BYPASS mode."
-                                apply_wifi_bypass "enable"
-                            else
-                                log_msg "[DEBUG] Whitelist miss [${ssid}]. Already bypassed. Skip."
-                            fi
-                        fi
-                    fi
-                else
-                    if [ "$current_state" != "proxying" ]; then
-                        log_msg "[ACTION] Normal mode. Restoring PROXY mode."
-                        apply_wifi_bypass "disable"
-                    else
-                        log_msg "[DEBUG] Normal mode. Already proxying. Skip."
-                    fi
+                if [ "$current_state" != "proxying" ] || [ "$force_refresh" = "true" ]; then
+                    apply_wifi_bypass "disable"
                 fi
             fi
-        else
-            log_msg "[ERROR] Failed to obtain valid IP, treating as WiFi connection failed."
         fi
     elif [ "$wifi_status" = "not_wifi" ]; then
-        if [ "$last_ssid" != "DISCONNECTED" ]; then
-            log_msg ""
-            log_msg "[INFO] Network status changed! WiFi Disconnected!"
-            echo "ssid:DISCONNECTED" > "$last_wifi_state_file"
-            
-            if [ "$use_module_on_wifi_disconnect" = "true" ]; then
-                if [ "$current_state" != "proxying" ]; then
-                    log_msg "[ACTION] Cellular mode. Restoring PROXY mode."
-                    apply_wifi_bypass "disable"
-                else
-                    log_msg "[DEBUG] Cellular mode. Already proxying. Skip."
-                fi
-            else
-                if [ "$current_state" != "bypassed" ]; then
-                    log_msg "[ACTION] Cellular mode config disabled. Switching to BYPASS mode."
-                    apply_wifi_bypass "enable"
-                else
-                    log_msg "[DEBUG] Cellular mode config disabled. Already bypassed. Skip."
-                fi
-            fi
-        fi
+        log_msg "[INFO] Network status: Cellular/Disconnected."
+        echo "ssid:DISCONNECTED" > "$last_wifi_state_file"
+        [ "$use_module_on_wifi_disconnect" = "true" ] && apply_wifi_bypass "disable" || { [ "$current_state" != "bypassed" ] && apply_wifi_bypass "enable"; }
     fi
 }
 check_module_service
