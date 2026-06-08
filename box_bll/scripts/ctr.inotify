@@ -82,9 +82,7 @@ is_allowed_wifi() {
 
 log_msg() {
     [ "$netfilt_logs" != "true" ] && return
-
-    local log_dir=$(dirname "$log_file")
-    [ ! -d "$log_dir" ] && mkdir -p "$log_dir"
+    [ ! -f "$log_file" ] && touch "$log_file"
 
     if [ -z "$1" ]; then
         echo "" >> "$log_file"
@@ -143,16 +141,16 @@ apply_wifi_bypass() {
         fi
     }
 
-    if [ "$use_iptables_bypass" != "true" ]; then
+    if [ "$bypass_via_iptables" != "true" ]; then
         if [ "$state" = "enable" ]; then
             [ -f "${variab_dir}/wifi_bypassed" ] && return 0
-            log_msg "[DEBUG] IPTables bypass disabled. Stopping service..."
+            log_msg "[DEBUG] Bypass activated: Stopping proxy service..."
             touch "$disable_file"
             touch "${variab_dir}/wifi_bypassed"
         else
             clean_legacy_rules
             [ ! -f "${variab_dir}/wifi_bypassed" ] && return 0
-            log_msg "[DEBUG] IPTables bypass disabled. Starting service..."
+            log_msg "[DEBUG] Bypass deactivated: Resuming proxy service..."
             rm -f "$disable_file"
             rm -f "${variab_dir}/wifi_bypassed"
         fi
@@ -161,7 +159,7 @@ apply_wifi_bypass() {
 
     if [ "$state" = "enable" ]; then
         [ -f "${variab_dir}/wifi_bypassed" ] && return 0
-        log_msg "[DEBUG] Executing iptables to ENABLE global bypass..."
+        log_msg "[DEBUG] Bypass activated: Injecting Iptables rules..."
         for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
             for table in mangle nat filter; do
                 [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
@@ -216,11 +214,11 @@ check_module_service() {
                 force_refresh="false"
             fi
 
-            if [ "$use_module_on_wifi" = "false" ]; then
+            if [ "$enable_wifi_proxy" = "false" ]; then
                 if [ "$current_state" != "bypassed" ] || [ "$force_refresh" = "true" ]; then
                     apply_wifi_bypass "enable"
                 fi
-            elif [ "$use_ssid_matching" = "true" ]; then
+            elif [ "$enable_ssid_filter" = "true" ]; then
                 if [ "$use_wifi_list_mode" = "blacklist" ]; then
                     if is_allowed_wifi "$ssid" "$blacklist_wifi_ssids"; then
                         if [ "$current_state" != "bypassed" ] || [ "$force_refresh" = "true" ]; then
@@ -249,9 +247,9 @@ check_module_service() {
             fi
         fi
     elif [ "$wifi_status" = "not_wifi" ]; then
-        log_msg "[INFO] Network status: Cellular/Disconnected."
+        log_msg "[INFO] Network status: Cellular / Disconnected."
         echo "ssid:DISCONNECTED" > "$last_wifi_state_file"
-        [ "$use_module_on_wifi_disconnect" = "true" ] && apply_wifi_bypass "disable" || { [ "$current_state" != "bypassed" ] && apply_wifi_bypass "enable"; }
+        [ "$enable_cellular_proxy" = "true" ] && apply_wifi_bypass "disable" || { [ "$current_state" != "bypassed" ] && apply_wifi_bypass "enable"; }
     fi
 }
 check_module_service
