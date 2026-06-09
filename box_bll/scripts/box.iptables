@@ -46,6 +46,9 @@ optimize_kernel() {
   local file_timeout="/proc/sys/net/netfilter/nf_conntrack_udp_timeout"
   local file_stream="/proc/sys/net/netfilter/nf_conntrack_udp_timeout_stream"
 
+  echo 1 > /proc/sys/net/ipv4/conf/all/route_localnet
+  echo 1 > /proc/sys/net/ipv4/conf/default/route_localnet
+
   if [ -f "$file_timeout" ]; then
     sysctl -w net.netfilter.nf_conntrack_udp_timeout=30 >/dev/null 2>&1 || echo 30 > "$file_timeout" 2>/dev/null
 
@@ -176,6 +179,13 @@ start_redirect() {
 
   ${iptables} -t nat -I OUTPUT -j BOX_LOCAL
 
+  ${iptables} -N BOX_INPUT_FILTER 2>/dev/null
+  ${iptables} -F BOX_INPUT_FILTER
+  ${iptables} -A BOX_INPUT_FILTER -i lo -j RETURN
+  ${iptables} -A BOX_INPUT_FILTER -p icmp -j RETURN
+  ${iptables} -A BOX_INPUT_FILTER -d 127.0.0.1 -j DROP
+  ${iptables} -I INPUT -j BOX_INPUT_FILTER
+
   if { [ "${mihomo_dns_forward}" = "true" ] && [ "${bin_name}" = "mihomo" ]; } || [ "${bin_name}" = "clash" ]; then
     ${iptables} -t nat -N CLASH_DNS_EXTERNAL
     ${iptables} -t nat -F CLASH_DNS_EXTERNAL
@@ -200,6 +210,10 @@ start_redirect() {
 
 stop_redirect() {
   {
+    ${iptables} -D INPUT -j BOX_INPUT_FILTER
+    ${iptables} -F BOX_INPUT_FILTER
+    ${iptables} -X BOX_INPUT_FILTER
+
     ${iptables} -t nat -D PREROUTING -j BOX_EXTERNAL
     ${iptables} -t nat -D OUTPUT -j BOX_LOCAL
     ${iptables} -t nat -D BOX_LOCAL -j BOX_BYPASS
@@ -347,6 +361,16 @@ start_tproxy() {
   ${iptables} -t mangle -A BOX_LOCAL -j CONNMARK --save-mark
   ${iptables} -t mangle -I OUTPUT -j BOX_LOCAL
 
+  local localhost="127.0.0.1"
+  local icmp_p="icmp"
+  [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ] && localhost="::1" && icmp_p="ipv6-icmp"
+  ${iptables} -N BOX_INPUT_FILTER 2>/dev/null
+  ${iptables} -F BOX_INPUT_FILTER
+  ${iptables} -A BOX_INPUT_FILTER -i lo -j RETURN
+  ${iptables} -A BOX_INPUT_FILTER -p "${icmp_p}" -j RETURN
+  ${iptables} -A BOX_INPUT_FILTER -d "${localhost}" -j DROP
+  ${iptables} -I INPUT -j BOX_INPUT_FILTER
+
   if { [ "${mihomo_dns_forward}" = "true" ] && [ "${bin_name}" = "mihomo" ]; } || [ "${bin_name}" = "clash" ]; then
       if [ "$use_nat_table" = "true" ]; then
           ${iptables} -t nat -N CLASH_DNS_EXTERNAL
@@ -401,6 +425,10 @@ start_tproxy() {
 
 stop_tproxy() {
   {
+    ${iptables} -D INPUT -j BOX_INPUT_FILTER
+    ${iptables} -F BOX_INPUT_FILTER
+    ${iptables} -X BOX_INPUT_FILTER
+
     if [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ]; then
       ${SYS_IP} -6 rule del fwmark "${mark_id}" table "${table_id}" pref "${table_id}"
       ${SYS_IP} -6 route del local default dev lo table "${table_id}"
@@ -546,8 +574,9 @@ tun_forward_disable() {
 
 destroy_all_rules() {
   {
-    local target_chains="BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL"
+    local target_chains="BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL BOX_INPUT_FILTER"
     for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
+        $cmd -D INPUT -j BOX_INPUT_FILTER 2>/dev/null
         for table in mangle nat filter; do
             [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
             for chain in $target_chains; do
@@ -561,6 +590,9 @@ destroy_all_rules() {
     iptables="${SYS_IP6TABLES} -w 100" && stop_tproxy
     iptables="${SYS_IPTABLES} -w 100" && stop_redirect
     tun_forward_disable
+
+    echo 0 > /proc/sys/net/ipv4/conf/all/route_localnet
+    echo 0 > /proc/sys/net/ipv4/conf/default/route_localnet
   } >/dev/null 2>&1
 }
 
@@ -575,9 +607,9 @@ case "$1" in
     fi
 
     log Info "正在初始化透明代理矩阵 (主进程: $my_pid)"
-    log Info "正在重置网络防火墙过滤规则..."
 
     destroy_all_rules
+    log Info "正在重置网络防火墙过滤规则..."
     sleep 1
 
     if [ "${proxy_mode}" = "core" ]; then
