@@ -9,7 +9,7 @@ variab_dir="/dev/tmp/"
 module_dir="/data/adb/modules/Surfing"
 disable_file="${module_dir}/disable"
 base_dir="/data/adb/box_bll"
-log_file="${base_dir}/run/DebugNet.log"
+log_file="${base_dir}/run/net_debug.log"
 last_check_file="${variab_dir}/last_check_time"
 last_wifi_state_file="${variab_dir}/last_wifi_state"
 
@@ -124,21 +124,19 @@ apply_wifi_bypass() {
     local target_chains="BOX_LOCAL BOX_EXTERNAL CLASH_DNS_LOCAL CLASH_DNS_EXTERNAL"
 
     clean_legacy_rules() {
-        if ${SYS_IPTABLES} -t mangle -L NET_BYPASS >/dev/null 2>&1; then
-            log_msg "[DEBUG] Found legacy bypass rules. Cleaning up..."
-            for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
-                for chain in $target_chains; do
-                    for table in mangle nat; do
-                        while $cmd -t $table -D $chain -j NET_BYPASS 2>/dev/null; do :; done
-                    done
-                done
-                for table in mangle nat filter; do
-                    [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
-                    $cmd $t_arg -F NET_BYPASS 2>/dev/null
-                    $cmd $t_arg -X NET_BYPASS 2>/dev/null
+        log_msg "[DEBUG] Cleaning up bypass rules..."
+        for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
+            for chain in $target_chains; do
+                for table in mangle nat; do
+                    while $cmd -t $table -D $chain -j NET_BYPASS 2>/dev/null; do :; done
                 done
             done
-        fi
+            for table in mangle nat filter; do
+                [ "$table" = "filter" ] && t_arg="" || t_arg="-t $table"
+                $cmd $t_arg -F NET_BYPASS 2>/dev/null
+                $cmd $t_arg -X NET_BYPASS 2>/dev/null
+            done
+        done
     }
 
     if [ "$bypass_via_iptables" != "true" ]; then
@@ -247,9 +245,19 @@ check_module_service() {
             fi
         fi
     elif [ "$wifi_status" = "not_wifi" ]; then
-        log_msg "[INFO] Network status: Cellular / Disconnected."
+        log_msg "[INFO] Physical Network: WiFi disconnected or Cellular active."
         echo "ssid:DISCONNECTED" > "$last_wifi_state_file"
-        [ "$enable_cellular_proxy" = "true" ] && apply_wifi_bypass "disable" || { [ "$current_state" != "bypassed" ] && apply_wifi_bypass "enable"; }
+        if [ "$enable_cellular_proxy" = "true" ]; then
+            if [ "$current_state" = "bypassed" ]; then
+                log_msg "[INFO] Strategy: Resuming proxy service for Cellular network."
+                apply_wifi_bypass "disable"
+            fi
+        else
+            if [ "$current_state" != "bypassed" ]; then
+                log_msg "[INFO] Strategy: Bypassing proxy service for Cellular network."
+                apply_wifi_bypass "enable"
+            fi
+        fi
     fi
 }
 check_module_service
