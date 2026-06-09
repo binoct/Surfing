@@ -22,7 +22,7 @@ jobs:
 
       - name: Update Count
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           STATE_FILE=".stats_state"
           if [ ! -f "$STATE_FILE" ]; then
@@ -31,7 +31,7 @@ jobs:
           fi
           source "$STATE_FILE"
 
-          RESPONSE=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+          RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
             https://api.github.com/repos/${{ github.repository }}/releases)
           CURRENT_COUNT=$(echo "$RESPONSE" | jq '[.[]? | .assets[]? | .download_count] | add // 0')
 

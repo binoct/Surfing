@@ -1,77 +1,55 @@
-name: delete old workflow runs
+name: actions cleanup record
 
 on:
+  workflow_run:
+    workflows: ["prerelease", "release"]
+    types:
+      - completed
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch: 
 
 jobs:
   delete-runs:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       actions: write
-      contents: read
 
     steps:
       - name: Clean Workflow Runs
         run: |
-          EVENT_NAME="${{ github.event_name }}"
-          THRESHOLD_DATE=$(date -d "7 days ago" +%Y-%m-%d)
-          TOTAL_DELETE_COUNT=0
-
-          if [ "$EVENT_NAME" == "workflow_dispatch" ]; then
-            echo "Manual trigger detected. Ignoring date limits and protecting zero runs..."
-            THRESHOLD_DATE=$(date -d "tomorrow" +%Y-%m-%d)
-            PROTECT_COUNT=0
-          else
-            echo "Scheduled trigger detected. Applying 7-day limit and protecting latest 15 runs per workflow..."
-            echo "Threshold Date: $THRESHOLD_DATE"
-            PROTECT_COUNT=15
+          if [ "${{ github.event_name }}" == "workflow_run" ]; then
+            echo "Triggering workflow succeeded. Deleting run ID: ${{ github.event.workflow_run.id }}"
+            curl -L -X DELETE \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}"
           fi
 
-          WORKFLOWS=$(gh workflow list --repo ${{ github.repository }} --all --limit 100 --json id --jq '.[].id')
+          echo "Starting total cleanup of all workflows..."
+          WORKFLOWS=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows" \
+            | jq '.workflows[] | .id')
 
           for wf in $WORKFLOWS; do
-            echo "----------------------------------------"
-            echo "Processing Workflow ID: $wf for branch 'main'"
+            RUN_IDS=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/workflows/$wf/runs?per_page=100" \
+              | jq ".workflow_runs[] | select(.id != ${{ github.run_id }}) | .id")
 
-            RUNS=$(gh run list --workflow "$wf" --branch main --limit 500 --repo ${{ github.repository }} --json createdAt,databaseId --jq '.[] | "\(.createdAt|split("T")[0]) \(.databaseId)"')
-
-            if [ -z "$RUNS" ]; then
-              echo "No main branch runs found for this workflow. Skipping..."
+            if [ -z "$RUN_IDS" ]; then
               continue
             fi
 
-            if [ "$PROTECT_COUNT" -gt 0 ]; then
-              PROTECTED_IDS=$(echo "$RUNS" | head -n "$PROTECT_COUNT" | awk '{print $2}')
-            else
-              PROTECTED_IDS=""
-            fi
-
-            DELETE_COUNT=0
-            while read -r created_date run_id; do
-              [ -z "$run_id" ] && continue
-
-              if [ "$run_id" == "${{ github.run_id }}" ]; then continue; fi
-
-              if [[ "$created_date" < "$THRESHOLD_DATE" ]]; then
-                if ! echo "$PROTECTED_IDS" | grep -w -q "$run_id"; then
-                  echo "Deleting ID: $run_id (Created: $created_date)"
-                  gh run delete "$run_id" --repo ${{ github.repository }}
-                  DELETE_COUNT=$((DELETE_COUNT + 1))
-                  TOTAL_DELETE_COUNT=$((TOTAL_DELETE_COUNT + 1))
-                fi
-              fi
-            done <<< "$RUNS"
-            
-            echo "Deleted $DELETE_COUNT runs for Workflow ID: $wf on main branch."
+            for run_id in $RUN_IDS; do
+              echo "Deleting historical run ID: $run_id"
+              curl -L -X DELETE \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs/$run_id"
+            done
           done
 
-          echo "----------------------------------------"
-          if [ "$TOTAL_DELETE_COUNT" -eq 0 ]; then
-            echo "No main branch runs match the criteria."
-          else
-            echo "Cleanup completed. Total deleted across all workflows (main branch only): $TOTAL_DELETE_COUNT runs."
-          fi
+          echo "Cleanup completed."
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
