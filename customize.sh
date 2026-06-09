@@ -43,35 +43,35 @@ init_busybox_toolchain() {
 
 extract_subscribe_urls() {
   if [ -f "$CONFIG_FILE" ]; then
-    awk '/proxy-providers:/,/^profile:/' "$CONFIG_FILE" | \
-    grep -Eo 'url: ".*"' | \
-    sed -E 's/url: "(.*)"/\1/' | \
-    sed 's/&/\\&/g' > "$BACKUP_FILE"
+    sed -n '/# 订阅地址相关/,/profile:.*↑/p' "$CONFIG_FILE" > "$BACKUP_FILE"
     
     if [ -s "$BACKUP_FILE" ]; then
-      ui_print "Backed up subscription URLs to:"
-      ui_print "proxies/subscribe_urls_backup.txt"
+      ui_print "Backed up subscription configuration."
     else
-      ui_print "No URLs found. Check config format."
+      ui_print "No subscription block found. Using default."
     fi
   else
-    ui_print "Config file missing. Cannot extract URLs."
+    ui_print "Config file missing. Cannot extract subscriptions."
   fi
 }
 
 restore_subscribe_urls() {
   if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
-    awk 'NR==FNR {
-           urls[++n] = $0; next
-         }
-         /proxy-providers:/ { inBlock = 1 }
-         inBlock && /url: / {
-           sub(/url: ".*"/, "url: \"" urls[++i] "\"")
-         }
-         /profile:/ { inBlock = 0 }
-         { print }
-        ' "$BACKUP_FILE" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
-    ui_print "Restored URLs to config.yaml"
+    awk -v backup="$BACKUP_FILE" '
+      BEGIN { skip = 0 }
+      /# 订阅地址相关/ {
+        skip = 1
+        while ((getline < backup) > 0) { print }
+        close(backup)
+        next
+      }
+      /profile:.*↑/ {
+        skip = 0
+        next
+      }
+      !skip { print }
+    ' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+    ui_print "Restored subscription configuration."
   else
     ui_print "No valid backup found. Skipped restore."
   fi
@@ -103,6 +103,19 @@ sync_version_from_module_prop() {
   if [ -f "$MODPATH/module.prop" ] && [ -d "$CURRENT_MODULES_DIR/Surfing" ]; then
     cp -f "$MODPATH/module.prop" "$dst_prop"
   fi
+}
+
+update_surfingtile_version_cache() {
+  CORE_VER=$(grep "^version=" "$MODPATH/module.prop" | sed -n 's/.*-\([0-9a-z]\{7\}\).*/\1/p')
+  [ -z "$CORE_VER" ] && return
+
+  PREFS_PATHS="/data/data/com.surfing.tile/shared_prefs/OverviewsPrefs.xml /data/user/0/com.surfing.tile/shared_prefs/OverviewsPrefs.xml"
+
+  for PREFS_FILE in $PREFS_PATHS; do
+    if [ -f "$PREFS_FILE" ]; then
+      sed -i "s/\(<string name=\"cached_core_version\">\)[^<]*\(<\/string>\)/\1$CORE_VER\2/g" "$PREFS_FILE"
+    fi
+  done
 }
 
 choose_volume_key() {
@@ -215,6 +228,7 @@ if [ -d "$BOX_BLL_PATH" ]; then
   rm -rf "$MODPATH/box_bll"
 
   choose_to_umount_hosts_file
+  update_surfingtile_version_cache
   ui_print "Update completed."
 else
   ui_print "Installing..."
