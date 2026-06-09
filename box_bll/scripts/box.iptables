@@ -12,6 +12,7 @@ scripts_dir=$(dirname "${scripts}")
 
 mark_id="16777216/16777216"
 table_id="2024"
+tun_table_index=${table_id:-2024}
 # routing_mark="233"
 
 log() {
@@ -89,14 +90,14 @@ probe_user_group() {
   if [ -n "${bin_pid}" ] && [ -d "/proc/${bin_pid}" ]; then
     box_user=$(stat -c %u "/proc/${bin_pid}")
     box_group=$(stat -c %g "/proc/${bin_pid}")
-    log Info "[${bin_name}], PID: ${bin_pid}, 属主 UID: ${box_user}, 属组 GID: ${box_group}"
+    log Info "进程上下文确认 - [${bin_name}] PID: ${bin_pid}, UID: ${box_user}, GID: ${box_group}"
     return 0
   else
     box_user=$(echo "${box_user_group}" | awk -F ':' '{print $1}')
     box_group=$(echo "${box_user_group}" | awk -F ':' '{print $2}')
     [ "${box_user}" = "root" ] && box_user=0
     [ "${box_group}" = "net_admin" ] && box_group=3005
-    log Warn "未捕捉到 [${bin_name}] 进程，使用备用权限标识 - UID: ${box_user}, GID: ${box_group}"
+    log Warn "未捕捉到核心进程，已切换至静态权限预设 - UID: ${box_user}, GID: ${box_group}"
     return 1
   fi
 }
@@ -104,29 +105,13 @@ probe_user_group() {
 start_redirect() {
   ${iptables} -t nat -N BOX_EXTERNAL
   ${iptables} -t nat -F BOX_EXTERNAL
-  ${iptables} -t nat -N BOX_LOCAL
-  ${iptables} -t nat -F BOX_LOCAL
-
-  if { [ "${mihomo_dns_forward}" = "true" ] && [ "${bin_name}" = "mihomo" ]; } || [ "${bin_name}" = "clash" ]; then
-    ${iptables} -t nat -A BOX_EXTERNAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
-    ${iptables} -t nat -A BOX_LOCAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
-
-    ${iptables} -t nat -A BOX_LOCAL -p tcp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
-
-    ${iptables} -t nat -A BOX_EXTERNAL -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
-    ${iptables} -t nat -A BOX_LOCAL -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
-  fi
 
   ${iptables} -t nat -N LOCAL_IP_V4 2>/dev/null
   ${iptables} -t nat -F LOCAL_IP_V4
-
   for subnet in "${intranet[@]}" ; do
     ${iptables} -t nat -A BOX_EXTERNAL -d "${subnet}" -j RETURN
-    ${iptables} -t nat -A BOX_LOCAL -d "${subnet}" -j RETURN
   done
-
   ${iptables} -t nat -A BOX_EXTERNAL -j LOCAL_IP_V4
-  ${iptables} -t nat -A BOX_LOCAL -j LOCAL_IP_V4
 
   ${iptables} -t nat -A BOX_EXTERNAL -p tcp -i lo -j REDIRECT --to-ports "${redir_port}"
   if [ "${#ap_list[@]}" -ne 0 ]; then
@@ -138,12 +123,20 @@ start_redirect() {
 
   ${iptables} -t nat -I PREROUTING -j BOX_EXTERNAL
 
+  ${iptables} -t nat -N BOX_LOCAL
+  ${iptables} -t nat -F BOX_LOCAL
+
   if [ "${#ignore_out_list[@]}" -ne 0 ]; then
     for ignore in "${ignore_out_list[@]}" ; do
       ${iptables} -t nat -A BOX_LOCAL -o "${ignore}" -j RETURN
     done
     log Info "已忽略接口: ${ignore_out_list[*]}."
   fi
+
+  for subnet in "${intranet[@]}" ; do
+    ${iptables} -t nat -A BOX_LOCAL -d "${subnet}" -j RETURN
+  done
+  ${iptables} -t nat -A BOX_LOCAL -j LOCAL_IP_V4
 
   if [ "${proxy_mode}" = "blacklist" ]; then
     if [ "${#gid_list[@]}" -ne 0 ]; then
@@ -166,7 +159,6 @@ start_redirect() {
       ${iptables} -t nat -A BOX_LOCAL -p tcp -j REDIRECT --to-ports "${redir_port}"
       log Info "代理模式: 黑名单, 已绕过指定应用."
     fi
-
   elif [ "${proxy_mode}" = "whitelist" ]; then
     if [ "${#uid_list[@]}" -ne 0 ]; then
       for appid in "${uid_list[@]}" ; do
@@ -178,11 +170,31 @@ start_redirect() {
     ${iptables} -t nat -A BOX_LOCAL -p tcp -j REDIRECT --to-ports "${redir_port}"
   fi
 
-  if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ]; then
+  if [ -n "${box_user}" ]; then
     ${iptables} -t nat -I BOX_LOCAL 1 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
   fi
 
   ${iptables} -t nat -I OUTPUT -j BOX_LOCAL
+
+  if { [ "${mihomo_dns_forward}" = "true" ] && [ "${bin_name}" = "mihomo" ]; } || [ "${bin_name}" = "clash" ]; then
+    ${iptables} -t nat -N CLASH_DNS_EXTERNAL
+    ${iptables} -t nat -F CLASH_DNS_EXTERNAL
+    ${iptables} -t nat -A CLASH_DNS_EXTERNAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
+    ${iptables} -t nat -I PREROUTING -j CLASH_DNS_EXTERNAL
+
+    ${iptables} -t nat -N CLASH_DNS_LOCAL
+    ${iptables} -t nat -F CLASH_DNS_LOCAL
+    if [ -n "${box_user}" ]; then
+      ${iptables} -t nat -I CLASH_DNS_LOCAL 1 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
+    fi
+    ${iptables} -t nat -A CLASH_DNS_LOCAL -p udp --dport 53 -j REDIRECT --to-ports "${clash_dns_port}"
+    ${iptables} -t nat -I OUTPUT -j CLASH_DNS_LOCAL
+
+    log Info "DNS 全局劫持转发已挂载至 NAT 链."
+  fi
+
+  ${iptables} -t nat -A OUTPUT -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
+  ${iptables} -t nat -A PREROUTING -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
   log Info "IPv4 NAT 规则已挂载 (全局 DNS 劫持策略)."
 }
 
@@ -191,10 +203,23 @@ stop_redirect() {
     ${iptables} -t nat -D PREROUTING -j BOX_EXTERNAL
     ${iptables} -t nat -D OUTPUT -j BOX_LOCAL
     ${iptables} -t nat -D BOX_LOCAL -j BOX_BYPASS
+
+    for table in nat mangle; do
+      ${iptables} -t $table -D PREROUTING -j CLASH_DNS_EXTERNAL
+      ${iptables} -t $table -D OUTPUT -j CLASH_DNS_LOCAL
+      ${iptables} -t $table -F CLASH_DNS_EXTERNAL
+      ${iptables} -t $table -X CLASH_DNS_EXTERNAL
+      ${iptables} -t $table -F CLASH_DNS_LOCAL
+      ${iptables} -t $table -X CLASH_DNS_LOCAL
+    done
+
     for chain in BOX_BYPASS BOX_EXTERNAL BOX_LOCAL LOCAL_IP_V4; do
       ${iptables} -t nat -F "$chain"
       ${iptables} -t nat -X "$chain"
     done
+
+    ${iptables} -t nat -D OUTPUT -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
+    ${iptables} -t nat -D PREROUTING -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
   } >/dev/null 2>&1
 }
 
@@ -304,7 +329,7 @@ start_tproxy() {
     fi
   fi
 
-  if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ]; then
+  if [ -n "${box_user}" ]; then
     ${iptables} -t mangle -I BOX_LOCAL 1 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
   fi
 
@@ -332,7 +357,7 @@ start_tproxy() {
           ${iptables} -t nat -N CLASH_DNS_LOCAL
           ${iptables} -t nat -F CLASH_DNS_LOCAL
 
-          if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ]; then
+          if [ -n "${box_user}" ]; then
             ${iptables} -t nat -I CLASH_DNS_LOCAL 1 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
           fi
 
@@ -350,7 +375,7 @@ start_tproxy() {
           ${iptables} -t mangle -N CLASH_DNS_LOCAL
           ${iptables} -t mangle -F CLASH_DNS_LOCAL
 
-          if [ -n "${box_user}" ] && [ "${box_user}" -eq "${box_user}" ]; then
+          if [ -n "${box_user}" ]; then
             ${iptables} -t mangle -I CLASH_DNS_LOCAL 1 -m owner --uid-owner "${box_user}" --gid-owner "${box_group}" -j RETURN
           fi
 
@@ -438,13 +463,86 @@ enable_ipv6() {
   echo 0 > /proc/sys/net/ipv6/conf/wlan0/disable_ipv6
 }
 
-if [ "${proxy_mode}" = "core" ]; then
-  iptables="${SYS_IPTABLES} -w 100" && stop_tproxy >> /dev/null 2>&1
-  iptables="${SYS_IP6TABLES} -w 100" && stop_tproxy >> /dev/null 2>&1
-  iptables="${SYS_IPTABLES} -w 100" && stop_redirect >> /dev/null 2>&1
-  log Info "代理模式: ${proxy_mode}, 透明代理已禁用."
-  return 0
-fi
+wait_tun_device() {
+    local wait_count=0
+    local max_wait=10
+    while [ "${wait_count}" -lt "${max_wait}" ]; do
+        if ifconfig "${tun_device}" >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 1
+        wait_count=$((wait_count + 1))
+    done
+    return 1
+}
+
+tun_forward_ip_rules() {
+    ${SYS_IP} rule "$1" iif lo goto 6000 pref 5000
+    ${SYS_IP} rule "$1" iif "${tun_device}" lookup main suppress_prefixlength 0 pref 5010
+    ${SYS_IP} rule "$1" iif "${tun_device}" goto 6000 pref 5020
+    ${SYS_IP} rule "$1" from 10.0.0.0/8 lookup "${tun_table_index}" pref 5030
+    ${SYS_IP} rule "$1" from 172.16.0.0/12 lookup "${tun_table_index}" pref 5040
+    ${SYS_IP} rule "$1" from 192.168.0.0/16 lookup "${tun_table_index}" pref 5050
+    ${SYS_IP} rule "$1" nop pref 6000
+
+    ${SYS_IP} rule "$1" from all iif "${tun_device}" lookup main suppress_prefixlength 0 pref 8000
+    ${SYS_IP} rule "$1" lookup main pref 7000
+}
+
+tun_forward_ip_rules_del() {
+    {
+        ${SYS_IP} rule del pref 5000
+        ${SYS_IP} rule del pref 5010
+        ${SYS_IP} rule del pref 5020
+        ${SYS_IP} rule del pref 5030
+        ${SYS_IP} rule del pref 5040
+        ${SYS_IP} rule del pref 5050
+        ${SYS_IP} rule del pref 6000
+        ${SYS_IP} rule del pref 7000
+        ${SYS_IP} rule del pref 8000
+    } >/dev/null 2>&1
+}
+
+tun_forward_iptables_rules() {
+    ${SYS_IPTABLES} -w 100 "$1" FORWARD -o "${tun_device}" -j ACCEPT
+    ${SYS_IPTABLES} -w 100 "$1" FORWARD -i "${tun_device}" -j ACCEPT
+    ${SYS_IP6TABLES} -w 100 "$1" FORWARD -o "${tun_device}" -j ACCEPT
+    ${SYS_IP6TABLES} -w 100 "$1" FORWARD -i "${tun_device}" -j ACCEPT
+}
+
+tun_forward_enable() {
+    if ! ifconfig "${tun_device}" >/dev/null 2>&1; then
+        is_tun_mode=false
+        [ "${proxy_mode}" = "core" ] && is_tun_mode=true
+        [ "${proxy_method}" = "MIXED" ] && is_tun_mode=true
+
+        if [ "$is_tun_mode" = "true" ]; then
+             log Info "正在等待内核网卡 [${tun_device}] 就绪..."
+             if ! wait_tun_device; then
+                 log Error "Tun 网卡 [${tun_device}] 探测超时，转发挂载中止."
+                 return 1
+             fi
+        else
+             return 0
+        fi
+    fi
+    tun_forward_disable
+    log Info "已开启虚拟网卡 [${tun_device}]，正在激活热点共享转发..."
+    echo 1 > /proc/sys/net/ipv4/ip_forward
+    echo 2 > /proc/sys/net/ipv4/conf/default/rp_filter
+    echo 2 > /proc/sys/net/ipv4/conf/all/rp_filter
+
+    tun_forward_ip_rules "add"
+    tun_forward_iptables_rules "-I"
+    log Info "热点共享与网卡转发特性已准备就绪."
+}
+
+tun_forward_disable() {
+    {
+        tun_forward_ip_rules_del
+        tun_forward_iptables_rules "-D"
+    } >/dev/null 2>&1
+}
 
 destroy_all_rules() {
   {
@@ -459,11 +557,10 @@ destroy_all_rules() {
             $cmd $t_arg -X NET_BYPASS 2>/dev/null
         done
     done
-
     iptables="${SYS_IPTABLES} -w 100" && stop_tproxy
     iptables="${SYS_IP6TABLES} -w 100" && stop_tproxy
     iptables="${SYS_IPTABLES} -w 100" && stop_redirect
-
+    tun_forward_disable
   } >/dev/null 2>&1
 }
 
@@ -473,15 +570,21 @@ case "$1" in
     my_pid=$$
     leader_pid=$(echo "$pids" | head -n 1)
     if [ "$my_pid" -ne "$leader_pid" ]; then
-        log Warn "检测到进程实例已在运行，本次调用将静默退出 (PID: $my_pid)."
+        log Warn "检测到规则链实例已在运行，本次操作已自动挂起 (PID: $my_pid)."
         exit 0
     fi
 
-    log Info "初始化透明代理矩阵 (当前主进程: $my_pid)"
-    log Info "正在重置网络过滤规则状态..."
+    log Info "正在初始化透明代理矩阵 (主进程: $my_pid)"
+    log Info "正在重置网络防火墙过滤规则..."
 
     destroy_all_rules
     sleep 1
+
+    if [ "${proxy_mode}" = "core" ]; then
+        log Info "当前运行模式: ${proxy_mode} (TUN 内核转发)"
+        tun_forward_enable
+        return 0
+    fi
 
     if ! probe_user_group ; then
       log Error "核心进程探测失败，请确认 ${bin_name} 是否正常驻留后台."
@@ -554,6 +657,7 @@ case "$1" in
       fi
     fi
 
+    tun_forward_enable
     "${scripts_dir}/ctr.inotify" w >/dev/null 2>&1 &
     ;;
 
@@ -574,6 +678,11 @@ case "$1" in
     destroy_all_rules
     log Warn "旧规则已清理，等待服务重置..."
     sleep 3
+
+    if [ "${proxy_mode}" = "core" ]; then
+        tun_forward_enable
+        return 0
+    fi
 
     if ! probe_user_group ; then
       log Error "核心进程心跳丢失，规则重构失败."
@@ -624,6 +733,7 @@ case "$1" in
       fi
     fi
 
+    tun_forward_enable
    "${scripts_dir}/ctr.inotify" w >/dev/null 2>&1 &
     ;;
 
@@ -636,7 +746,16 @@ case "$1" in
     disable_ipv6
     log Warn "IPv6 协议栈已手动卸载."
     ;;
+
+  tun_forward_enable)
+    tun_forward_enable
+    ;;
+
+  tun_forward_disable)
+    tun_forward_disable
+    ;;
+
   *)
-    log Error "非法指令，请参考正确用法: $0 {enable|disable|renew|enable_ipv6|disable_ipv6}"
+    log Error "非法指令，请参考正确用法: $0 {enable|disable|renew|enable_ipv6|disable_ipv6|tun_forward_enable|tun_forward_disable}"
     ;;
 esac
