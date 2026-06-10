@@ -49,6 +49,8 @@ optimize_kernel() {
   echo 1 > /proc/sys/net/ipv4/conf/all/route_localnet
   echo 1 > /proc/sys/net/ipv4/conf/default/route_localnet
 
+  settings put global tether_offload_disabled 0 >/dev/null 2>&1
+
   if [ -f "$file_timeout" ]; then
     sysctl -w net.netfilter.nf_conntrack_udp_timeout=30 >/dev/null 2>&1 || echo 30 > "$file_timeout" 2>/dev/null
 
@@ -57,22 +59,12 @@ optimize_kernel() {
     fi
 
     local check_val=$(cat "$file_timeout" 2>/dev/null)
-    if [ "$check_val" = "30" ]; then
-      log Info "内核调优成功: UDP Conntrack 回收加速 (30s/15s) 已生效."
-    else
+    if [ "$check_val" != "30" ]; then
       if command -v magiskpolicy >/dev/null 2>&1; then
           magiskpolicy --live "allow su proc_net file write" 2>/dev/null
           echo 30 > "$file_timeout" 2>/dev/null
       fi
-      check_val=$(cat "$file_timeout" 2>/dev/null)
-      if [ "$check_val" = "30" ]; then
-          log Info "内核调优成功: 已通过 SELinux 热补丁强行写入 UDP 超时策略."
-      else
-          log Warn "内核调优受阻: 系统底层限制严格，UDP 积压风险可能存在."
-      fi
     fi
-  else
-    log Warn "内核调优跳过: 无法唤醒 nf_conntrack 模块，当前内核可能被精简."
   fi
 }
 
@@ -493,7 +485,7 @@ enable_ipv6() {
 
 wait_tun_device() {
     local wait_count=0
-    local max_wait=10
+    local max_wait=5
     while [ "${wait_count}" -lt "${max_wait}" ]; do
         if ifconfig "${tun_device}" >/dev/null 2>&1; then
             return 0
