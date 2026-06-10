@@ -89,6 +89,13 @@ rules_add() {
     clear_links
 }
 
-[ "$events" = "w" ] && { rules_add; sleep 1; [ "$ipv6" = "disable" ] && disable_ipv6; }
+[ "$events" = "w" ] && {
+    rules_add;
+    sleep 1;
+    bin_pid=$(pidof "${bin_name}")
+    if [ -n "${bin_pid}" ] && [ "$ipv6" = "disable" ]; then
+        disable_ipv6;
+    fi
+}
 
 { [ "$uptime_sec" -lt 360 ] && [ ! -f "$BOOT_STABLE_FLAG" ]; } && { sleep 60; rules_add; touch "$BOOT_STABLE_FLAG"; }
