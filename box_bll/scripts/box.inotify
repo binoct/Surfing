@@ -38,8 +38,8 @@ service_control() {
             "${TPROXY_PATH}" enable >> "${RUN_LOG}" 2>> "${ERR_LOG}"
         elif [ "${EVENT}" = "n" ]; then
             log Warn "正在停止 Surfing for Box 服务..."
-            "${TPROXY_PATH}" disable >> "${RUN_LOG}" 2>> "${ERR_LOG}"
             "${SERVICE_PATH}" stop >> "${RUN_LOG}" 2>> "${ERR_LOG}"
+            "${TPROXY_PATH}" disable >> "${RUN_LOG}" 2>> "${ERR_LOG}"
         fi
     fi
 }
