@@ -1,16 +1,14 @@
-name: actions cleanup record
+name: auto task
 
 on:
   workflow_run:
     workflows: ["prerelease", "release"]
     types:
       - completed
-  schedule:
-    - cron: '0 0 * * *'
   workflow_dispatch: 
 
 jobs:
-  delete-runs:
+  cleanup-runs:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
