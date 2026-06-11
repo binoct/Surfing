@@ -33,11 +33,11 @@ SYSTEM_HOSTS="/system/etc/hosts"
 service_control() {
     if [ ! -f "${box_path}/manual" ] && [ "${MONITOR_FILE}" = "disable" ]; then
         if [ "${EVENT}" = "d" ]; then
-            log Info "正在启动 Surfing for Box 服务..."
+            log Info "正在启动 Surfing for Box 服务."
             "${SERVICE_PATH}" start >> "${RUN_LOG}" 2>> "${ERR_LOG}"
             "${TPROXY_PATH}" enable >> "${RUN_LOG}" 2>> "${ERR_LOG}"
         elif [ "${EVENT}" = "n" ]; then
-            log Warn "正在停止 Surfing for Box 服务..."
+            log Warn "正在停止 Surfing for Box 服务."
             "${SERVICE_PATH}" stop >> "${RUN_LOG}" 2>> "${ERR_LOG}"
             "${TPROXY_PATH}" disable >> "${RUN_LOG}" 2>> "${ERR_LOG}"
         fi
@@ -57,7 +57,7 @@ handle_hosts_event() {
                 fi
                 echo "$current_time" > "$lock_file"
                 
-                log Info "Hosts 变动，执行重新映射..."
+                log Info "Hosts 已变动，正在执行重新映射."
                 umount -l "$SYSTEM_HOSTS" >/dev/null 2>&1
                 if [ -f "$HOSTS_FILE" ]; then
                     if mount -o bind "$HOSTS_FILE" "$SYSTEM_HOSTS" >/dev/null 2>&1; then
@@ -68,7 +68,7 @@ handle_hosts_event() {
                 fi
                 ;;
             d)
-                log Warn "Hosts 文件已删除，还原系统原生状态."
+                log Warn "Hosts 文件已删除，正在还原系统原生状态."
                 umount -l "$SYSTEM_HOSTS" >/dev/null 2>&1
                 ;;
         esac
@@ -80,7 +80,7 @@ handle_inotify_event() {
     [ ! -d "$HOSTS_PATH" ] && mkdir -p "$HOSTS_PATH"
 
     if ! pgrep -f "inotifyd $INOTIFY_SCRIPT $HOSTS_PATH" > /dev/null; then
-        log Warn "Hosts 监听中断，执行自愈重建..."
+        log Warn "Hosts 监听中断，执行自愈重建."
         pkill -9 -f "inotifyd $INOTIFY_SCRIPT $HOSTS_PATH" >/dev/null 2>&1
         sleep 1
         nohup inotifyd "$INOTIFY_SCRIPT" "$HOSTS_PATH" >/dev/null 2>&1 &

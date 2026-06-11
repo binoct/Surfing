@@ -92,7 +92,7 @@ probe_user_group() {
 }
 
 start_redirect() {
-  log Info "正在注入 IPv4 REDIRECT 重定向规则."
+  log Info "正在注入: REDIRECT IPv4 防火墙规则."
   ${iptables} -t nat -N BOX_EXTERNAL
   ${iptables} -t nat -F BOX_EXTERNAL
 
@@ -108,7 +108,7 @@ start_redirect() {
     for ap in "${ap_list[@]}" ; do
       ${iptables} -t nat -A BOX_EXTERNAL -p tcp -i "${ap}" -j REDIRECT --to-ports "${redir_port}"
     done
-    log Info "外部接口: [${ap_list[*]}] NAT 重定向已就绪."
+    log Info "外部接口: [${ap_list[*]}] NAT REDIRECT 已就绪."
   fi
 
   ${iptables} -t nat -I PREROUTING -j BOX_EXTERNAL
@@ -192,7 +192,7 @@ start_redirect() {
 
   ${iptables} -t nat -A OUTPUT -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
   ${iptables} -t nat -A PREROUTING -d "${fake_ip_range_v4}" -p icmp -j DNAT --to-destination 127.0.0.1
-  log Info "IPv4 NAT 规则链部署完成."
+  log Info "IPv4 NAT 防火墙规则部署完成."
 }
 
 stop_redirect() {
@@ -231,9 +231,9 @@ start_tproxy() {
   fi
 
   if [ "$use_nat_table" = "true" ]; then
-    log Info "正在注入 IPv4 TPROXY 透明劫持规则."
+    log Info "正在注入: IPv4 TPROXY 防火墙规则."
   else
-    log Info "正在注入 IPv6 TPROXY 透明劫持规则."
+    log Info "正在注入: IPv6 TPROXY 防火墙规则."
   fi
 
   if [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ]; then
@@ -352,7 +352,7 @@ start_tproxy() {
   local localhost="127.0.0.1"
   local icmp_p="icmp"
   [ "${iptables}" = "${SYS_IP6TABLES} -w 100" ] && localhost="::1" && icmp_p="ipv6-icmp"
-  ${iptables} -N BOX_INPUT_FILTER 2>/dev/null
+  ${iptables} -N BOX_INPUT_FILTER
   ${iptables} -F BOX_INPUT_FILTER
   ${iptables} -A BOX_INPUT_FILTER -i lo -j RETURN
   ${iptables} -A BOX_INPUT_FILTER -p "${icmp_p}" -j RETURN
@@ -634,7 +634,7 @@ case "$1" in
         exit 0
     fi
 
-    log Info "主控程序: 正在初始化 (PID: $my_pid)"
+    log Info "iptables: 正在初始化 (PID: $my_pid)"
     destroy_all_rules
 
     sleep 1
@@ -670,9 +670,9 @@ case "$1" in
         log Info "运行模式: [TPROXY] 全双工 TCP+UDP"
         iptables="${SYS_IPTABLES} -w 100"
         if start_tproxy; then
-          log Info "IPv4 规则链部署成功."
+          log Info "IPv4 防火墙规则部署完成."
         else
-          log Error "IPv4 规则链部署失败，正在清理残留."
+          log Error "IPv4 防火墙规则部署失败，正在回滚清理残留."
           iptables="${SYS_IPTABLES} -w 100" && stop_tproxy >/dev/null 2>&1
         fi
 
@@ -682,9 +682,9 @@ case "$1" in
             intranet6[${#intranet6[@]}]="$ip6"
           done
           if start_tproxy; then
-            log Info "IPv6 规则链部署成功，双栈环境已就绪."
+            log Info "IPv6 防火墙规则部署完成，双栈环境已就绪."
           else
-            log Error "IPv6 规则链部署失败，正在清理残留."
+            log Error "IPv6 防火墙规则部署失败，正在回滚清理残留."
             iptables="${SYS_IP6TABLES} -w 100" && stop_tproxy >/dev/null 2>&1
           fi
         fi
@@ -696,15 +696,15 @@ case "$1" in
 
     if [ "${proxy_method}" != "TPROXY" ]; then
       if [ "${proxy_method}" = "REDIRECT" ] || [ "${proxy_method}" = "REDIRECT_FALLBACK" ]; then
-        log Info "运行模式: [REDIRECT] 单工 TCP 重定向"
+        log Info "运行模式: [REDIRECT] 单工 TCP REDIRECT "
       else
         log Info "运行模式: [MIXED] 混合模式 TCP(REDIRECT) + UDP(TUN)"
       fi
       iptables="${SYS_IPTABLES} -w 100"
       if start_redirect; then
-        log Info "IPv4 重定向规则部署成功."
+        log Info "IPv4 REDIRECT 规则部署完成."
       else
-        log Error "IPv4 重定向规则部署失败，正在清理残留."
+        log Error "IPv4 REDIRECT 规则部署失败，正在回滚清理残留."
         iptables="${SYS_IPTABLES} -w 100" && stop_redirect >/dev/null 2>&1
       fi
     fi
@@ -716,17 +716,17 @@ case "$1" in
 
   disable)
     pgrep -f "$0 enable" | grep -v $$ | xargs kill -9 > /dev/null 2>&1
-    log Warn "主控程序: 正在触发全局卸载序列."
+    log Warn "iptables: 正在执行全局卸载复位."
     destroy_all_rules
     sleep 1
     enable_ipv6
-    log Info "卸载完成: 防火墙已复位，规则链清空完毕."
+    log Info "卸载完成: 防火墙已复位，规则已清空完毕."
     log Info "服务已停止运行."
     return 0
     ;;
 
   renew)
-    log Warn "主控程序: 正在触发规则链重构序列."
+    log Warn "iptables: 正在触发防火墙规则重构序列."
     destroy_all_rules
     log Info "环境复位: 旧规则已清理，等待状态重置."
 
@@ -762,7 +762,7 @@ case "$1" in
       if start_tproxy; then
         log Info "IPv4 重构成功."
       else
-        log Error "IPv4 重构失败，正在清理残留."
+        log Error "IPv4 重构失败，正在回滚清理残留."
         iptables="${SYS_IPTABLES} -w 100" && stop_tproxy >/dev/null 2>&1
       fi
 
@@ -774,7 +774,7 @@ case "$1" in
         if start_tproxy; then
           log Info "IPv6 重构成功."
         else
-          log Error "IPv6 重构失败，正在清理残留."
+          log Error "IPv6 重构失败，正在回滚清理残留."
           iptables="${SYS_IP6TABLES} -w 100" && stop_tproxy >/dev/null 2>&1
         fi
       fi
@@ -782,15 +782,15 @@ case "$1" in
       log Info "重构序列: 正在重新部署 REDIRECT 规则."
       iptables="${SYS_IPTABLES} -w 100"
       if start_redirect; then
-        log Info "重定向重构成功."
+        log Info "REDIRECT 重构成功."
       else
-        log Error "重定向重构失败，正在清理残留."
+        log Error "REDIRECT 重构失败，正在回滚清理残留."
         iptables="${SYS_IPTABLES} -w 100" && stop_redirect >/dev/null 2>&1
       fi
     fi
 
     tun_forward_enable
-    log Info "规则链重构完毕，服务已恢复运行."
+    log Info "防火墙规则重构完毕，服务已恢复运行."
    "${scripts_dir}/ctr.inotify" w >/dev/null 2>&1 &
     ;;
 
