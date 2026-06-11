@@ -5,9 +5,7 @@ on:
     workflows: ["prerelease", "release"]
     types:
       - completed
-  workflow_dispatch: 
-  schedule:
-    - cron: '0 19 * * *'
+  workflow_dispatch:
 
 jobs:
   cleanup-runs:
