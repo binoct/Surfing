@@ -229,6 +229,7 @@ if [ -d "$BOX_BLL_PATH" ]; then
 
   choose_to_umount_hosts_file
   update_surfingtile_version_cache
+  am broadcast -a com.surfing.tile.ACTION_SAVE_CONFIG -p com.surfing.tile >/dev/null 2>&1
   ui_print "Update completed."
 else
   ui_print "Installing..."
