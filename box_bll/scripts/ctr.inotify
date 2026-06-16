@@ -24,48 +24,29 @@ events=$1
 
 [ "$enable_network_service_control" != "true" ] && exit 0
 
-get_current_ssid() {
-    local SSID=$(dumpsys wifi | awk -F'[":,]' '
+get_current_bssid() {
+    local BSSID=$(dumpsys wifi | awk '
         /mWifiInfo/ {
-            for (i=1; i<=NF; i++) {
-                if ($i ~ /SSID/) {
-                    s = $(i+1); 
-                    gsub(/^[ \t]+|[ \t]+$/, "", s); 
-                    if (s != "" && s != "<unknown ssid>") { print s; exit }
-                }
+            if (match($0, /BSSID: [0-9a-fA-F:]{17}/)) {
+                s = substr($0, RSTART+7, 17)
+                print s; exit
             }
         }
-        /COMPLETED/ {
-            split($0, a, "\"");
-            s = a[2];
-            if (s != "" && s != "<unknown ssid>") { print s; exit }
-        }
     ')
-    if [ -z "$SSID" ] || [ "$SSID" = "<unknown ssid>" ] || [ "$SSID" = "0x" ]; then
-            SSID="unknown"
+    if [ -z "$BSSID" ] || [ "$BSSID" = "00:00:00:00:00:00" ] || [ "$BSSID" = "<none>" ] || [ "$BSSID" = "null" ]; then
+            BSSID="unknown"
     fi
-    printf "%s\n" "$SSID"
-}
-
-is_wifi_connected() {
-    local wifi_enabled=$(dumpsys wifi | awk '/Wi-Fi is enabled/ {print "enabled"; exit}')
-    local wifi_ip=$(ip -4 addr show wlan0 | awk '/inet / {sub(/\/.*/, "", $2); print $2; exit}')
-
-    if [ -n "$wifi_enabled" ] && [ -n "$wifi_ip" ]; then
-        printf "wifi\n"
-    else
-        printf "not_wifi\n"
-    fi
+    printf "%s\n" "$BSSID"
 }
 
 get_current_ip() {
     ip -4 addr show wlan0 2>/dev/null | awk '/inet / {sub(/\/.*/, "", $2); print $2; exit}'
 }
 
-is_allowed_wifi() {
-    local ssid="$1"
-    local allowed_ssids=$(printf "%s" "$2" | sed 's/，/,/g; s/　/ /g')
-    printf "%s" "$allowed_ssids" | awk -v target="$ssid" -F',' '
+is_allowed_mac() {
+    local mac=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+    local allowed_macs=$(echo "$2" | tr '[:upper:]' '[:lower:]' | sed 's/，/,/g; s/　/ /g')
+    printf "%s" "$allowed_macs" | awk -v target="$mac" -F',' '
         BEGIN { rs = 1 }
         {
             for (i=1; i<=NF; i++) {
@@ -116,8 +97,12 @@ if [ "$time_diff" -lt "$stability_window" ]; then
 fi
 echo "$current_time" > "$last_check_file"
 
-wifi_status=$(is_wifi_connected)
-ssid=$(get_current_ssid)
+bssid=$(get_current_bssid)
+if [ "$bssid" != "unknown" ]; then
+    wifi_status="wifi"
+else
+    wifi_status="not_wifi"
+fi
 
 apply_wifi_bypass() {
     local state="$1"
@@ -128,7 +113,7 @@ apply_wifi_bypass() {
         for cmd in "${SYS_IPTABLES} -w 100" "${SYS_IP6TABLES} -w 100"; do
             for chain in $target_chains; do
                 for table in mangle nat; do
-                    while $cmd -t $table -D $chain -j NET_BYPASS 2>/dev/null; do :; done
+                    while $cmd -t $table -D "$chain" -j NET_BYPASS 2>/dev/null; do :; done
                 done
             done
             for table in mangle nat filter; do
@@ -141,16 +126,14 @@ apply_wifi_bypass() {
 
     if [ "$bypass_via_iptables" != "true" ]; then
         if [ "$state" = "enable" ]; then
-            [ -f "${variab_dir}/wifi_bypassed" ] && return 0
             log_msg "[DEBUG] Bypass activated: Stopping proxy service..."
             touch "$disable_file"
             touch "${variab_dir}/wifi_bypassed"
         else
-            clean_legacy_rules
-            [ ! -f "${variab_dir}/wifi_bypassed" ] && return 0
             log_msg "[DEBUG] Bypass deactivated: Resuming proxy service..."
             rm -f "$disable_file"
             rm -f "${variab_dir}/wifi_bypassed"
+            clean_legacy_rules
         fi
         return 0
     fi
@@ -167,9 +150,9 @@ apply_wifi_bypass() {
             done
             for chain in $target_chains; do
                 for table in mangle nat; do
-                    if $cmd -t $table -L $chain -n >/dev/null 2>&1; then
-                        while $cmd -t $table -D $chain -j NET_BYPASS 2>/dev/null; do :; done
-                        $cmd -t $table -I $chain 1 -j NET_BYPASS 2>/dev/null
+                    if $cmd -t $table -L "$chain" -n >/dev/null 2>&1; then
+                        while $cmd -t $table -D "$chain" -j NET_BYPASS 2>/dev/null; do :; done
+                        $cmd -t $table -I "$chain" 1 -j NET_BYPASS 2>/dev/null
                     fi
                 done
             done
@@ -187,73 +170,78 @@ apply_wifi_bypass() {
 }
 
 check_module_service() {
-    [ -f "${variab_dir}/wifi_bypassed" ] && current_state="bypassed" || current_state="proxying"
-    eval $(awk -F: '/ssid:/ {s=$2} /ip:/ {i=$2} END {printf "last_ssid=\"%s\";last_ip=\"%s\"", s, i}' "$last_wifi_state_file" 2>/dev/null)
+    if [ -f "${variab_dir}/wifi_bypassed" ] || { [ "$bypass_via_iptables" != "true" ] && [ -f "$disable_file" ]; }; then
+        current_state="bypassed"
+    else
+        current_state="proxying"
+    fi
 
-    if [ "$wifi_status" = "wifi" ] && [ -n "$ssid" ]; then
-        for i in 1 2 3; do
-            current_ip=$(get_current_ip)
-            [ -n "$current_ip" ] && break
-            sleep 2
-        done
-        if [ -n "$current_ip" ]; then
-            if [ "$ssid" = "$last_ssid" ] && [ "$current_ip" = "$last_ip" ]; then
-                log_msg "[INFO] Config updated, re-evaluating network rules..."
-            else
-                log_msg ""
-                log_msg "[INFO] Network status changed!"
-                log_msg "[INFO] WiFi Connected - SSID: [${ssid}], IP: [${current_ip}]"
+    eval $(awk '/mac:/ {sub(/^mac:/,""); m=$0} /ip:/ {sub(/^ip:/,""); i=$0} END {printf "last_mac=\"%s\";last_ip=\"%s\"", m, i}' "$last_wifi_state_file" 2>/dev/null)
+
+    if [ "$wifi_status" = "wifi" ]; then
+        current_ip=$(get_current_ip)
+
+        if [ "$bssid" = "$last_mac" ] && [ "$events" != "w" ]; then
+            printf "mac:%s\nip:%s\n" "$bssid" "$current_ip" > "$last_wifi_state_file"
+            return
+        fi
+
+        if [ "$bssid" = "$last_mac" ]; then
+            log_msg "[INFO] Config updated, re-evaluating network rules..."
+        else
+            log_msg ""
+            log_msg "[INFO] Network status changed!"
+            log_msg "[INFO] WiFi Connected - MAC: [${bssid}], IP: [${current_ip:-"Allocating..."}]"
+        fi
+        printf "mac:%s\nip:%s\n" "$bssid" "$current_ip" > "$last_wifi_state_file"
+
+        if [ "$events" = "w" ]; then
+            force_refresh="true"
+        else
+            force_refresh="false"
+        fi
+
+        if [ "$enable_wifi_proxy" = "false" ]; then
+            if [ "$current_state" != "bypassed" ] || [ "$force_refresh" = "true" ]; then
+                apply_wifi_bypass "enable"
             fi
-            printf "ssid:%s\nip:%s\n" "$ssid" "$current_ip" > "$last_wifi_state_file"
-
-            if [ "$events" = "w" ]; then
-                force_refresh="true"
-            else
-                force_refresh="false"
-            fi
-
-            if [ "$enable_wifi_proxy" = "false" ]; then
-                if [ "$current_state" != "bypassed" ] || [ "$force_refresh" = "true" ]; then
-                    apply_wifi_bypass "enable"
-                fi
-            elif [ "$enable_ssid_filter" = "true" ]; then
-                if [ "$use_wifi_list_mode" = "blacklist" ]; then
-                    if is_allowed_wifi "$ssid" "$blacklist_wifi_ssids"; then
-                        if [ "$current_state" != "bypassed" ] || [ "$force_refresh" = "true" ]; then
-                            apply_wifi_bypass "enable"
-                        fi
-                    else
-                        if [ "$current_state" != "proxying" ] || [ "$force_refresh" = "true" ]; then
-                            apply_wifi_bypass "disable"
-                        fi
+        elif [ "$enable_mac_filter" = "true" ]; then
+            if [ "$use_wifi_list_mode" = "blacklist" ]; then
+                if is_allowed_mac "$bssid" "$blacklist_wifi_macs"; then
+                    if [ "$current_state" != "bypassed" ] || [ "$force_refresh" = "true" ]; then
+                        apply_wifi_bypass "enable"
                     fi
-                elif [ "$use_wifi_list_mode" = "whitelist" ]; then
-                    if is_allowed_wifi "$ssid" "$whitelist_wifi_ssids"; then
-                        if [ "$current_state" != "proxying" ] || [ "$force_refresh" = "true" ]; then
-                            apply_wifi_bypass "disable"
-                        fi
-                    else
-                        if [ "$current_state" != "bypassed" ] || [ "$force_refresh" = "true" ]; then
-                            apply_wifi_bypass "enable"
-                        fi
+                else
+                    if [ "$current_state" != "proxying" ] || [ "$force_refresh" = "true" ]; then
+                        apply_wifi_bypass "disable"
                     fi
                 fi
-            else
-                if [ "$current_state" != "proxying" ] || [ "$force_refresh" = "true" ]; then
-                    apply_wifi_bypass "disable"
+            elif [ "$use_wifi_list_mode" = "whitelist" ]; then
+                if is_allowed_mac "$bssid" "$whitelist_wifi_macs"; then
+                    if [ "$current_state" != "proxying" ] || [ "$force_refresh" = "true" ]; then
+                        apply_wifi_bypass "disable"
+                    fi
+                else
+                    if [ "$current_state" != "bypassed" ] || [ "$force_refresh" = "true" ]; then
+                        apply_wifi_bypass "enable"
+                    fi
                 fi
+            fi
+        else
+            if [ "$current_state" != "proxying" ] || [ "$force_refresh" = "true" ]; then
+                apply_wifi_bypass "disable"
             fi
         fi
     elif [ "$wifi_status" = "not_wifi" ]; then
         log_msg "[INFO] Physical Network: WiFi disconnected or Cellular active."
-        echo "ssid:DISCONNECTED" > "$last_wifi_state_file"
+        echo "mac:DISCONNECTED" > "$last_wifi_state_file"
         if [ "$enable_cellular_proxy" = "true" ]; then
-            if [ "$current_state" = "bypassed" ]; then
+            if [ "$current_state" = "bypassed" ] || [ "$force_refresh" = "true" ]; then
                 log_msg "[INFO] Strategy: Resuming proxy service for Cellular network."
                 apply_wifi_bypass "disable"
             fi
         else
-            if [ "$current_state" != "bypassed" ]; then
+            if [ "$current_state" != "bypassed" ] || [ "$force_refresh" = "true" ]; then
                 log_msg "[INFO] Strategy: Bypassing proxy service for Cellular network."
                 apply_wifi_bypass "enable"
             fi
