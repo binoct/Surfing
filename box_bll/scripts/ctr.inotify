@@ -72,6 +72,20 @@ log_msg() {
     fi
 }
 
+log_current_config() {
+    [ "$netfilt_logs" != "true" ] && return
+    log_msg "[DEBUG] Current Configuration State:"
+    log_msg "        - bypass_via_iptables: [${bypass_via_iptables}]"
+    log_msg "        - enable_cellular_proxy: [${enable_cellular_proxy}]"
+    log_msg "        - enable_wifi_proxy: [${enable_wifi_proxy}]"
+    log_msg "        - enable_mac_filter: [${enable_mac_filter}]"
+    if [ "$enable_mac_filter" = "true" ]; then
+        log_msg "        - use_wifi_list_mode: [${use_wifi_list_mode}]"
+        [ "$use_wifi_list_mode" = "blacklist" ] && log_msg "        - blacklist_wifi_macs: [${blacklist_wifi_macs}]"
+        [ "$use_wifi_list_mode" = "whitelist" ] && log_msg "        - whitelist_wifi_macs: [${whitelist_wifi_macs}]"
+    fi
+}
+
 clean_old_logs() {
     local retention_sec=$((24 * 60 * 60))
     local cutoff_date=$(date -d "@$(($(date +%s) - retention_sec))" "+%Y%m%d%H%M%S")
@@ -188,10 +202,12 @@ check_module_service() {
 
         if [ "$bssid" = "$last_mac" ]; then
             log_msg "[INFO] Config updated, re-evaluating network rules..."
+            log_current_config
         else
             log_msg ""
             log_msg "[INFO] Network status changed!"
             log_msg "[INFO] WiFi Connected - MAC: [${bssid}], IP: [${current_ip:-"Allocating..."}]"
+            log_current_config
         fi
         printf "mac:%s\nip:%s\n" "$bssid" "$current_ip" > "$last_wifi_state_file"
 
@@ -234,6 +250,7 @@ check_module_service() {
         fi
     elif [ "$wifi_status" = "not_wifi" ]; then
         log_msg "[INFO] Physical Network: WiFi disconnected or Cellular active."
+        log_current_config
         echo "mac:DISCONNECTED" > "$last_wifi_state_file"
         if [ "$enable_cellular_proxy" = "true" ]; then
             if [ "$current_state" = "bypassed" ] || [ "$force_refresh" = "true" ]; then
