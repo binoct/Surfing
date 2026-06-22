@@ -100,23 +100,21 @@ clean_old_logs() {
 }
 clean_old_logs
 
-current_time=$(date +%s)
-last_check_time=$(cat "$last_check_file" 2>/dev/null || echo 0)
-time_diff=$((current_time - last_check_time))
-stability_window=2
-
-if [ "$time_diff" -lt "$stability_window" ]; then
-    log_msg "[DEBUG] Skip check: (${time_diff}s), entering stability window."
-    return
-fi
-echo "$current_time" > "$last_check_file"
-
 bssid=$(get_current_bssid)
+current_ip=$(get_current_ip)
 if [ "$bssid" != "unknown" ]; then
     wifi_status="wifi"
 else
     wifi_status="not_wifi"
 fi
+
+eval $(awk '/mac:/ {sub(/^mac:/,""); m=$0} /ip:/ {sub(/^ip:/,""); i=$0} END {printf "last_mac=\"%s\";last_ip=\"%s\"", m, i}' "$last_wifi_state_file" 2>/dev/null)
+
+if [ "$bssid" = "$last_mac" ] && [ "$current_ip" = "$last_ip" ] && [ "$events" != "w" ]; then
+    exit 0
+fi
+
+date +%s > "$last_check_file"
 
 apply_wifi_bypass() {
     local state="$1"
@@ -193,8 +191,6 @@ check_module_service() {
     eval $(awk '/mac:/ {sub(/^mac:/,""); m=$0} /ip:/ {sub(/^ip:/,""); i=$0} END {printf "last_mac=\"%s\";last_ip=\"%s\"", m, i}' "$last_wifi_state_file" 2>/dev/null)
 
     if [ "$wifi_status" = "wifi" ]; then
-        current_ip=$(get_current_ip)
-
         if [ "$bssid" = "$last_mac" ] && [ "$events" != "w" ]; then
             printf "mac:%s\nip:%s\n" "$bssid" "$current_ip" > "$last_wifi_state_file"
             return
