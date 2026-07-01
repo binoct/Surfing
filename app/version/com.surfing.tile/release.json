@@ -1,5 +1,23 @@
 [
     {
+        "versionName": "v5.31.10",
+        "changelog": [
+            "【新增代理面板】",
+            "节点状态一目了然，长按顶部以定位选中",
+            "支持双击回顶、IPv6 测试及模式无缝切换",
+            "",
+            "【底层架构升级】",
+            "Moshi 高性能 JSON 解析，数据处理更高效",
+            "支持供应商订阅启动时是否更新，实时生效",
+            "修复已知问题，提升使用体验",
+            "",
+            "7月份版本，让 SurfingTile 再次伟大！"
+        ],
+        "fileSize": 8331566,
+        "sha256": "63f7ed62b0a7ace9c4439539c453c32b978ab4ff9569c08804a58991541d489a",
+        "downloadUrl": "https://raw.githubusercontent.com/GitMetaio/Surfing/main/app/version/com.surfing.tile/SurfingTile_{VER}_release.apk"
+    },
+    {
         "versionName": "v5.30.0",
         "changelog": [
             "- 修复了已知稳定性问题"
