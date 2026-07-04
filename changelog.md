@@ -1,3 +1,7 @@
+# v7.8.2
+- sync latest branch
+- fix known issues and improve stability
+
 # v7.8.1
 - ipv6 intelligent management
 - network filtering upgraded to ssids (mac) 
