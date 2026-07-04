@@ -1,5 +1,14 @@
 [
     {
+        "versionName": "v5.35.0",
+        "changelog": [
+            "修复已知问题，提升稳定性"
+        ],
+        "fileSize": 8385730,
+        "sha256": "f13a86d2dffd12c9c0286e822fbba1eddb999b15b649d5d58da744289fa138e3",
+        "downloadUrl": "https://raw.githubusercontent.com/GitMetaio/Surfing/main/app/version/com.surfing.tile/SurfingTile_{VER}_release.apk"
+    },
+    {
         "versionName": "v5.31.10",
         "changelog": [
             "【新增代理面板】",
