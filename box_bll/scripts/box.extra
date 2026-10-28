@@ -599,3 +599,33 @@ extra_status() {
     fi
     return 0
 }
+
+# 供 WebUI 状态页读取, 只输出 key=value, 不写日志
+extra_probe() {
+    local engine pid version
+
+    engine=$(extra_engine) || {
+        printf 'engine=clash\n'
+        printf 'engine_state=disabled\n'
+        return 0
+    }
+    extra_paths "${engine}"
+    printf 'engine=%s\n' "${engine}"
+    version=$(extra_local_version) || version=""
+    [ -n "${version}" ] && printf 'engine_version=%s\n' "${version}"
+
+    if extra_is_running; then
+        pid=$(cat "${extra_pid_file}" 2>/dev/null)
+        printf 'engine_state=running\n'
+        printf 'engine_pid=%s\n' "${pid}"
+        printf 'engine_etime=%s\n' "$(extra_run_time)"
+    elif extra_worker_running; then
+        printf 'engine_state=initializing\n'
+        printf 'engine_pid=%s\n' "$(cat "${extra_worker_pid_file}" 2>/dev/null)"
+    elif [ -x "${extra_bin}" ]; then
+        printf 'engine_state=stopped\n'
+    else
+        printf 'engine_state=missing\n'
+    fi
+    return 0
+}

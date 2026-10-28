@@ -39,6 +39,11 @@
     background: var(--off); box-shadow: 0 0 0 4px rgba(142,142,147,.15);
   }
   .dot.on { background: var(--on); box-shadow: 0 0 0 4px rgba(52,199,89,.15); }
+  .dot.warn { background: #ff9f0a; box-shadow: 0 0 0 4px rgba(255,159,10,.15); }
+  .sub-state {
+    font-size: 15px; font-weight: 500;
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
+  }
   .meta { color: var(--muted); font-size: 13px; min-height: 20px; }
   .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   button {
@@ -80,6 +85,8 @@
   <section class="card status">
     <div class="state"><span id="dot" class="dot"></span><span id="state">检测中…</span></div>
     <div class="meta" id="meta"></div>
+    <div class="state sub-state"><span id="edot" class="dot"></span><span id="estate">外部引擎检测中…</span></div>
+    <div class="meta" id="emeta"></div>
   </section>
 
   <section class="actions">
@@ -106,17 +113,7 @@
     '[ -n "$n" ] || n=clash'
   ].join('\n');
 
-  var CMD_STATUS = PRE + '\n' + [
-    'p=$(pidof -s "$n")',
-    'if [ -n "$p" ]; then',
-    '  echo "state=running"',
-    '  echo "pid=$p"',
-    '  et=$("/system/bin/ps" -eo etime,comm 2>/dev/null | awk -v b="$n" \'$2==b{print $1;exit}\')',
-    '  [ -n "$et" ] && echo "etime=$et"',
-    'else',
-    '  echo "state=stopped"',
-    'fi'
-  ].join('\n');
+  var CMD_STATUS = PRE + '\n' + SCRIPTS + '/box.service probe';
 
   var CMD_START = PRE + '\n' + [
     'if pidof -s "$n" >/dev/null 2>&1; then echo "已在运行，无需重复启动"; exit 0; fi',
@@ -137,6 +134,9 @@
     dot: document.getElementById('dot'),
     state: document.getElementById('state'),
     meta: document.getElementById('meta'),
+    edot: document.getElementById('edot'),
+    estate: document.getElementById('estate'),
+    emeta: document.getElementById('emeta'),
     out: document.getElementById('out'),
     dash: document.getElementById('dash'),
     start: document.getElementById('btnStart'),
@@ -146,9 +146,12 @@
     clear: document.getElementById('btnClear')
   };
 
+  var ENGINE_NAMES = { aether: 'Aether', usque: 'usque', warpscout: 'warpscout' };
+
   var busy = false;
   var refreshing = false;
   var running = false;
+  var failCount = 0;
 
   function runShell(cmd) {
     return new Promise(function (resolve, reject) {
@@ -255,38 +258,90 @@
   }
 
   function render(data) {
-    running = data.state === 'running';
+    running = data.clash_state === 'running';
     els.dot.className = 'dot' + (running ? ' on' : '');
     els.state.textContent = running ? '运行中' : '已停止';
     if (running) {
       var bits = [];
-      if (data.pid) bits.push('PID ' + data.pid);
-      var up = fmtUptime(data.etime);
+      if (data.clash_pid) bits.push('PID ' + data.clash_pid);
+      var up = fmtUptime(data.clash_etime);
       if (up) bits.push('已运行 ' + up);
       els.meta.textContent = bits.join(' · ');
     } else {
       els.meta.textContent = '点击「启动」运行 clash';
     }
+    renderEngine(data);
     setButtons();
+  }
+
+  function renderEngine(data) {
+    var state = data.engine_state || 'unknown';
+    var name = ENGINE_NAMES[data.engine] || data.engine || '';
+    var dot = 'dot';
+    var text;
+    var bits = [];
+    if (state === 'disabled') {
+      text = '外部引擎：未启用';
+      bits.push('在 extra/engine 写入 aether / usque / warpscout 可启用');
+    } else if (state === 'running') {
+      dot = 'dot on';
+      text = name + ' 运行中';
+      if (data.engine_pid) bits.push('PID ' + data.engine_pid);
+      var up = fmtUptime(data.engine_etime);
+      if (up) bits.push('已运行 ' + up);
+      if (data.engine_version) bits.push(data.engine_version);
+    } else if (state === 'initializing') {
+      dot = 'dot warn';
+      text = name + ' 正在初始化…';
+      if (data.engine_pid) bits.push('PID ' + data.engine_pid);
+    } else if (state === 'missing') {
+      dot = 'dot warn';
+      text = name + ' 未安装';
+      bits.push('点击「更新引擎」下载');
+    } else if (state === 'stopped') {
+      text = name + ' 已停止';
+      if (data.engine_version) bits.push(data.engine_version);
+    } else {
+      text = '外部引擎：状态未知';
+    }
+    els.edot.className = dot;
+    els.estate.textContent = text;
+    els.emeta.textContent = bits.join(' · ');
   }
 
   function refresh() {
     if (busy || refreshing) return;
     refreshing = true;
-    runShell(CMD_STATUS).then(function (r) {
+    withTimeout(runShell(CMD_STATUS), 15000).then(function (r) {
+      failCount = 0;
       render(parseStatus(r.out));
     }, function (e) {
       running = false;
+      els.dot.className = 'dot';
       els.state.textContent = '状态未知';
       els.meta.textContent = (e && e.message) ? e.message : String(e);
+      els.edot.className = 'dot';
+      els.estate.textContent = '外部引擎：状态未知';
+      els.emeta.textContent = '';
       els.start.disabled = true;
       els.restart.disabled = true;
       els.stop.disabled = true;
       els.update.disabled = true;
       els.dash.className = 'dash disabled';
+      // 管理器接口注入较慢时快速重试, 其余情况交给定时轮询
+      if (failCount < 5) {
+        failCount += 1;
+        setTimeout(refresh, 1500);
+      }
     }).then(function () {
       refreshing = false;
     });
+  }
+
+  // 切回前台 / 重新获得焦点时立即刷新, 并清掉后台冻结时可能挂起的请求标志
+  function refreshNow() {
+    refreshing = false;
+    refresh();
   }
 
   function action(label, cmd, confirmText, timeoutMs) {
@@ -328,6 +383,11 @@
 
   refresh();
   setInterval(refresh, 5000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'hidden') refreshNow();
+  });
+  window.addEventListener('focus', refreshNow);
+  window.addEventListener('pageshow', refreshNow);
 })();
 </script>
 </body>

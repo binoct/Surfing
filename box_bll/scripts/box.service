@@ -10,11 +10,17 @@ scripts_dir=$(dirname "${scripts}")
 
 . "${scripts_dir}/box.config"
 
-{
-    mkdir -p "${run_path}"
-    mkdir -p "${box_path}/${bin_name}/log"
-    find "${box_path}" -mtime +3 -type f -name "*.log" -exec rm -f {} +
-} >/dev/null 2>&1
+# probe 被 WebUI 每 5 秒轮询, 跳过目录清理以免频繁扫描 /data/adb
+case "$1" in
+    probe) ;;
+    *)
+        {
+            mkdir -p "${run_path}"
+            mkdir -p "${box_path}/${bin_name}/log"
+            find "${box_path}" -mtime +3 -type f -name "*.log" -exec rm -f {} +
+        } >/dev/null 2>&1
+        ;;
+esac
 
 log() {
     TZ=Asia/Shanghai
@@ -232,11 +238,23 @@ case "$1" in
         display_bin_status
         extra_status
         ;;
+    probe)
+        bin_pid=$(get_bin_pid)
+        if [ -n "${bin_pid}" ]; then
+            printf 'clash_state=running\n'
+            printf 'clash_pid=%s\n' "${bin_pid}"
+            et=$(/system/bin/ps -eo etime,comm 2>/dev/null | awk -v b="${bin_name}" '$2==b{print $1;exit}')
+            [ -n "${et}" ] && printf 'clash_etime=%s\n' "${et}"
+        else
+            printf 'clash_state=stopped\n'
+        fi
+        extra_probe
+        ;;
     extra-update)
         extra_update
         ;;
     *)
-        log Error "相关指令: $0 {start|stop|restart|status|extra-update}"
+        log Error "相关指令: $0 {start|stop|restart|status|probe|extra-update}"
         exit 1
         ;;
 esac
