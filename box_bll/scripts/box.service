@@ -10,9 +10,9 @@ scripts_dir=$(dirname "${scripts}")
 
 . "${scripts_dir}/box.config"
 
-# probe 被 WebUI 每 5 秒轮询, 跳过目录清理以免频繁扫描 /data/adb
+# probe 被 WebUI 每 5 秒轮询, extra-log 用于即时排障, 均跳过目录清理
 case "$1" in
-    probe) ;;
+    probe|extra-log) ;;
     *)
         {
             mkdir -p "${run_path}"
@@ -250,11 +250,66 @@ case "$1" in
         fi
         extra_probe
         ;;
+    extra-log)
+        engine=$(extra_engine) || {
+            echo "外部引擎: 未启用 (${extra_engine_file} 为 clash/mihomo 或缺失)"
+            exit 0
+        }
+        extra_paths "${engine}"
+        n="$2"
+        case "${n}" in
+            ''|*[!0-9]*) n=40 ;;
+        esac
+        echo "引擎: ${engine}"
+        if [ -f "${extra_dir}/version" ]; then
+            echo "版本: $(sed -n '1p' "${extra_dir}/version" 2>/dev/null)"
+        else
+            echo "版本: 未知"
+        fi
+        if [ -x "${extra_bin}" ]; then
+            echo "二进制: ${extra_bin}"
+        else
+            echo "二进制: ${extra_bin} (不存在)"
+        fi
+        args=$(extra_read_cmdline "${extra_cmdline}")
+        if [ -n "${args}" ]; then
+            echo "启动参数: ${args}"
+        else
+            echo "启动参数: 尚未生成"
+        fi
+        bin_pid=$(get_bin_pid)
+        if [ -n "${bin_pid}" ]; then
+            echo "${bin_name}: 运行中 (PID: ${bin_pid})"
+        else
+            echo "${bin_name}: 已停止"
+        fi
+        if extra_is_running; then
+            echo "引擎状态: 运行中 (PID: $(cat "${extra_pid_file}" 2>/dev/null))"
+        elif extra_worker_running; then
+            echo "引擎状态: 正在初始化 (PID: $(cat "${extra_worker_pid_file}" 2>/dev/null))"
+        else
+            echo "引擎状态: 未运行"
+        fi
+        echo "运行日志: ${extra_run_log}"
+        echo "----- 运行日志最近 ${n} 行 -----"
+        if [ -f "${extra_run_log}" ]; then
+            tail -n "${n}" "${extra_run_log}" 2>/dev/null
+        else
+            echo "(暂无日志)"
+        fi
+        echo "引擎输出: ${extra_out_log}"
+        if [ -s "${extra_out_log}" ]; then
+            echo "----- 引擎输出最近 ${n} 行 -----"
+            tail -n "${n}" "${extra_out_log}" 2>/dev/null
+        else
+            echo "(暂无输出)"
+        fi
+        ;;
     extra-update)
         extra_update
         ;;
     *)
-        log Error "相关指令: $0 {start|stop|restart|status|probe|extra-update}"
+        log Error "相关指令: $0 {start|stop|restart|status|probe|extra-log|extra-update}"
         exit 1
         ;;
 esac

@@ -15,6 +15,15 @@ extra_log() {
     log "$1" "[extra] $2"
 }
 
+# 把引擎自身输出最近 n 行直接写入当前输出 (worker 的 stdout 即运行日志)
+extra_log_tail() {
+    local n="$1" file="${2:-${extra_out_log}}" line
+    [ -f "${file}" ] || return 0
+    tail -n "${n}" "${file}" 2>/dev/null | while IFS= read -r line; do
+        printf '    | %s\n' "${line}"
+    done
+}
+
 extra_engine() {
     local name
     [ -f "${extra_engine_file}" ] || return 1
@@ -50,6 +59,7 @@ extra_paths() {
     extra_worker_pid_file="${run_path}/extra_${extra_engine_name}.worker.pid"
     extra_log_dir="${extra_dir}/log"
     extra_run_log="${extra_log_dir}/${extra_engine_name}_$(date +%Y%m%d).log"
+    extra_out_log="${extra_log_dir}/${extra_engine_name}_out_$(date +%Y%m%d).log"
 }
 
 # 先直连 GitHub, 失败再走镜像
@@ -283,6 +293,7 @@ extra_clash_guard() {
             miss=0
         else
             miss=$((miss + 1))
+            extra_log Warn "未检测到 ${bin_name} 进程 (${miss}/3)"
             if [ "${miss}" -ge 3 ]; then
                 extra_log Warn "检测到 ${bin_name} 已停止, 同步停止 ${extra_engine_name} (PID: ${pid})"
                 kill "${pid}" 2>/dev/null
@@ -395,8 +406,11 @@ extra_worker_running() {
 }
 
 extra_worker() {
-    local engine="$1" dir="$2" args generated pid
-    extra_log Info "外部引擎 ${engine} 初始化开始 (日志: ${extra_run_log})"
+    local engine="$1" dir="$2" args generated pid rc version
+    extra_log Info "外部引擎 ${engine} 初始化开始"
+    extra_log Info "日志文件: ${extra_run_log}"
+    extra_log Info "引擎输出: ${extra_out_log}"
+    extra_log Info "工作目录: ${dir}, 运行用户组: ${box_user_group}"
     extra_wait_network || extra_log Warn "网络尚未就绪, 继续尝试初始化"
 
     rm -f "${dir}"/.download.* 2>/dev/null
@@ -405,15 +419,27 @@ extra_worker() {
         chmod 0755 "${dir}/${engine}" 2>/dev/null
     fi
     if [ ! -x "${dir}/${engine}" ]; then
-        extra_install_bin "${engine}" "${dir}" || return 1
+        extra_log Info "未检测到可执行二进制, 开始下载安装..."
+        extra_install_bin "${engine}" "${dir}" || {
+            extra_log Error "${engine} 下载/安装失败"
+            return 1
+        }
     fi
+    version=$(sed -n '1p' "${dir}/version" 2>/dev/null | tr -d ' \t\r')
+    [ -n "${version}" ] || version="未知"
+    extra_log Info "二进制: ${extra_bin} (版本: ${version})"
 
-    extra_init_conf "${engine}" "${dir}" || return 1
+    extra_init_conf "${engine}" "${dir}" || {
+        extra_log Error "${engine} 初始化配置失败"
+        extra_log_tail 15
+        return 1
+    }
 
     generated=0
     args=$(extra_read_cmdline "${extra_cmdline}")
     if [ -z "${args}" ]; then
-        args=$(extra_default_cmdline "${engine}" "${dir}") || return 1
+        extra_log Info "未找到 cmdline, 使用默认参数"
+        args=$(extra_default_cmdline "${engine}") || return 1
         generated=1
     fi
 
@@ -423,15 +449,21 @@ extra_worker() {
     cd "${dir}" || return 1
     # 与 clash 同用户组启动: box.iptables 在 BOX_LOCAL/CLASH_DNS_LOCAL 首条按 uid+gid 放行,
     # 引擎自身的出站流量因此同样绕过透明代理, 不会被 TPROXY 回环劫持
-    setuidgid "${box_user_group}" "${extra_bin}" ${args} < /dev/null &
+    setuidgid "${box_user_group}" "${extra_bin}" ${args} < /dev/null >> "${extra_out_log}" 2>&1 &
     pid=$!
     printf '%s' "${pid}" > "${extra_pid_file}"
+    extra_log Info "已拉起进程 (PID: ${pid}), 等待 3 秒确认存活..."
 
     sleep 3
     if ! extra_alive "${pid}"; then
         wait "${pid}" 2>/dev/null
-        extra_log Error "${engine} 启动失败, 请查看日志: ${extra_run_log}"
+        rc=$?
         rm -f "${extra_pid_file}"
+        if [ -s "${extra_out_log}" ]; then
+            extra_log Info "----- 引擎输出最近 20 行 -----"
+            extra_log_tail 20
+        fi
+        extra_log Error "${engine} 启动失败 (退出码: ${rc})"
         return 1
     fi
 
@@ -442,10 +474,20 @@ extra_worker() {
     extra_log Info "${engine} 已启动 (PID: ${pid})"
 
     # clash 启动失败时不做联动, 避免引擎被误杀
-    extra_clash_alive && extra_clash_guard "${pid}"
+    if extra_clash_alive; then
+        extra_log Info "开始监听 ${bin_name} 存活状态"
+        extra_clash_guard "${pid}"
+    else
+        extra_log Warn "${bin_name} 未运行, 不做联动"
+    fi
 
     wait "${pid}" 2>/dev/null
-    extra_log Warn "${engine} 已退出 (PID: ${pid})"
+    rc=$?
+    extra_log Warn "${engine} 已退出 (PID: ${pid}, 退出码: ${rc})"
+    if [ -s "${extra_out_log}" ]; then
+        extra_log Info "----- 引擎输出最近 15 行 -----"
+        extra_log_tail 15
+    fi
     rm -f "${extra_pid_file}"
 }
 

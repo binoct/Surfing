@@ -61,6 +61,7 @@
     padding: 10px 14px; border-bottom: 1px solid var(--line);
     color: var(--muted); font-size: 12px;
   }
+  .log-tools { display: flex; gap: 8px; }
   .mini {
     height: 26px; padding: 0 10px; font-size: 12px; font-weight: 400;
     border-radius: 8px; color: var(--muted); background: transparent;
@@ -97,7 +98,7 @@
   </section>
 
   <section class="card log">
-    <div class="log-head"><span>输出</span><button id="btnClear" class="mini">清空</button></div>
+    <div class="log-head"><span>输出</span><div class="log-tools"><button id="btnLog" class="mini">引擎日志</button><button id="btnClear" class="mini">清空</button></div></div>
     <pre id="out">就绪</pre>
   </section>
 </div>
@@ -118,8 +119,12 @@
   var CMD_START = PRE + '\n' + [
     'if pidof -s "$n" >/dev/null 2>&1; then echo "已在运行，无需重复启动"; exit 0; fi',
     SCRIPTS + '/box.service start || exit $?',
-    SCRIPTS + '/box.iptables enable'
+    SCRIPTS + '/box.iptables enable',
+    'sleep 4',
+    SCRIPTS + '/box.service extra-log 40'
   ].join('\n');
+
+  var CMD_LOG = PRE + '\n' + SCRIPTS + '/box.service extra-log 40';
 
   var CMD_RESTART = PRE + '\n' + SCRIPTS + '/box.service restart';
 
@@ -143,6 +148,7 @@
     restart: document.getElementById('btnRestart'),
     stop: document.getElementById('btnStop'),
     update: document.getElementById('btnUpdate'),
+    logBtn: document.getElementById('btnLog'),
     clear: document.getElementById('btnClear')
   };
 
@@ -376,6 +382,9 @@
   });
   els.update.addEventListener('click', function () {
     action('更新引擎', CMD_UPDATE, '确认下载/更新外部引擎？更新期间该引擎的代理会短暂中断。', 600000);
+  });
+  els.logBtn.addEventListener('click', function () {
+    action('引擎日志', CMD_LOG, '', 30000);
   });
   els.clear.addEventListener('click', function () {
     els.out.textContent = '就绪';
