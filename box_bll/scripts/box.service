@@ -232,8 +232,11 @@ case "$1" in
         display_bin_status
         extra_status
         ;;
+    extra-update)
+        extra_update
+        ;;
     *)
-        log Error "相关指令: $0 {start|stop|restart|status}"
+        log Error "相关指令: $0 {start|stop|restart|status|extra-update}"
         exit 1
         ;;
 esac

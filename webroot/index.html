@@ -49,6 +49,7 @@
   button:disabled { opacity: .45; cursor: not-allowed; }
   #btnStart { border-color: rgba(52,199,89,.4); color: var(--on); }
   #btnStop { border-color: rgba(255,69,58,.4); color: var(--danger); }
+  #btnUpdate { grid-column: 1 / -1; border-color: rgba(79,140,255,.4); color: var(--accent); }
   .log { padding: 0; overflow: hidden; }
   .log-head {
     display: flex; justify-content: space-between; align-items: center;
@@ -85,6 +86,7 @@
     <button id="btnStart" disabled>启动</button>
     <button id="btnRestart" disabled>重启</button>
     <button id="btnStop" disabled>关闭</button>
+    <button id="btnUpdate" disabled>更新引擎</button>
   </section>
 
   <section class="card log">
@@ -129,6 +131,8 @@
     SCRIPTS + '/box.iptables disable'
   ].join('\n');
 
+  var CMD_UPDATE = PRE + '\n' + SCRIPTS + '/box.service extra-update';
+
   var els = {
     dot: document.getElementById('dot'),
     state: document.getElementById('state'),
@@ -138,6 +142,7 @@
     start: document.getElementById('btnStart'),
     restart: document.getElementById('btnRestart'),
     stop: document.getElementById('btnStop'),
+    update: document.getElementById('btnUpdate'),
     clear: document.getElementById('btnClear')
   };
 
@@ -245,6 +250,7 @@
     els.start.disabled = busy || running;
     els.restart.disabled = busy || !running;
     els.stop.disabled = busy || !running;
+    els.update.disabled = busy;
     els.dash.className = 'dash' + (running ? '' : ' disabled');
   }
 
@@ -276,13 +282,14 @@
       els.start.disabled = true;
       els.restart.disabled = true;
       els.stop.disabled = true;
+      els.update.disabled = true;
       els.dash.className = 'dash disabled';
     }).then(function () {
       refreshing = false;
     });
   }
 
-  function action(label, cmd, confirmText) {
+  function action(label, cmd, confirmText, timeoutMs) {
     if (busy) return;
     if (confirmText && !window.confirm(confirmText)) return;
     busy = true;
@@ -291,7 +298,7 @@
     els.meta.textContent = label;
     log('$ ' + label + ' ...');
 
-    withTimeout(runShell(cmd), 180000).then(function (r) {
+    withTimeout(runShell(cmd), timeoutMs || 180000).then(function (r) {
       var text = r.out || '';
       if (r.err) text += (text ? '\n' : '') + '[stderr]\n' + r.err;
       log('$ ' + label + (text ? '\n' + text : '') + '\n[退出码 ' + r.code + ']');
@@ -311,6 +318,9 @@
   });
   els.stop.addEventListener('click', function () {
     action('关闭', CMD_STOP, '确认关闭 clash 并卸载透明代理规则？');
+  });
+  els.update.addEventListener('click', function () {
+    action('更新引擎', CMD_UPDATE, '确认下载/更新外部引擎？更新期间该引擎的代理会短暂中断。', 600000);
   });
   els.clear.addEventListener('click', function () {
     els.out.textContent = '就绪';
