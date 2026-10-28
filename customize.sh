@@ -17,11 +17,9 @@ NET_PATH="/data/misc/net"
 CTR_PATH="/data/misc/net/rt_tables"
 CONFIG_FILE="$BOX_BLL_PATH/clash/config.yaml"
 BACKUP_FILE="$BOX_BLL_PATH/clash/proxies/subscribe_urls_backup.txt"
-INSTALL_DIR="/data/app"
 HOSTS_FILE="$BOX_BLL_PATH/clash/etc/hosts"
 HOSTS_PATH="$BOX_BLL_PATH/clash/etc"
 HOSTS_BACKUP="$BOX_BLL_PATH/clash/etc/hosts.bak"
-SURFING_TILE_ZIP="$MODPATH/SurfingTile.zip"
 
 [ "$BOOTMODE" != true ] && abort "Error: Please install via Magisk Manager / KernelSU Manager / APatch"; [ "$KSU" = true ] && [ "$KSU_VER_CODE" -lt "$MIN_KSU_VER" ] && abort "Error: Please update your KernelSU Manager version"; [ "$KSU" = true ] && [ "$KSU_VER_CODE" -lt "$KSU_DIR_VER" ] && service_dir="/data/adb/ksu/service.d" || service_dir="/data/adb/service.d"
 
@@ -100,59 +98,6 @@ restore_subscribe_urls() {
   fi
 }
 
-install_surfingtile_apk() {
-  APK_TMP="$INSTALL_DIR/com.github.surfing.apk"
-  rm -f "$APK_TMP"
-  unzip -o "$SURFING_TILE_ZIP" "com.github.surfing.apk" -d "$INSTALL_DIR" >/dev/null 2>&1
-  if [ -f "$APK_TMP" ]; then
-    print_lang "正在安装 SurfingTile APK..." "Installing Surfingtile APK..."
-    pm install -r "$APK_TMP"
-    rm -f "$APK_TMP"
-  else
-    print_lang "未找到 SurfingTile APK 文件." "Surfingtile APK not found."
-  fi
-}
-
-tile_installed_version() {
-  v=$(dumpsys package com.github.surfing 2>/dev/null | tr ' ' '\n' | awk -F= '/^versionCode=/{print $2; exit}')
-  if [ -z "$v" ]; then
-    v=$(cmd package list packages --show-versioncode com.github.surfing 2>/dev/null | awk -F'versionCode:' '/versionCode:/{print $2; exit}' | tr -d ' ')
-  fi
-  if [ -z "$v" ]; then
-    v=$(pm dump com.github.surfing 2>/dev/null | tr ' ' '\n' | awk -F= '/^versionCode=/{print $2; exit}')
-  fi
-  [ -n "$v" ] && echo "$v" || echo 0
-}
-
-tile_zip_version() {
-  v=$(unzip -p "$SURFING_TILE_ZIP" version 2>/dev/null | awk -F= '/^versionCode=/{print $2; exit}' | tr -d ' ')
-  [ -n "$v" ] && echo "$v" || echo 0
-}
-
-install_surfingtile_if_needed() {
-  installed=$(tile_installed_version)
-  zip_version=$(tile_zip_version)
-
-  if [ "$installed" = "0" ]; then
-    print_lang "未检测到 SurfingTile APP，是否安装？" "SurfingTile APP not found. Install it?"
-    print_lang "音量上键: 安装" "Volume Up: Install"
-    print_lang "音量下键: 跳过" "Volume Down: Skip"
-    print_lang "请等待输入 (10s)..." "Waiting for input (10s)..."
-    if choose_volume_key; then
-      remove_old_surfingtile
-      install_surfingtile_apk
-    else
-      print_lang "已跳过 SurfingTile APP 安装." "Skipped SurfingTile APP installation."
-    fi
-    return
-  fi
-
-  [ "$zip_version" -le "$installed" ] && return
-
-  print_lang "正在更新 SurfingTile APP: $installed → $zip_version" "Updating SurfingTile APP: $installed -> $zip_version"
-  install_surfingtile_apk
-}
-
 sync_version_from_module_prop() {
   dst_prop="$CURRENT_MODULES_DIR/Surfing/module.prop"
   if [ -f "$MODPATH/module.prop" ] && [ -d "$CURRENT_MODULES_DIR/Surfing" ]; then
@@ -199,11 +144,11 @@ remove_old_surfingtile() {
 choose_language
 
 sync_version_from_module_prop
+remove_old_surfingtile
     if [ -d "$BOX_BLL_PATH" ]; then
       print_lang "正在更新模块..." "Updating module..."
       ui_print "↴"
 
-      install_surfingtile_if_needed
       cp -f "$MODPATH/box_bll/bin/busybox" "$BIN_PATH/busybox" && init_busybox_toolchain
       cp -f "$MODPATH/box_bll/bin/curl" "$BIN_PATH/curl"
       extract_subscribe_urls
@@ -231,6 +176,9 @@ sync_version_from_module_prop
       
       cp "$BOX_BLL_PATH/scripts/box.config" "$BOX_BLL_PATH/scripts/box.config.bak"
       cp -f "$MODPATH/box_bll/scripts/"* "$BOX_BLL_PATH/scripts/"
+
+      mkdir -p "$BOX_BLL_PATH/extra"
+      [ -f "$BOX_BLL_PATH/extra/engine" ] || cp -f "$MODPATH/box_bll/extra/engine" "$BOX_BLL_PATH/extra/" 2>/dev/null
 
       OLD_CONFIG="$BOX_BLL_PATH/scripts/box.config.bak"; NEW_CONFIG="$BOX_BLL_PATH/scripts/box.config"
       [ -f "$OLD_CONFIG" ] && {
@@ -265,7 +213,7 @@ sync_version_from_module_prop
     else
       print_lang "正在安装..." "Installing..."
       ui_print "↴"
-      mv "$MODPATH/box_bll" /data/adb/; init_busybox_toolchain; install_surfingtile_apk
+      mv "$MODPATH/box_bll" /data/adb/; init_busybox_toolchain
       cp -f "$BOX_BLL_PATH/clash/config.yaml" "$MODPATH/default_config.yaml"
       print_lang "模块安装完毕." "Module installation completed."
       
@@ -273,7 +221,7 @@ sync_version_from_module_prop
       choose_to_restore_config
     fi
 
-mv -f "$MODPATH/Surfing_service.sh" "$service_dir/"; rm -f "$SURFING_TILE_ZIP"
+mv -f "$MODPATH/Surfing_service.sh" "$service_dir/"
 
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm_recursive "$BOX_BLL_PATH" 0 3005 0755 0644
