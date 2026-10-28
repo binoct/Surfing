@@ -1,10 +1,8 @@
 name: Alpha
-run-name: ${{ github.event.head_commit.message || 'Scheduled Stats Update' }}
+run-name: ${{ github.event_name == 'workflow_dispatch' && 'Manual Prerelease' || 'Scheduled Stats Update' }}
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
   schedule:
     - cron: '0 */12 * * *'
 
@@ -64,7 +62,7 @@ jobs:
 
   Prerelease-Build:
     needs: Fetch-Data
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
 
     env:
