@@ -222,25 +222,16 @@ extra_init_conf() {
 }
 
 extra_default_cmdline() {
-    local engine="$1" dir="$2" endpoint
+    local engine="$1"
     case "${engine}" in
         aether)
-            printf '%s' "--masque --scan balanced --bind 127.0.0.1:${extra_default_port}"
+            printf '%s' "--masque --bind 127.0.0.1:${extra_default_port} -4 --noize gfw --no-quick-reconnect --reconnect-secs 2 --peer 162.159.199.2:4500"
             ;;
         usque)
-            printf '%s' "socks -b 127.0.0.1 -p ${extra_default_port}"
+            printf '%s' "socks -b 127.0.0.1 -p ${extra_default_port} -c config.json -s www.microsoft.com --connect-port 500"
             ;;
         warpscout)
-            extra_log Info "正在扫描可用 WARP 端点 (warpscout scan -p awg -P -best), 可能需要几分钟..." >&2
-            endpoint=$( cd "${dir}" && ./warpscout scan -p awg -P -best -no-report 2>>"${extra_run_log}" | tail -n 1 )
-            endpoint=$(printf '%s' "${endpoint}" | tr -d ' \r')
-            case "${endpoint}" in
-                ''|*[!0-9a-fA-F.:]*)
-                    extra_log Error "扫描未得到可用端点, 请手动在 ${extra_cmdline} 填写 -e 参数"
-                    return 1
-                    ;;
-            esac
-            printf '%s' "socks -e ${endpoint} -p awg -port ${extra_default_port} -listen 127.0.0.1"
+            printf '%s' "socks -port ${extra_default_port} -p masque -masque-sni www.microsoft.com -a warpscout-account.json -e 162.159.198.2:8095"
             ;;
     esac
 }
