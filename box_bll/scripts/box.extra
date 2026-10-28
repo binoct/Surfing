@@ -1,0 +1,525 @@
+#!/system/bin/sh
+# 外部引擎管理, 由 box.service 引用
+# 引擎由 ${box_path}/extra/engine 决定, 支持 aether / usque / warpscout
+# 值为 clash / mihomo 或文件缺失时不启用外部引擎
+# 每个引擎独立目录: 二进制 / 配置文件 / cmdline 均在其中
+# 下载优先使用模块自带的 ${box_path}/bin/curl (build.sh 打包), 其次系统 curl / wget / busybox wget
+
+extra_path="${box_path}/extra"
+extra_engine_file="${extra_path}/engine"
+extra_default_port="11211"
+extra_mirror="https://gh-proxy.com/"
+extra_api="https://api.github.com/repos"
+
+extra_log() {
+    log "$1" "[extra] $2"
+}
+
+extra_engine() {
+    local name
+    [ -f "${extra_engine_file}" ] || return 1
+    name=$(sed -n '1p' "${extra_engine_file}" 2>/dev/null | tr -d ' \t\r')
+    case "${name}" in
+        aether|usque|warpscout) printf '%s' "${name}" ;;
+        *) return 1 ;;
+    esac
+}
+
+extra_repo() {
+    case "$1" in
+        aether) printf '%s' "CluvexStudio/Aether" ;;
+        usque) printf '%s' "Diniboy1123/usque" ;;
+        warpscout) printf '%s' "vernette/warpscout" ;;
+    esac
+}
+
+extra_asset_pattern() {
+    case "$1" in
+        aether) printf '%s' 'aether-android-arm64\.tar\.gz$' ;;
+        usque) printf '%s' 'usque_.*_android_arm64\.zip$' ;;
+        warpscout) printf '%s' 'warpscout_.*_android_arm64\.tar\.gz$' ;;
+    esac
+}
+
+extra_paths() {
+    extra_engine_name="$1"
+    extra_dir="${extra_path}/${extra_engine_name}"
+    extra_bin="${extra_dir}/${extra_engine_name}"
+    extra_cmdline="${extra_dir}/cmdline"
+    extra_pid_file="${run_path}/extra_${extra_engine_name}.pid"
+    extra_worker_pid_file="${run_path}/extra_${extra_engine_name}.worker.pid"
+    extra_log_dir="${extra_dir}/log"
+    extra_run_log="${extra_log_dir}/${extra_engine_name}_$(date +%Y%m%d).log"
+}
+
+# 先直连 GitHub, 失败再走镜像
+# Android 无系统 curl, 模块随包提供 ${box_path}/bin/curl (build.sh 下载)
+extra_download() {
+    local url="$1" out="$2" c
+    rm -f "${out}"
+    if [ -x "${box_path}/bin/curl" ]; then
+        "${box_path}/bin/curl" -fsSL --connect-timeout 8 --max-time 600 "${url}" -o "${out}" 2>/dev/null && return 0
+    elif c=$(command -v curl 2>/dev/null) && [ -n "${c}" ]; then
+        "${c}" -fsSL --connect-timeout 8 --max-time 600 "${url}" -o "${out}" 2>/dev/null && return 0
+    elif c=$(command -v wget 2>/dev/null) && [ -n "${c}" ]; then
+        "${c}" -q -O "${out}" "${url}" 2>/dev/null && return 0
+    elif [ -x "${box_path}/bin/busybox" ]; then
+        "${box_path}/bin/busybox" wget -q -O "${out}" "${url}" 2>/dev/null && return 0
+    else
+        return 1
+    fi
+    rm -f "${out}"
+    return 1
+}
+
+# 先直连 GitHub, 失败再走镜像
+extra_fetch() {
+    extra_download "$1" "$2" && return 0
+    extra_download "${extra_mirror}$1" "$2" && return 0
+    return 1
+}
+
+extra_extract() {
+    local file="$1" dest="$2"
+    case "${file}" in
+        *.zip)
+            if command -v unzip >/dev/null 2>&1; then
+                unzip -oq -d "${dest}" "${file}" 2>/dev/null || unzip -o -d "${dest}" "${file}" 2>/dev/null
+            elif [ -x "${box_path}/bin/busybox" ]; then
+                ( cd "${dest}" && "${box_path}/bin/busybox" unzip -o "${file}" ) 2>/dev/null
+            else
+                return 1
+            fi
+            ;;
+        *)
+            if command -v tar >/dev/null 2>&1; then
+                tar -C "${dest}" -xzf "${file}" 2>/dev/null
+            elif [ -x "${box_path}/bin/busybox" ]; then
+                "${box_path}/bin/busybox" tar -C "${dest}" -xzf "${file}" 2>/dev/null
+            else
+                return 1
+            fi
+            ;;
+    esac
+}
+
+extra_wait_network() {
+    local i=0
+    while [ "${i}" -lt 30 ]; do
+        if "${SYS_IP:-ip}" route 2>/dev/null | grep -q "default"; then
+            return 0
+        fi
+        i=$((i + 1))
+        sleep 2
+    done
+    return 1
+}
+
+extra_install_bin() {
+    local engine="$1" dir="$2" repo json url tag tmp api_tmp
+    repo=$(extra_repo "${engine}")
+    api_tmp="${dir}/.download.$$.json"
+    extra_log Info "未检测到 ${engine} 二进制, 正在获取最新版本..."
+    extra_fetch "${extra_api}/${repo}/releases/latest" "${api_tmp}" || {
+        extra_log Error "获取 ${repo} 最新版本失败 (GitHub 直连与镜像均不可用)"
+        rm -f "${api_tmp}"
+        return 1
+    }
+    json=$(cat "${api_tmp}" 2>/dev/null)
+    rm -f "${api_tmp}"
+    tag=$(printf '%s' "${json}" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+    url=$(printf '%s' "${json}" | grep -o '"browser_download_url":[[:space:]]*"[^"]*"' \
+        | sed -n 's/.*"\(https[^"]*\)".*/\1/p' \
+        | grep -E "$(extra_asset_pattern "${engine}")" | head -n1)
+    if [ -z "${url}" ]; then
+        extra_log Error "未找到 android_arm64 发布包 (${repo} ${tag})"
+        return 1
+    fi
+
+    case "${url}" in
+        *.zip) tmp="${dir}/.download.$$.zip" ;;
+        *) tmp="${dir}/.download.$$.tar.gz" ;;
+    esac
+    extra_log Info "下载 ${engine} ${tag}: ${url}"
+    extra_fetch "${url}" "${tmp}" || {
+        extra_log Error "下载失败: ${url}"
+        rm -f "${tmp}"
+        return 1
+    }
+
+    if ! extra_extract "${tmp}" "${dir}"; then
+        extra_log Error "解压失败: ${tmp}"
+        rm -f "${tmp}"
+        return 1
+    fi
+    rm -f "${tmp}"
+
+    [ -f "${dir}/${engine}" ] || {
+        extra_log Error "发布包中未找到 ${engine} 二进制"
+        return 1
+    }
+    chmod 0755 "${dir}/${engine}"
+    printf '%s\n' "${tag}" > "${dir}/version"
+    extra_log Info "${engine} ${tag} 安装完成"
+}
+
+extra_init_conf() {
+    local engine="$1" dir="$2"
+    case "${engine}" in
+        aether)
+            # 身份文件 aether.toml / aether-masque.toml 由首次启动自动生成
+            extra_log Info "Aether 首次启动会自动注册设备并生成 aether.toml"
+            return 0
+            ;;
+        usque)
+            [ -f "${dir}/config.json" ] && return 0
+            extra_log Info "未检测到 usque 配置, 正在执行 register..."
+            ( cd "${dir}" && ./usque register -c config.json -a ) || {
+                extra_log Error "usque register 失败 (需要联网, 可能被限流, 请稍后重启服务重试)"
+                return 1
+            }
+            [ -f "${dir}/config.json" ] || {
+                extra_log Error "usque register 未生成 config.json"
+                return 1
+            }
+            extra_log Info "usque 配置已生成: ${dir}/config.json"
+            ;;
+        warpscout)
+            [ -f "${dir}/warpscout-account.json" ] && return 0
+            extra_log Info "未检测到 warpscout 账户, 正在执行 register..."
+            ( cd "${dir}" && ./warpscout register ) || {
+                extra_log Error "warpscout register 失败 (需要联网)"
+                return 1
+            }
+            [ -f "${dir}/warpscout-account.json" ] || {
+                extra_log Error "warpscout register 未生成 warpscout-account.json"
+                return 1
+            }
+            extra_log Info "warpscout 账户已生成: ${dir}/warpscout-account.json"
+            ;;
+    esac
+}
+
+extra_default_cmdline() {
+    local engine="$1" dir="$2" endpoint
+    case "${engine}" in
+        aether)
+            printf '%s' "--masque --scan balanced --bind 127.0.0.1:${extra_default_port}"
+            ;;
+        usque)
+            printf '%s' "socks -b 127.0.0.1 -p ${extra_default_port}"
+            ;;
+        warpscout)
+            extra_log Info "正在扫描可用 WARP 端点 (warpscout scan -p awg -P -best), 可能需要几分钟..." >&2
+            endpoint=$( cd "${dir}" && ./warpscout scan -p awg -P -best -no-report 2>>"${extra_run_log}" | tail -n 1 )
+            endpoint=$(printf '%s' "${endpoint}" | tr -d ' \r')
+            case "${endpoint}" in
+                ''|*[!0-9a-fA-F.:]*)
+                    extra_log Error "扫描未得到可用端点, 请手动在 ${extra_cmdline} 填写 -e 参数"
+                    return 1
+                    ;;
+            esac
+            printf '%s' "socks -e ${endpoint} -p awg -port ${extra_default_port} -listen 127.0.0.1"
+            ;;
+    esac
+}
+
+# 读取 cmdline 第一行有效参数, 忽略空行与 # 注释
+extra_read_cmdline() {
+    local file="$1" line
+    [ -f "${file}" ] || return 1
+    while IFS= read -r line || [ -n "${line}" ]; do
+        line=$(printf '%s' "${line}" | tr -d '\r')
+        case "${line}" in
+            ''|'#'*) continue ;;
+        esac
+        printf '%s' "${line}"
+        return 0
+    done < "${file}"
+    return 1
+}
+
+# 引擎是当前 shell 的子进程, 未被 wait 前 kill -0 对僵尸进程仍为真, 需看 /proc 状态
+extra_alive() {
+    local pid="$1" state
+    case "${pid}" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    state=$(sed 's/^[^)]*) //' "/proc/${pid}/stat" 2>/dev/null | cut -d' ' -f1)
+    [ -n "${state}" ] && [ "${state}" != "Z" ]
+}
+
+extra_clash_alive() {
+    local d
+    [ -n "${bin_name}" ] || return 0
+    if command -v pidof >/dev/null 2>&1; then
+        pidof -s "${bin_name}" >/dev/null 2>&1
+        return $?
+    fi
+    for d in /proc/[0-9]*; do
+        [ "$(cat "${d}/comm" 2>/dev/null)" = "${bin_name}" ] && return 0
+    done
+    return 1
+}
+
+# 用户在 APP 里直接结束 clash 进程时不会经过 box.service stop,
+# 因此由引擎侧盯住 clash 存活; 连续 3 次 (约 9 秒) 检测不到才动作, 避免重启间隙误杀
+extra_clash_guard() {
+    local pid="$1" miss=0
+    while extra_alive "${pid}"; do
+        if extra_clash_alive; then
+            miss=0
+        else
+            miss=$((miss + 1))
+            if [ "${miss}" -ge 3 ]; then
+                extra_log Warn "检测到 ${bin_name} 已停止, 同步停止 ${extra_engine_name} (PID: ${pid})"
+                kill "${pid}" 2>/dev/null
+                sleep 2
+                extra_alive "${pid}" && kill -9 "${pid}" 2>/dev/null
+                return 0
+            fi
+        fi
+        sleep 3
+    done
+}
+
+# 读取 "--flag value" / "--flag=value" 形式的参数值
+extra_arg_value() {
+    local flag="$1" value=""
+    shift
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            "${flag}")
+                if [ $# -ge 2 ]; then
+                    value="$2"
+                    shift 2
+                    continue
+                fi
+                ;;
+            "${flag}="*)
+                value="${1#*=}"
+                ;;
+        esac
+        shift
+    done
+    printf '%s' "${value}"
+}
+
+# 用户改动 cmdline 里的 SOCKS 监听端口后, 同步到 clash 的「3.额外地址」provider,
+# 否则 clash 仍指向旧端口; 只替换端口, 监听地址保持不变
+extra_sync_proxy_port() {
+    local engine="$1" args="$2" raw port file old new
+
+    case "${engine}" in
+        aether)
+            raw=$(extra_arg_value "--bind" ${args})
+            ;;
+        usque)
+            raw=$(extra_arg_value "-p" ${args})
+            [ -n "${raw}" ] || raw=$(extra_arg_value "--port" ${args})
+            ;;
+        warpscout)
+            # -p 是协议 (awg), 端口用 -port
+            raw=$(extra_arg_value "-port" ${args})
+            [ -n "${raw}" ] || raw=$(extra_arg_value "--port" ${args})
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+
+    port="${raw##*:}"
+    case "${port}" in
+        ''|*[!0-9]*) return 0 ;;
+    esac
+
+    file="${box_path}/clash/proxies/3.额外地址.yaml"
+    [ -f "${file}" ] || return 0
+
+    old=$(cat "${file}" 2>/dev/null)
+    new=$(printf '%s\n' "${old}" | awk -v port="${port}" '
+        !done && /^[[:space:]]*-?[[:space:]]*socks5:\/\// {
+            if (sub(/:[0-9]+[[:space:]]*$/, ":" port)) done = 1
+        }
+        { print }
+    ' 2>/dev/null)
+    [ -n "${new}" ] || return 0
+    [ "${new}" = "${old}" ] && return 0
+
+    printf '%s\n' "${new}" > "${file}"
+    extra_log Info "已同步引擎 SOCKS 端口 ${port} 到 ${file}"
+}
+
+# clash 在引擎之前启动并读取 provider, 因此 box.service start 需先同步 cmdline 端口
+extra_sync_cmdline_port() {
+    local engine args
+    engine=$(extra_engine) || return 0
+    extra_paths "${engine}"
+    args=$(extra_read_cmdline "${extra_cmdline}") || return 0
+    [ -n "${args}" ] || return 0
+    extra_sync_proxy_port "${engine}" "${args}"
+}
+
+extra_is_running() {
+    local pid
+    [ -f "${extra_pid_file}" ] || return 1
+    pid=$(cat "${extra_pid_file}" 2>/dev/null)
+    case "${pid}" in
+        ''|*[!0-9]*) rm -f "${extra_pid_file}"; return 1 ;;
+    esac
+    kill -0 "${pid}" 2>/dev/null || { rm -f "${extra_pid_file}"; return 1; }
+    return 0
+}
+
+extra_worker_running() {
+    local pid
+    [ -f "${extra_worker_pid_file}" ] || return 1
+    pid=$(cat "${extra_worker_pid_file}" 2>/dev/null)
+    case "${pid}" in
+        ''|*[!0-9]*) rm -f "${extra_worker_pid_file}"; return 1 ;;
+    esac
+    kill -0 "${pid}" 2>/dev/null || { rm -f "${extra_worker_pid_file}"; return 1; }
+    return 0
+}
+
+extra_worker() {
+    local engine="$1" dir="$2" args generated pid
+    extra_log Info "外部引擎 ${engine} 初始化开始 (日志: ${extra_run_log})"
+    extra_wait_network || extra_log Warn "网络尚未就绪, 继续尝试初始化"
+
+    rm -f "${dir}"/.download.* 2>/dev/null
+
+    if [ -f "${dir}/${engine}" ] && [ ! -x "${dir}/${engine}" ]; then
+        chmod 0755 "${dir}/${engine}" 2>/dev/null
+    fi
+    if [ ! -x "${dir}/${engine}" ]; then
+        extra_install_bin "${engine}" "${dir}" || return 1
+    fi
+
+    extra_init_conf "${engine}" "${dir}" || return 1
+
+    generated=0
+    args=$(extra_read_cmdline "${extra_cmdline}")
+    if [ -z "${args}" ]; then
+        args=$(extra_default_cmdline "${engine}" "${dir}") || return 1
+        generated=1
+    fi
+
+    extra_sync_proxy_port "${engine}" "${args}"
+
+    extra_log Info "启动命令: ${engine} ${args}"
+    cd "${dir}" || return 1
+    # 与 clash 同用户组启动: box.iptables 在 BOX_LOCAL/CLASH_DNS_LOCAL 首条按 uid+gid 放行,
+    # 引擎自身的出站流量因此同样绕过透明代理, 不会被 TPROXY 回环劫持
+    setuidgid "${box_user_group}" "${extra_bin}" ${args} < /dev/null &
+    pid=$!
+    printf '%s' "${pid}" > "${extra_pid_file}"
+
+    sleep 3
+    if ! extra_alive "${pid}"; then
+        wait "${pid}" 2>/dev/null
+        extra_log Error "${engine} 启动失败, 请查看日志: ${extra_run_log}"
+        rm -f "${extra_pid_file}"
+        return 1
+    fi
+
+    if [ "${generated}" = "1" ] && [ ! -f "${extra_cmdline}" ]; then
+        printf '%s\n' "${args}" > "${extra_cmdline}"
+        extra_log Info "启动成功, 默认参数已写入 ${extra_cmdline}"
+    fi
+    extra_log Info "${engine} 已启动 (PID: ${pid})"
+
+    # clash 启动失败时不做联动, 避免引擎被误杀
+    extra_clash_alive && extra_clash_guard "${pid}"
+
+    wait "${pid}" 2>/dev/null
+    extra_log Warn "${engine} 已退出 (PID: ${pid})"
+    rm -f "${extra_pid_file}"
+}
+
+extra_start() {
+    local engine
+    engine=$(extra_engine) || {
+        extra_log Info "外部引擎未启用 (${extra_engine_file} 为 clash/mihomo 或缺失)"
+        return 0
+    }
+    extra_paths "${engine}"
+    mkdir -p "${run_path}" "${extra_log_dir}" 2>/dev/null
+
+    if extra_is_running; then
+        extra_log Info "${engine} 已在运行 (PID: $(cat "${extra_pid_file}"))"
+        return 0
+    fi
+    if extra_worker_running; then
+        extra_log Info "${engine} 正在初始化 (PID: $(cat "${extra_worker_pid_file}"))"
+        return 0
+    fi
+
+    ( extra_worker "${engine}" "${extra_dir}" ) >> "${extra_run_log}" 2>&1 &
+    printf '%s' "$!" > "${extra_worker_pid_file}"
+    extra_log Info "外部引擎 ${engine} 已转入后台启动, 日志: ${extra_run_log}"
+}
+
+extra_stop() {
+    local engine pid pid_file
+    engine=$(extra_engine) || return 0
+    extra_paths "${engine}"
+
+    for pid_file in "${extra_pid_file}" "${extra_worker_pid_file}"; do
+        [ -f "${pid_file}" ] || continue
+        pid=$(cat "${pid_file}" 2>/dev/null)
+        case "${pid}" in
+            ''|*[!0-9]*) rm -f "${pid_file}"; continue ;;
+        esac
+        if kill -0 "${pid}" 2>/dev/null; then
+            extra_log Warn "正在停止 ${engine} (PID: ${pid})"
+            kill "${pid}" 2>/dev/null
+        fi
+        rm -f "${pid_file}"
+    done
+
+    sleep 1
+    pkill -9 -f "${extra_dir}/.download" 2>/dev/null
+    pkill -9 -f "${extra_bin}" 2>/dev/null
+}
+
+extra_run_time() {
+    /system/bin/ps -eo etime,comm 2>/dev/null | awk -v bin="${extra_engine_name}" '$2 == bin { print $1; exit }'
+}
+
+extra_status() {
+    local engine args
+    engine=$(extra_engine) || {
+        extra_log Info "外部引擎: 未启用"
+        return 0
+    }
+    extra_paths "${engine}"
+
+    extra_log Info "外部引擎: ${engine}"
+    if [ -x "${extra_bin}" ]; then
+        if [ -f "${extra_dir}/version" ]; then
+            extra_log Info "二进制版本: $(cat "${extra_dir}/version" 2>/dev/null)"
+        else
+            extra_log Info "二进制: ${extra_bin}"
+        fi
+    else
+        extra_log Warn "二进制未安装: ${extra_bin}"
+    fi
+
+    args=$(extra_read_cmdline "${extra_cmdline}")
+    if [ -n "${args}" ]; then
+        extra_log Info "启动参数: ${args}"
+    else
+        extra_log Info "启动参数: 尚未生成 (首次启动成功后写入 ${extra_cmdline})"
+    fi
+
+    if extra_is_running; then
+        extra_log Info "${engine} 运行中 (PID: $(cat "${extra_pid_file}"))"
+        extra_log Info "${engine} 运行时长: $(extra_run_time)"
+    elif extra_worker_running; then
+        extra_log Info "${engine} 正在初始化 (PID: $(cat "${extra_worker_pid_file}"))"
+    else
+        extra_log Warn "${engine} 未运行"
+    fi
+    return 0
+}
