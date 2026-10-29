@@ -278,6 +278,22 @@ case "$1" in
         [ -n "${ctrl}" ] && printf 'controller=%s\n' "${ctrl}"
         secret=$(sed -n 's/^secret:[[:space:]]*["]*\([^"#]*\)["]*.*/\1/p' "${conf}" 2>/dev/null | head -n 1 | tr -d '\r' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
         [ -n "${secret}" ] && printf 'controller_secret=%s\n' "${secret}"
+        # TUN 模式 (config tun.enable=true 或 proxy_mode=core) 下不需要 iptables 透明代理
+        tun_on=$(awk '
+            /^tun:/ { f = 1; next }
+            f && /^[^[:space:]]/ { f = 0 }
+            f && /^[[:space:]]+enable:[[:space:]]*true/ { print "1"; exit }
+        ' "${conf}" 2>/dev/null)
+        if [ -n "${tun_on}" ] || [ "${proxy_mode}" = "core" ]; then
+            printf 'tun=1\n'
+        else
+            printf 'tun=0\n'
+        fi
+        if ${SYS_IPTABLES} -w 100 -t nat -S BOX_EXTERNAL >/dev/null 2>&1; then
+            printf 'proxy_state=on\n'
+        else
+            printf 'proxy_state=off\n'
+        fi
         extra_probe
         ;;
     extra-log)
@@ -341,8 +357,14 @@ case "$1" in
     extra-switch)
         extra_switch
         ;;
+    proxy-on)
+        "${scripts_dir}/box.iptables" enable
+        ;;
+    proxy-off)
+        "${scripts_dir}/box.iptables" disable
+        ;;
     *)
-        log Error "相关指令: $0 {start|stop|restart|status|probe|extra-log|extra-update|extra-switch}"
+        log Error "相关指令: $0 {start|stop|restart|status|probe|extra-log|extra-update|extra-switch|proxy-on|proxy-off}"
         exit 1
         ;;
 esac
