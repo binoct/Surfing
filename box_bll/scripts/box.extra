@@ -257,7 +257,8 @@ extra_default_cmdline() {
             printf '%s' "socks -b 127.0.0.1 -p ${extra_default_port} -c config.json -s www.microsoft.com --connect-port 500"
             ;;
         warpscout)
-            printf '%s' "socks -port ${extra_default_port} -p masque -masque-sni www.microsoft.com -a warpscout-account.json -e 162.159.198.2:8095"
+            # -e 是必填项且无默认值; 其余用程序默认: 账户 warpscout-account.json、监听 127.0.0.1
+            printf '%s' "socks -e 162.159.198.2:8095 -p masque -P ${extra_default_port}"
             ;;
     esac
 }
@@ -360,8 +361,9 @@ extra_sync_proxy_port() {
             [ -n "${raw}" ] || raw=$(extra_arg_value "--port" ${args})
             ;;
         warpscout)
-            # -p 是协议 (masque), 端口用 -port
-            raw=$(extra_arg_value "-port" ${args})
+            # -p 是协议 (masque), 监听端口用 -P / -port / --port
+            raw=$(extra_arg_value "-P" ${args})
+            [ -n "${raw}" ] || raw=$(extra_arg_value "-port" ${args})
             [ -n "${raw}" ] || raw=$(extra_arg_value "--port" ${args})
             ;;
     esac
