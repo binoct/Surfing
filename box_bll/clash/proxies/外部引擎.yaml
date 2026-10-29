@@ -1,1 +1,6 @@
-socks5://127.0.0.1:11211
+proxies:
+  - name: "外部引擎"
+    type: socks5
+    server: 127.0.0.1
+    port: 11211
+    udp: true
