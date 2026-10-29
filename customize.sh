@@ -226,7 +226,22 @@ remove_old_surfingtile
       [ -f "$BOX_BLL_PATH/extra/engine" ] || cp -f "$MODPATH/box_bll/extra/engine" "$BOX_BLL_PATH/extra/" 2>/dev/null
 
       # 打包时已预置的第三方引擎二进制: 设备上缺失才复制, 已有的版本保持不动
-      ENGINE_NAME=$(sed -n '1p' "$BOX_BLL_PATH/extra/engine" 2>/dev/null | tr -d ' \t\r')
+      # 跳过注释行取 engine=<名称>, 兼容旧版裸引擎名
+      ENGINE_NAME=$(sed -n 's/^[[:space:]]*#.*//; s/^[[:space:]]*engine=//; /^[[:space:]]*$/d; p' "$BOX_BLL_PATH/extra/engine" 2>/dev/null | head -n 1 | tr -d ' \t\r')
+
+      # 旧版文件只有一行裸引擎名, 升级时改写为带可选清单的 engine= 格式
+      if ! grep -q '^[[:space:]]*engine=' "$BOX_BLL_PATH/extra/engine" 2>/dev/null; then
+        case "$ENGINE_NAME" in
+          aether|usque|warpscout|none)
+            [ "$(grep -cv -e '^[[:space:]]*#' -e '^[[:space:]]*$' "$BOX_BLL_PATH/extra/engine")" = "1" ] && {
+              printf '%s\n' \
+                '# 外部引擎开关: 只保留一个 engine= 行生效, 改等号后的名字即可切换' \
+                '# 可选 aether / usque / warpscout, 改为 none 表示不启用' \
+                "engine=${ENGINE_NAME}" > "$BOX_BLL_PATH/extra/engine"
+            }
+            ;;
+        esac
+      fi
       case "$ENGINE_NAME" in
         aether|usque|warpscout)
           ENGINE_BIN="$MODPATH/box_bll/extra/$ENGINE_NAME/$ENGINE_NAME"

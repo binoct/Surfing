@@ -1,1 +1,5 @@
-aether
+# 外部引擎开关: 只保留一个 engine= 行生效, 改等号后的名字即可切换
+# 可选 aether / usque / warpscout, 改为 none 表示不启用
+engine=aether
+#engine=usque
+#engine=warpscout

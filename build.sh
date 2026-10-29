@@ -16,7 +16,8 @@ ZASH_API="https://api.github.com/repos/Zephyruso/zashboard/releases/latest"
 ZASH_DST="box_bll/clash/webroot/Zash"
 ZASH_TMP="zash_dist.zip"
 
-EXTRA_ENGINE="${EXTRA_ENGINE:-$(sed -n '1p' box_bll/extra/engine 2>/dev/null | tr -d ' \t\r')}"
+# 跳过注释行, 取第一个 engine=<名称> 有效行; 兼容旧版裸引擎名
+EXTRA_ENGINE="${EXTRA_ENGINE:-$(sed -n 's/^[[:space:]]*#.*//; s/^[[:space:]]*engine=//; /^[[:space:]]*$/d; p' box_bll/extra/engine 2>/dev/null | head -n 1 | tr -d ' \t\r')}"
 
 extra_repo() {
     case "$1" in
@@ -142,7 +143,7 @@ else
 fi
 
 case "$EXTRA_ENGINE" in
-    ""|none)
+    ""|none|clash|mihomo)
         echo "Extra engine not bundled (EXTRA_ENGINE='${EXTRA_ENGINE}')."
         ;;
     *)
