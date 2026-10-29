@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   Fetch-Data:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Data Branch
         uses: actions/checkout@v7
@@ -63,7 +63,7 @@ jobs:
   Prerelease-Build:
     needs: Fetch-Data
     if: ${{ github.event_name == 'workflow_dispatch' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     env:
       isAlpha: true
