@@ -272,6 +272,12 @@ case "$1" in
         else
             printf 'clash_state=stopped\n'
         fi
+        # 面板地址取自 config.yaml, 改了端口/密码后 WebUI 无需同步修改
+        conf="${box_path}/clash/config.yaml"
+        ctrl=$(sed -n 's/^external-controller:[[:space:]]*["]*\([^"#]*\)["]*.*/\1/p' "${conf}" 2>/dev/null | head -n 1 | tr -d ' \t\r')
+        [ -n "${ctrl}" ] && printf 'controller=%s\n' "${ctrl}"
+        secret=$(sed -n 's/^secret:[[:space:]]*["]*\([^"#]*\)["]*.*/\1/p' "${conf}" 2>/dev/null | head -n 1 | tr -d '\r' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+        [ -n "${secret}" ] && printf 'controller_secret=%s\n' "${secret}"
         extra_probe
         ;;
     extra-log)
@@ -332,8 +338,11 @@ case "$1" in
     extra-update)
         extra_update
         ;;
+    extra-switch)
+        extra_switch
+        ;;
     *)
-        log Error "相关指令: $0 {start|stop|restart|status|probe|extra-log|extra-update}"
+        log Error "相关指令: $0 {start|stop|restart|status|probe|extra-log|extra-update|extra-switch}"
         exit 1
         ;;
 esac

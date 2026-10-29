@@ -573,6 +573,49 @@ extra_stop() {
     pkill -9 -f "${extra_bin}" 2>/dev/null
 }
 
+# 改写 engine= 行; 旧格式或文件缺失时重建为带可选清单的文件
+extra_write_engine() {
+    local name="$1" tmp="${extra_engine_file}.tmp"
+    mkdir -p "${extra_path}" 2>/dev/null
+    if [ -f "${extra_engine_file}" ] && grep -q '^[[:space:]]*engine=' "${extra_engine_file}"; then
+        sed "s@^\([[:space:]]*\)engine=.*@\1engine=${name}@" \
+            "${extra_engine_file}" > "${tmp}" && mv -f "${tmp}" "${extra_engine_file}"
+    else
+        printf '%s\n' \
+            '# 外部引擎开关: 只保留一个 engine= 行生效, 改等号后的名字即可切换' \
+            '# 可选 aether / usque / warpscout, 改为 none 表示不启用' \
+            "engine=${name}" > "${extra_engine_file}"
+    fi
+}
+
+# 按字母顺序轮换: aether -> usque -> warpscout -> aether, 未启用时从 aether 开始
+extra_switch() {
+    local current next
+    current=$(extra_engine) || current=""
+    case "${current}" in
+        aether) next="usque" ;;
+        usque) next="warpscout" ;;
+        *) next="aether" ;;
+    esac
+
+    if [ -n "${current}" ]; then
+        extra_paths "${current}"
+        if extra_is_running || extra_worker_running; then
+            extra_stop
+        fi
+    fi
+
+    extra_write_engine "${next}"
+    printf '外部引擎: %s -> %s\n' "${current:-未启用}" "${next}"
+
+    if extra_clash_alive; then
+        extra_sync_cmdline_port
+        extra_start
+    else
+        printf 'clash 未运行, 下次启动时使用 %s\n' "${next}"
+    fi
+}
+
 # 未安装则下载; 已安装则比对本地 version 与最新 release tag, 仅在版本变化时下载
 extra_update() {
     local engine latest current was_running=0

@@ -45,6 +45,9 @@
     margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
   }
   .meta { color: var(--muted); font-size: 13px; min-height: 20px; }
+  .ctrl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ctrl a { color: var(--accent); text-decoration: none; word-break: break-all; }
+  #btnCopy { height: 24px; padding: 0 8px; font-size: 12px; }
   .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   button {
     appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--text);
@@ -54,7 +57,8 @@
   button:disabled { opacity: .45; cursor: not-allowed; }
   #btnStart { border-color: rgba(52,199,89,.4); color: var(--on); }
   #btnStop { border-color: rgba(255,69,58,.4); color: var(--danger); }
-  #btnUpdate { grid-column: 1 / -1; border-color: rgba(79,140,255,.4); color: var(--accent); }
+  #btnUpdate { grid-column: 1 / 3; border-color: rgba(79,140,255,.4); color: var(--accent); }
+  #btnSwitch { grid-column: 3 / -1; border-color: rgba(79,140,255,.4); color: var(--accent); }
   .log { padding: 0; overflow: hidden; }
   .log-head {
     display: flex; justify-content: space-between; align-items: center;
@@ -86,6 +90,7 @@
   <section class="card status">
     <div class="state"><span id="dot" class="dot"></span><span id="state">检测中…</span></div>
     <div class="meta" id="meta"></div>
+    <div class="meta ctrl" id="ctrlRow" style="display:none"><span>控制台</span><a id="ctrlLink" href="#" target="_blank" rel="noopener"></a><button id="btnCopy" class="mini">复制</button></div>
     <div class="state sub-state"><span id="edot" class="dot"></span><span id="estate">外部引擎检测中…</span></div>
     <div class="meta" id="emeta"></div>
   </section>
@@ -95,6 +100,7 @@
     <button id="btnRestart" disabled>重启</button>
     <button id="btnStop" disabled>关闭</button>
     <button id="btnUpdate" disabled>更新引擎</button>
+    <button id="btnSwitch" disabled>切换引擎</button>
   </section>
 
   <section class="card log">
@@ -135,6 +141,8 @@
 
   var CMD_UPDATE = PRE + '\n' + SCRIPTS + '/box.service extra-update';
 
+  var CMD_SWITCH = PRE + '\n' + SCRIPTS + '/box.service extra-switch';
+
   var els = {
     dot: document.getElementById('dot'),
     state: document.getElementById('state'),
@@ -144,10 +152,14 @@
     emeta: document.getElementById('emeta'),
     out: document.getElementById('out'),
     dash: document.getElementById('dash'),
+    ctrlRow: document.getElementById('ctrlRow'),
+    ctrlLink: document.getElementById('ctrlLink'),
+    copy: document.getElementById('btnCopy'),
     start: document.getElementById('btnStart'),
     restart: document.getElementById('btnRestart'),
     stop: document.getElementById('btnStop'),
     update: document.getElementById('btnUpdate'),
+    switchBtn: document.getElementById('btnSwitch'),
     logBtn: document.getElementById('btnLog'),
     clear: document.getElementById('btnClear')
   };
@@ -231,6 +243,17 @@
     return data;
   }
 
+  // config.yaml 里的 external-controller 通常是 0.0.0.0:9090, 本机访问换成 127.0.0.1
+  function controllerUrl(data) {
+    var addr = (data.controller || '').trim();
+    if (!addr) return '';
+    addr = addr.replace(/^0\.0\.0\.0:/, '127.0.0.1:').replace(/^\[::\]:/, '127.0.0.1:');
+    if (addr.charAt(0) === ':') addr = '127.0.0.1' + addr;
+    var url = 'http://' + addr + '/ui';
+    if (data.controller_secret) url += '?secret=' + encodeURIComponent(data.controller_secret);
+    return url;
+  }
+
   function fmtUptime(t) {
     if (!t) return '';
     var days = 0;
@@ -260,6 +283,7 @@
     els.restart.disabled = busy || !running;
     els.stop.disabled = busy || !running;
     els.update.disabled = busy;
+    els.switchBtn.disabled = busy;
     els.dash.className = 'dash' + (running ? '' : ' disabled');
   }
 
@@ -275,6 +299,16 @@
       els.meta.textContent = bits.join(' · ');
     } else {
       els.meta.textContent = '点击「启动」运行 clash';
+    }
+    var ctrl = controllerUrl(data);
+    if (ctrl) {
+      els.ctrlRow.style.display = '';
+      els.ctrlLink.textContent = ctrl;
+      els.ctrlLink.href = ctrl;
+      els.dash.href = ctrl;
+    } else {
+      els.ctrlRow.style.display = 'none';
+      els.dash.href = 'http://127.0.0.1:9090/ui';
     }
     renderEngine(data);
     setButtons();
@@ -333,6 +367,7 @@
       els.restart.disabled = true;
       els.stop.disabled = true;
       els.update.disabled = true;
+      els.switchBtn.disabled = true;
       els.dash.className = 'dash disabled';
       // 管理器接口注入较慢时快速重试, 其余情况交给定时轮询
       if (failCount < 5) {
@@ -382,6 +417,24 @@
   });
   els.update.addEventListener('click', function () {
     action('更新引擎', CMD_UPDATE, '确认下载/更新外部引擎？更新期间该引擎的代理会短暂中断。', 600000);
+  });
+  els.switchBtn.addEventListener('click', function () {
+    action('切换引擎', CMD_SWITCH, '确认按 aether → usque → warpscout 顺序切到下一个引擎？切换期间代理会短暂中断。', 300000);
+  });
+  els.copy.addEventListener('click', function () {
+    var text = els.ctrlLink.textContent;
+    if (!text) return;
+    function done() {
+      els.copy.textContent = '已复制';
+      setTimeout(function () { els.copy.textContent = '复制'; }, 1500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () {
+        window.prompt('复制控制台地址', text);
+      });
+    } else {
+      window.prompt('复制控制台地址', text);
+    }
   });
   els.logBtn.addEventListener('click', function () {
     action('引擎日志', CMD_LOG, '', 30000);
