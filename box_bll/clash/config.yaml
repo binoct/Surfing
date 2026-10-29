@@ -75,7 +75,7 @@ proxy-providers:
     url: ""
   "3.额外地址":
     # 外部引擎 (aether/usque/warpscout) 的本地 socks5 入口, 由 box.service 启动时生成/维护,
-    # 必须是合法 provider 文件 (含 proxies: 列表), 否则配置校验失败
+    # 必须是合法 provider 文件 (含 proxies: 列表), 否则该 provider 加载不到任何节点
     type: file
     path: "./proxies/外部引擎.yaml"
     override:
