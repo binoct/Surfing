@@ -98,6 +98,42 @@ restore_subscribe_urls() {
   fi
 }
 
+# 「3.额外地址」用于外部引擎的本地 socks5 入口 (type: file); 升级时订阅块会被整体还原,
+# 若该槽位没有填写真实订阅地址, 则把类型改回 file, 否则保留用户原有的 http 订阅
+normalize_extra_provider() {
+  [ -f "$CONFIG_FILE" ] || return 0
+  extra_url=$(awk '
+    /^proxy-providers:/ { inpp = 1; next }
+    inpp && /^[^[:space:]]/ { exit }
+    inpp && /^[[:space:]]+"3\.额外地址":[[:space:]]*$/ { inblk = 1; next }
+    inblk && /^[[:space:]]+"[^"]+":[[:space:]]*$/ { exit }
+    inblk && /^[[:space:]]+url:/ {
+      sub(/^[[:space:]]+url:[[:space:]]*/, "")
+      gsub(/["\047]/, "")
+      print
+      exit
+    }
+  ' "$CONFIG_FILE")
+  case "$extra_url" in
+    ""|*此处引入*)
+      awk '
+        /^proxy-providers:/ { inpp = 1; print; next }
+        inpp && /^[^[:space:]]/ { inpp = 0; inblk = 0 }
+        inpp && /^[[:space:]]+"3\.额外地址":[[:space:]]*$/ {
+          inblk = 1
+          print
+          print "    type: file"
+          next
+        }
+        inblk && /^[[:space:]]+"[^"]+":[[:space:]]*$/ { inblk = 0 }
+        inblk && /^[[:space:]]+type:[[:space:]]*/ { next }
+        { print }
+      ' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+      print_lang "外部引擎 provider 已设为本地文件模式." "External engine provider set to local file mode."
+      ;;
+  esac
+}
+
 sync_version_from_module_prop() {
   dst_prop="$CURRENT_MODULES_DIR/Surfing/module.prop"
   if [ -f "$MODPATH/module.prop" ] && [ -d "$CURRENT_MODULES_DIR/Surfing" ]; then
@@ -173,7 +209,16 @@ remove_old_surfingtile
       cp "$BOX_BLL_PATH/clash/config.yaml" "$BOX_BLL_PATH/clash/config.yaml.bak"
       cp -f "$MODPATH/box_bll/clash/config.yaml" "$BOX_BLL_PATH/clash/"
       cp -f "$MODPATH/box_bll/clash/config.yaml" "$MODPATH/default_config.yaml"
-      
+
+      # config.yaml 将「3.额外地址」声明为 type: file 的 provider, 文件为 proxies/外部引擎.yaml;
+      # 旧版写入的 "socks5://host:port" 单行不是合法 provider, 这里直接替换为合法文件
+      PROXY_EXTRA="$BOX_BLL_PATH/clash/proxies/外部引擎.yaml"
+      PROXY_EXTRA_OLD="$BOX_BLL_PATH/clash/proxies/3.额外地址.yaml"
+      mkdir -p "$BOX_BLL_PATH/clash/proxies"
+      [ -f "$PROXY_EXTRA_OLD" ] && [ ! -f "$PROXY_EXTRA" ] && mv -f "$PROXY_EXTRA_OLD" "$PROXY_EXTRA"
+      grep -q '^[[:space:]]*proxies:' "$PROXY_EXTRA" 2>/dev/null || \
+        cp -f "$MODPATH/box_bll/clash/proxies/外部引擎.yaml" "$PROXY_EXTRA"
+
       cp "$BOX_BLL_PATH/scripts/box.config" "$BOX_BLL_PATH/scripts/box.config.bak"
       cp -f "$MODPATH/box_bll/scripts/"* "$BOX_BLL_PATH/scripts/"
 
@@ -197,6 +242,7 @@ remove_old_surfingtile
       }
 
       restore_subscribe_urls
+      normalize_extra_provider
 
       for pid in $(pidof inotifyd); do grep -qE "box.inotify|net.inotify|ctr.inotify" "/proc/$pid/cmdline" 2>/dev/null && kill "$pid"; done
 

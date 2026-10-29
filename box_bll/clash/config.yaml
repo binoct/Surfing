@@ -65,21 +65,26 @@ proxy-providers:
       additional-prefix: "Main："
       <<: *proxy_fp
     path: "./proxies/1.主要地址.yaml"
-    url: "此处引入您的Clash订阅链接地址"
+    url: ""
   "2.备用地址":
     <<: *p
     override:
       additional-prefix: "Minor："
       <<: *proxy_fp
     path: "./proxies/2.备用地址.yaml"
-    url: "此处引入您的Clash订阅链接地址"
+    url: ""
   "3.额外地址":
-    <<: *p
+    # 外部引擎 (aether/usque/warpscout) 的本地 socks5 入口, 由 box.service 启动时生成/维护,
+    # 必须是合法 provider 文件 (含 proxies: 列表), 否则配置校验失败
+    type: file
+    path: "./proxies/外部引擎.yaml"
     override:
       additional-prefix: "Additi："
       <<: *proxy_fp
-    path: "./proxies/3.额外地址.yaml"
-    url: "此处引入您的Clash订阅链接地址"
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
 # —————————
 # 节点记忆
 profile: # ← 此行位置请勿变动！此为模块更新时备份恢复订阅的【结束标记】 ↑
@@ -120,6 +125,13 @@ tun:
   # 如使用黑白名单这里需排除
   # exclude-package 排除 / include-package 包含
   exclude-package:
+    - com.taobao.idlefish
+    - com.tencent.mm
+    - com.tencent.mobileqq
+    - com.xiaomi.mirror
+    - com.xiaomi.mi_connect_service
+    - cn.cyberIdentity.certification
+    - xyz.zarazaex.olc    
 #    - com.samsung.android.messaging # 三星专供 ↓ 范围
 #    - com.samsung.android.app.telephonyui
 #    - com.samsung.android.dialer
@@ -151,31 +163,38 @@ dns:
     - "RULE-SET:GoogleFCM_域"
     - "RULE-SET:自定义规则"
   proxy-server-nameserver:
-    - https://1.12.12.12:443/dns-query#🌐 本机·本地直连&h3=false
-    - https://120.53.53.53:443/dns-query#🌐 本机·本地直连&h3=false
-    - https://223.5.5.5:443/dns-query#🌐 本机·本地直连&h3=true
-    - https://223.6.6.6:443/dns-query#🌐 本机·本地直连&h3=true
+    - https://1.12.12.12:443/dns-query#🌐 直连&h3=false
+    - https://120.53.53.53:443/dns-query#🌐 直连&h3=false
+    # 纯 IPv6 网络 (手机数据流量) 下用国内 IPv6 DNS 兜底, 默认关闭
+    #- "2400:3200::1"
+    #- "2402:4e00::"
   nameserver-policy:
     "RULE-SET:CN_域,Microsoft_域,Apple_域":
-      - https://1.12.12.12:443/dns-query#🌐 本机·本地直连&h3=false
-      - https://120.53.53.53:443/dns-query#🌐 本机·本地直连&h3=false
-      - https://223.5.5.5:443/dns-query#🌐 本机·本地直连&h3=true
-      - https://223.6.6.6:443/dns-query#🌐 本机·本地直连&h3=true
+      - https://1.12.12.12:443/dns-query#🌐 直连&h3=false
+      - https://120.53.53.53:443/dns-query#🌐 直连&h3=false
   nameserver:
     # Google
     - https://8.8.8.8:443/dns-query#DNS连接&h3=true
-    - https://8.8.4.4:443/dns-query#DNS连接&h3=true
+    #- https://8.8.4.4:443/dns-query#DNS连接&h3=true
+    - tls://8.8.8.8:853#DNS连接
     # Cloudflare
     - https://1.1.1.1:443/dns-query#DNS连接&h3=false
-    - https://1.0.0.1:443/dns-query#DNS连接&h3=false
+    #- https://1.0.0.1:443/dns-query#DNS连接&h3=false
+    # IPv6 国外 DNS (纯 IPv6 网络下启用, 默认关闭)
+    #- https://[2001:4860:4860::8888]/dns-query#DNS连接&h3=false
+    #- tls://[2606:4700:4700::1111]:853#DNS连接
+    #- tls://[2620:fe::fe]:853#DNS连接
   direct-nameserver:
     - 1.12.12.12
-    - 223.6.6.6
-    - 192.168.1.1
+    - https://doh.pub/dns-query
+    #- 192.168.1.1
+    # 国内 IPv6 DNS, 默认关闭
+    #- "2400:3200::1"
+    #- "2402:4e00::"
 # —————————
 proxies:
-  - {name: 🌐 本机·本地直连, type: direct, udp: true}
-  - {name: ⛔️ 禁止·拒绝连接, type: reject}
+  - {name: 🌐 直连, type: direct, udp: true}
+  - {name: ⛔️ 禁止, type: reject}
   - {name: 🌐 DNS_Hijack, type: dns}
 proxy_groups: &proxy_groups
     type: select
@@ -190,8 +209,8 @@ proxy_groups: &proxy_groups
       - ALL·日本地区
       - ALL·狮城地区
       - ALL·其它地区
-      - ⛔️ 禁止·拒绝连接
-      - 🌐 本机·本地直连
+      - ⛔️ 禁止
+      - 🌐 直连
     <<: *A
 # —————————
 proxy-groups:
@@ -208,12 +227,18 @@ proxy-groups:
       - ALL·美国地区
       - ALL·狮城地区
       - ALL·其它地区
-      - 🌐 本机·本地直连
+      - 🌐 直连
   - name: 订阅更新
     icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@main/app/icon/Update.svg"
     type: select
     proxies:
-      - 🌐 本机·本地直连
+      - 🌐 直连
+      - 总模式
+  - name: Cloudflare
+    icon: "https://www.vectorlogo.zone/logos/cloudflare/cloudflare-icon.svg"
+    type: select
+    proxies:
+      - 🌐 直连
       - 总模式
   - name: 小红书
     icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@main/app/icon/XiaoHongShu.svg"
@@ -269,6 +294,9 @@ proxy-groups:
   - name: Twitter(X)
     icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@main/app/icon/Twitter.svg"
     <<: *proxy_groups
+  - name: GFW
+    icon: "https://www.vectorlogo.zone/logos/duckduckgo/duckduckgo-icon.svg"
+    <<: *proxy_groups
   - name: DNS连接
     icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@main/app/icon/DNS.svg"
     <<: *proxy_groups
@@ -281,13 +309,13 @@ proxy-groups:
     proxies:
       - PASS
       - REJECT-DROP 
-      - ⛔️ 禁止·拒绝连接
+      - ⛔️ 禁止
       - 🌐 DNS_Hijack
   - name: WebRTC
     icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@main/app/icon/WebRTC.svg"
     type: select
     proxies:
-      - ⛔️ 禁止·拒绝连接
+      - ⛔️ 禁止
       - 🌐 DNS_Hijack
       - REJECT-DROP
       - PASS
@@ -335,8 +363,8 @@ proxy-groups:
     url: https://www.baidu.com/favicon.ico
     interval: *Time
     proxies:
-      - 🌐 本机·本地直连
-      - ⛔️ 禁止·拒绝连接
+      - 🌐 直连
+      - ⛔️ 禁止
 # —————————
 rule-anchor:
   Local: &Local
@@ -370,6 +398,14 @@ rule-providers:
     <<: *Domain
     path: ./rules/No-ads-all.mrs
     url: "https://cdn.jsdelivr.net/gh/TG-Twilight/AWAvenue-Ads-Rule@main/Filters/AWAvenue-Ads-Rule-Clash.mrs"
+  Cloudflare_IP:
+    <<: *IPCIDR
+    path: ./rules/Cloudflare_IP.mrs
+    url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geoip/cloudflare.mrs"
+  Cloudflare_域:
+    <<: *Domain
+    path: ./rules/Cloudflare.mrs
+    url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo-lite/geosite/cloudflare.mrs"
   XiaoHongShu_域:
     <<: *Domain
     path: ./rules/XiaoHongShu.mrs
@@ -478,11 +514,25 @@ rule-providers:
     <<: *IPCIDR
     path: ./rules/Private_IP.mrs
     url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo-lite/geoip/private.mrs"
+  GFW_域:
+    <<: *Domain
+    path: ./rules/proxy.mrs
+    url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo-lite/geosite/proxy.mrs"
+
+  Applications:
+    type: http
+    behavior: classical
+    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/applications.txt
+    path: ./rules/applications.yaml
+    interval: 86400
 # —————————
 rules:
   - DST-PORT,53,🌐 DNS_Hijack
   - DST-PORT,853,DNS连接
+  - RULE-SET,Applications,🌐 直连
   - RULE-SET,自定义规则,特殊地址
+  - RULE-SET,Cloudflare_域,Cloudflare
+  - RULE-SET,Cloudflare_IP,Cloudflare,no-resolve
   - RULE-SET,WebRTC_端/域,WebRTC
   - RULE-SET,GoogleFCM_域,GoogleFCM
   - RULE-SET,YouTube_域,YouTube
@@ -513,9 +563,10 @@ rules:
   - RULE-SET,Microsoft_域,Microsoft
   - RULE-SET,Telegram_域,Telegram
   - RULE-SET,Telegram_IP,Telegram,no-resolve
-  - RULE-SET,Private_域,🌐 本机·本地直连
-  - RULE-SET,Private_IP,🌐 本机·本地直连,no-resolve
-  - RULE-SET,CN_域,🌐 本机·本地直连
-  - RULE-SET,CN_IP,🌐 本机·本地直连
+  - RULE-SET,GFW_域,GFW
+  - RULE-SET,Private_域,🌐 直连
+  - RULE-SET,Private_IP,🌐 直连,no-resolve
+  - RULE-SET,CN_域,🌐 直连
+  - RULE-SET,CN_IP,🌐 直连
   - MATCH,漏网之鱼
 # —————————

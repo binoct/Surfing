@@ -328,10 +328,12 @@ extra_arg_value() {
     printf '%s' "${value}"
 }
 
-# 用户改动 cmdline 里的 SOCKS 监听端口后, 同步到 clash 的「3.额外地址」provider,
-# 否则 clash 仍指向旧端口; 只替换端口, 监听地址保持不变
+# config.yaml 把「3.额外地址」声明为 type: file 的 provider, mihomo 启动时会直接读取该文件,
+# 内容不是合法 provider (缺 proxies: 列表) 时该 provider 加载失败, 外部引擎节点不会出现在代理组里.
+# 因此这里保证文件存在且合法, 引擎启用时再把 SOCKS 监听端口同步进去.
 extra_sync_proxy_port() {
-    local engine="$1" args="$2" raw port file old new
+    local engine="$1" args="$2" raw="" port="" file old new default_port
+    default_port="${extra_default_port:-11211}"
 
     case "${engine}" in
         aether)
@@ -342,44 +344,70 @@ extra_sync_proxy_port() {
             [ -n "${raw}" ] || raw=$(extra_arg_value "--port" ${args})
             ;;
         warpscout)
-            # -p 是协议 (awg), 端口用 -port
+            # -p 是协议 (masque), 端口用 -port
             raw=$(extra_arg_value "-port" ${args})
             [ -n "${raw}" ] || raw=$(extra_arg_value "--port" ${args})
             ;;
-        *)
-            return 0
-            ;;
     esac
-
     port="${raw##*:}"
     case "${port}" in
-        ''|*[!0-9]*) return 0 ;;
+        ''|*[!0-9]*) port="" ;;
     esac
 
-    file="${box_path}/clash/proxies/3.额外地址.yaml"
-    [ -f "${file}" ] || return 0
-
+    file="${box_path}/clash/proxies/外部引擎.yaml"
+    mkdir -p "${box_path}/clash/proxies" 2>/dev/null
     old=$(cat "${file}" 2>/dev/null)
-    new=$(printf '%s\n' "${old}" | awk -v port="${port}" '
-        !done && /^[[:space:]]*-?[[:space:]]*socks5:\/\// {
-            if (sub(/:[0-9]+[[:space:]]*$/, ":" port)) done = 1
+
+    # 文件缺失或仍是旧版的 "socks5://host:port" 单行 → 重建为合法 provider;
+    # 已是 provider 文件时只改本引擎条目 (name: "外部引擎") 的端口, 订阅内容原样保留
+    new=$(printf '%s\n' "${old}" | awk -v port="${port}" -v def="${default_port}" -v add="${engine}" '
+        /^[[:space:]]*proxies:[[:space:]]*\[\][[:space:]]*$/ { has = 0; empty = 1 }
+        /^[[:space:]]*proxies:/ { if (!empty) has = 1 }
+        !nidx && /^[[:space:]]*-[[:space:]]*name:[[:space:]]*"外部引擎"/ { nidx = NR }
+        { line[NR] = $0 }
+        END {
+            if (!has) {
+                printf "proxies:\n  - name: \"外部引擎\"\n    type: socks5\n    server: 127.0.0.1\n    port: %s\n    udp: true\n", (port != "" ? port : def)
+                exit
+            }
+            if (!nidx) {
+                if (add == "" || port == "") exit
+                for (i = 1; i <= NR; i++) print line[i]
+                printf "  - name: \"外部引擎\"\n    type: socks5\n    server: 127.0.0.1\n    port: %s\n    udp: true\n", port
+                exit
+            }
+            if (port == "") exit
+            done = 0
+            for (i = 1; i <= NR; i++) {
+                l = line[i]
+                if (!done && i > nidx && l ~ /^[[:space:]]*port:[[:space:]]*[0-9]+/) {
+                    sub(/port:[[:space:]]*[0-9]+/, "port: " port, l)
+                    done = 1
+                }
+                print l
+            }
         }
-        { print }
     ' 2>/dev/null)
     [ -n "${new}" ] || return 0
     [ "${new}" = "${old}" ] && return 0
 
     printf '%s\n' "${new}" > "${file}"
-    extra_log Info "已同步引擎 SOCKS 端口 ${port} 到 ${file}"
+    if [ -n "${port}" ]; then
+        extra_log Info "已同步引擎 SOCKS 端口 ${port} 到 ${file}"
+    else
+        extra_log Info "已重建 provider 文件 ${file}"
+    fi
 }
 
-# clash 在引擎之前启动并读取 provider, 因此 box.service start 需先同步 cmdline 端口
+# clash 在引擎之前启动并读取 provider, 因此 box.service start 必须先修好该文件;
+# 引擎启用且 cmdline 可读时顺带同步监听端口
 extra_sync_cmdline_port() {
-    local engine args
-    engine=$(extra_engine) || return 0
-    extra_paths "${engine}"
-    args=$(extra_read_cmdline "${extra_cmdline}") || return 0
-    [ -n "${args}" ] || return 0
+    local engine args=""
+    engine=$(extra_engine) || engine=""
+    if [ -n "${engine}" ]; then
+        extra_paths "${engine}"
+        args=$(extra_read_cmdline "${extra_cmdline}" 2>/dev/null) || args=""
+    fi
     extra_sync_proxy_port "${engine}" "${args}"
 }
 

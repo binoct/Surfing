@@ -85,6 +85,10 @@ start_bin() {
     fi
 
     log Error "配置校验失败: 请检查 ${run_path}/check.log 中的语法错误."
+    if [ -s "${run_path}/check.log" ]; then
+        log Error "----- 校验输出 -----"
+        sed -n '1,40p' "${run_path}/check.log"
+    fi
     return 1
 }
 
@@ -148,6 +152,30 @@ display_bin_status() {
     return 0
 }
 
+# 启动互斥: 用锁目录取代 pgrep -f, 后者会把包含 "box.service start" 的调用方 shell
+# (如 WebUI 的 sh -c 命令) 误判为已有实例, 导致启动被直接放弃
+acquire_start_lock() {
+    local lock="${run_path}/.start.lock" pid
+    if mkdir -p "${run_path}" 2>/dev/null && mkdir "${lock}" 2>/dev/null; then
+        printf '%s' "$$" > "${lock}/pid"
+        trap "rm -rf '${lock}'" EXIT
+        return 0
+    fi
+    pid=$(cat "${lock}/pid" 2>/dev/null)
+    if [ -n "${pid}" ] && extra_alive "${pid}"; then
+        log Warn "环境检查: 已有启动流程在执行 (PID: ${pid}), 本次已自动挂起."
+        return 1
+    fi
+    rm -rf "${lock}"
+    if mkdir "${lock}" 2>/dev/null; then
+        printf '%s' "$$" > "${lock}/pid"
+        trap "rm -rf '${lock}'" EXIT
+        return 0
+    fi
+    log Warn "环境检查: 启动锁竞争失败, 本次已自动挂起."
+    return 1
+}
+
 clear_port_blockers() {
     local check_ports="${redir_port} ${tproxy_port} ${clash_dns_port} 7890"
     local ss_cache=$(/system/bin/ss -tulnp 2>/dev/null)
@@ -207,20 +235,16 @@ case "$1" in
             exit 0
         fi
 
-        pids=$(pgrep -f "$0 start" | sort -n)
-        my_pid=$$
-        leader_pid=$(echo "${pids}" | head -n 1)
-        if [ "${my_pid}" -ne "${leader_pid}" ]; then
-            log Warn "环境检查: 已有规则实例在运行，本次已自动挂起 (PID: ${leader_pid})."
-            exit 0
-        fi
+        acquire_start_lock || exit 0
 
-        log Info "开始执行核心服务启动序列 (主控 PID: ${my_pid})."
-        if start_service; then
-            uptime_sec=$(cut -d. -f1 /proc/uptime)
-            [ "${uptime_sec%.*}" -lt 180 ] && log Info "检测到系统冷启动，正在同步运行环境." && sleep 5
-            wait_bin_listen || true
+        log Info "开始执行核心服务启动序列 (主控 PID: $$)."
+        if ! start_service; then
+            log Error "核心启动失败, 已跳过外部引擎启动."
+            exit 1
         fi
+        uptime_sec=$(cut -d. -f1 /proc/uptime)
+        [ "${uptime_sec%.*}" -lt 180 ] && log Info "检测到系统冷启动，正在同步运行环境." && sleep 5
+        wait_bin_listen || true
         extra_start
         ;;
     stop)
