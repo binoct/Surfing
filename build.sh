@@ -16,6 +16,94 @@ ZASH_API="https://api.github.com/repos/Zephyruso/zashboard/releases/latest"
 ZASH_DST="box_bll/clash/webroot/Zash"
 ZASH_TMP="zash_dist.zip"
 
+EXTRA_ENGINE="${EXTRA_ENGINE:-$(sed -n '1p' box_bll/extra/engine 2>/dev/null | tr -d ' \t\r')}"
+
+extra_repo() {
+    case "$1" in
+        aether) echo "CluvexStudio/Aether" ;;
+        usque) echo "Diniboy1123/usque" ;;
+        warpscout) echo "vernette/warpscout" ;;
+    esac
+}
+
+extra_asset_re() {
+    case "$1" in
+        aether) echo 'aether-android-arm64\.tar\.gz$' ;;
+        usque) echo 'usque_.*_android_arm64\.zip$' ;;
+        warpscout) echo 'warpscout_.*_android_arm64\.tar\.gz$' ;;
+    esac
+}
+
+# 打包时把第三方引擎的 android arm64 二进制放进模块, 设备端启动即用, 无需联网下载.
+# 拉取失败只告警: 运行时仍会自动下载, 不因外部仓库不可用而阻断模块发布.
+gh_api_get() {
+    if [ -n "$GITHUB_TOKEN" ]; then
+        curl -fsSL --retry 5 --retry-delay 5 \
+            -H "Authorization: token $GITHUB_TOKEN" "$1" -o "$2"
+    else
+        curl -fsSL --retry 5 --retry-delay 5 "$1" -o "$2"
+    fi
+}
+
+fetch_extra_engine() {
+    engine="$1"
+    repo=$(extra_repo "$engine")
+    if [ -z "$repo" ]; then
+        echo "Warning: unknown extra engine '$engine', skipped."
+        return 0
+    fi
+
+    json=".extra_${engine}.json"
+    dl=".extra_${engine}.dl"
+    dst="box_bll/extra/${engine}"
+
+    if ! gh_api_get "https://api.github.com/repos/${repo}/releases/latest" "$json"; then
+        echo "Warning: failed to fetch ${repo} release info, extra engine not bundled."
+        rm -f "$json"
+        return 0
+    fi
+
+    tag=$(sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' "$json" | head -n 1)
+    url=$(grep -o '"browser_download_url":[[:space:]]*"[^"]*"' "$json" \
+        | sed -n 's/.*"\(https[^"]*\)".*/\1/p' \
+        | grep -E "$(extra_asset_re "$engine")" | head -n 1)
+
+    if [ -z "$url" ]; then
+        echo "Warning: no android_arm64 asset in ${repo} ${tag}, extra engine not bundled."
+        rm -f "$json"
+        return 0
+    fi
+
+    echo "Downloading ${engine} ${tag}: ${url}"
+    if ! curl -fL --retry 5 --retry-delay 5 "$url" -o "$dl"; then
+        echo "Warning: ${engine} download failed, extra engine not bundled."
+        rm -f "$json" "$dl"
+        return 0
+    fi
+
+    mkdir -p "$dst"
+    case "$url" in
+        *.zip) unzip -qo "$dl" -d "$dst" || true ;;
+        *) tar -xzf "$dl" -C "$dst" || true ;;
+    esac
+    rm -f "$json" "$dl"
+
+    if [ ! -f "${dst}/${engine}" ]; then
+        found=$(find "$dst" -type f -name "$engine" | head -n 1)
+        if [ -n "$found" ] && [ "$found" != "${dst}/${engine}" ]; then
+            mv -f "$found" "${dst}/${engine}"
+        fi
+    fi
+    if [ ! -f "${dst}/${engine}" ]; then
+        echo "Warning: ${engine} binary not found after extraction, extra engine not bundled."
+        return 0
+    fi
+
+    chmod 0755 "${dst}/${engine}"
+    printf '%s\n' "$tag" > "${dst}/version"
+    echo "${engine} ${tag} bundled at ${dst}"
+}
+
 get_latest_tag() {
     curl -fsSL --retry 5 --retry-delay 5 \
         -H "Authorization: token $GITHUB_TOKEN" "$1" \
@@ -52,6 +140,15 @@ else
     echo "Error: curl download failed."
     exit 1
 fi
+
+case "$EXTRA_ENGINE" in
+    ""|none)
+        echo "Extra engine not bundled (EXTRA_ENGINE='${EXTRA_ENGINE}')."
+        ;;
+    *)
+        fetch_extra_engine "$EXTRA_ENGINE"
+        ;;
+esac
 
 zash_latest_version=$(get_latest_tag "$ZASH_API")
 if [ -n "$zash_latest_version" ]; then
