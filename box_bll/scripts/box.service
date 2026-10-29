@@ -289,11 +289,17 @@ case "$1" in
         else
             printf 'tun=0\n'
         fi
-        if ${SYS_IPTABLES} -w 100 -t nat -S BOX_EXTERNAL >/dev/null 2>&1; then
-            printf 'proxy_state=on\n'
-        else
-            printf 'proxy_state=off\n'
-        fi
+        # TPROXY 模式规则在 mangle 表, REDIRECT 模式在 nat 表, 只看 nat 会误报未开启
+        proxy_hooks=$(
+            for tbl in nat mangle; do
+                ${SYS_IPTABLES} -w 100 -t "${tbl}" -S PREROUTING 2>/dev/null
+                ${SYS_IPTABLES} -w 100 -t "${tbl}" -S OUTPUT 2>/dev/null
+            done
+        )
+        case "${proxy_hooks}" in
+            *"-j BOX_EXTERNAL"*|*"-j BOX_LOCAL"*) printf 'proxy_state=on\n' ;;
+            *) printf 'proxy_state=off\n' ;;
+        esac
         extra_probe
         ;;
     extra-log)
