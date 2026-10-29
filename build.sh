@@ -112,6 +112,48 @@ get_latest_tag() {
         | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
 }
 
+# 规则集与 ASN 数据库不进 git (体积大且 mihomo 能自行更新), 打包时按 config.yaml
+# 里的 url 补齐; 拉取失败只告警, 设备端 http 规则提供者与 geo-auto-update 会兜底下载
+RULE_DST="box_bll/clash/rules"
+ASN_DST="box_bll/clash/ASN.mmdb"
+ASN_URL="$(sed -n 's/^  asn: "\(.*\)".*/\1/p' box_bll/clash/config.yaml | head -n 1)"
+
+fetch_if_missing() {
+    url="$1"
+    out="$2"
+    [ -s "$out" ] && return 0
+    curl -fsSL --retry 3 --retry-delay 3 "$url" -o "${out}.tmp" || {
+        rm -f "${out}.tmp"
+        return 1
+    }
+    mv -f "${out}.tmp" "$out"
+}
+
+fetch_rule_sets() {
+    mkdir -p "$RULE_DST"
+    awk '
+        /^  [^ #].*:[[:space:]]*(#.*)?$/ { file = "" }
+        /^    path: \.\/rules\// { p = $0; sub(/^    path: \.\/rules\//, "", p); file = p }
+        /^    url: / { u = $0; sub(/^    url: "/, "", u); sub(/".*$/, "", u); if (file ~ /\.mrs$/) print file " " u }
+    ' box_bll/clash/config.yaml |
+    while read -r name url; do
+        [ -n "$name" ] || continue
+        if fetch_if_missing "$url" "${RULE_DST}/${name}"; then
+            echo "Rule set ready: ${name}"
+        else
+            echo "Warning: rule set ${name} download failed, device will fetch it on first start."
+        fi
+    done
+
+    if [ -z "$ASN_URL" ]; then
+        echo "Warning: no geox-url asn in config.yaml, ASN database not bundled."
+    elif fetch_if_missing "$ASN_URL" "$ASN_DST"; then
+        echo "ASN database ready."
+    else
+        echo "Warning: ASN database download failed, mihomo will fetch it via geo-auto-update."
+    fi
+}
+
 latest_version=$(get_latest_tag "$MIHOMO_API")
 
 if [ -z "$latest_version" ]; then
@@ -173,6 +215,8 @@ if [ -n "$zash_latest_version" ]; then
 else
     echo "Error: Failed to fetch Zashboard version."
 fi
+
+fetch_rule_sets
 
 version=$(grep '^version=' module.prop | awk -F '=' '{print $2}' | sed 's/ (.*//')
 short_hash=${SHORT_HASH:-$(git rev-parse --short=7 HEAD)}
