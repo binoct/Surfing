@@ -35,7 +35,8 @@ extra_asset_re() {
     esac
 }
 
-# 打包时把第三方引擎的 android arm64 二进制放进模块, 设备端启动即用, 无需联网下载.
+# 启用外部引擎时把 aether / usque / warpscout 三个 android arm64 二进制都打进模块,
+# 设备端 WebUI 切换引擎即可用, 无需联网下载; 引擎未启用时一个都不打.
 # 拉取失败只告警: 运行时仍会自动下载, 不因外部仓库不可用而阻断模块发布.
 gh_api_get() {
     if [ -n "$GITHUB_TOKEN" ]; then
@@ -186,10 +187,15 @@ fi
 
 case "$EXTRA_ENGINE" in
     ""|none|clash|mihomo)
-        echo "Extra engine not bundled (EXTRA_ENGINE='${EXTRA_ENGINE}')."
+        echo "Extra engines not bundled (EXTRA_ENGINE='${EXTRA_ENGINE}')."
+        ;;
+    aether|usque|warpscout)
+        for engine in aether usque warpscout; do
+            fetch_extra_engine "$engine"
+        done
         ;;
     *)
-        fetch_extra_engine "$EXTRA_ENGINE"
+        echo "Warning: unknown extra engine '${EXTRA_ENGINE}', extra engines not bundled."
         ;;
 esac
 

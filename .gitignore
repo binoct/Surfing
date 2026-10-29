@@ -1,3 +1,6 @@
 # 规则集与 ASN 数据库体积大且 mihomo 可自行更新, 由 build.sh 打包时下载
 box_bll/clash/ASN.mmdb
 box_bll/clash/rules/*.mrs
+
+# 打包时预取的第三方引擎二进制
+box_bll/extra/*/

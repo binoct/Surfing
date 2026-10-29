@@ -225,7 +225,19 @@ remove_old_surfingtile
       mkdir -p "$BOX_BLL_PATH/extra"
       [ -f "$BOX_BLL_PATH/extra/engine" ] || cp -f "$MODPATH/box_bll/extra/engine" "$BOX_BLL_PATH/extra/" 2>/dev/null
 
-      # 打包时已预置的第三方引擎二进制: 设备上缺失才复制, 已有的版本保持不动
+      # 打包时预置的第三方引擎二进制: 设备上缺失才复制, 已有的版本保持不动
+      for ENGINE in aether usque warpscout; do
+        ENGINE_BIN="$MODPATH/box_bll/extra/$ENGINE/$ENGINE"
+        [ -f "$ENGINE_BIN" ] || continue
+        [ -f "$BOX_BLL_PATH/extra/$ENGINE/$ENGINE" ] && continue
+        mkdir -p "$BOX_BLL_PATH/extra/$ENGINE"
+        cp -f "$ENGINE_BIN" "$BOX_BLL_PATH/extra/$ENGINE/"
+        [ -f "$MODPATH/box_bll/extra/$ENGINE/version" ] && \
+          cp -f "$MODPATH/box_bll/extra/$ENGINE/version" "$BOX_BLL_PATH/extra/$ENGINE/"
+        chmod 0755 "$BOX_BLL_PATH/extra/$ENGINE/$ENGINE"
+        print_lang "已预置外部引擎 $ENGINE." "Bundled external engine $ENGINE installed."
+      done
+
       # 跳过注释行取 engine=<名称>, 兼容旧版裸引擎名
       ENGINE_NAME=$(sed -n 's/^[[:space:]]*#.*//; s/^[[:space:]]*engine=//; /^[[:space:]]*$/d; p' "$BOX_BLL_PATH/extra/engine" 2>/dev/null | head -n 1 | tr -d ' \t\r')
 
@@ -242,19 +254,6 @@ remove_old_surfingtile
             ;;
         esac
       fi
-      case "$ENGINE_NAME" in
-        aether|usque|warpscout)
-          ENGINE_BIN="$MODPATH/box_bll/extra/$ENGINE_NAME/$ENGINE_NAME"
-          if [ -f "$ENGINE_BIN" ] && [ ! -f "$BOX_BLL_PATH/extra/$ENGINE_NAME/$ENGINE_NAME" ]; then
-            mkdir -p "$BOX_BLL_PATH/extra/$ENGINE_NAME"
-            cp -f "$ENGINE_BIN" "$BOX_BLL_PATH/extra/$ENGINE_NAME/"
-            [ -f "$MODPATH/box_bll/extra/$ENGINE_NAME/version" ] && \
-              cp -f "$MODPATH/box_bll/extra/$ENGINE_NAME/version" "$BOX_BLL_PATH/extra/$ENGINE_NAME/"
-            chmod 0755 "$BOX_BLL_PATH/extra/$ENGINE_NAME/$ENGINE_NAME"
-            print_lang "已预置外部引擎 $ENGINE_NAME." "Bundled external engine $ENGINE_NAME installed."
-          fi
-          ;;
-      esac
 
       OLD_CONFIG="$BOX_BLL_PATH/scripts/box.config.bak"; NEW_CONFIG="$BOX_BLL_PATH/scripts/box.config"
       [ -f "$OLD_CONFIG" ] && {
