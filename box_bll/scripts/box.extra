@@ -73,6 +73,7 @@ extra_paths() {
     extra_cmdline="${extra_dir}/cmdline"
     extra_pid_file="${run_path}/extra_${extra_engine_name}.pid"
     extra_worker_pid_file="${run_path}/extra_${extra_engine_name}.worker.pid"
+    extra_state_file="${run_path}/extra_${extra_engine_name}.state"
     extra_log_dir="${extra_dir}/log"
     extra_run_log="${extra_log_dir}/${extra_engine_name}_$(date +%Y%m%d).log"
     extra_out_log="${extra_log_dir}/${extra_engine_name}_out_$(date +%Y%m%d).log"
@@ -288,6 +289,35 @@ extra_alive() {
     [ -n "${state}" ] && [ "${state}" != "Z" ]
 }
 
+# 进程退出后 PID 会被系统复用, 只凭 kill -0 会把不相干进程当成自己的;
+# 命令行里带着预期特征才算命中, /proc 不可读时按存在处理
+extra_pid_matches() {
+    local pid="$1" pattern="$2" cmd
+    [ -r "/proc/${pid}/cmdline" ] || return 0
+    cmd=$(tr '\0' ' ' < "/proc/${pid}/cmdline" 2>/dev/null)
+    [ -n "${cmd}" ] || return 0
+    case "${cmd}" in
+        *"${pattern}"*) return 0 ;;
+    esac
+    return 1
+}
+
+# probe 每 5 秒并发读取 pid 文件, 直接覆盖写会让它读到空内容;
+# 先写临时文件再 mv 原子替换, 读者只会看到完整的旧值或新值
+extra_write_pid() {
+    local file="$1" pid="$2"
+    printf '%s\n' "${pid}" > "${file}.tmp" 2>/dev/null && mv -f "${file}.tmp" "${file}" 2>/dev/null
+}
+
+# 状态文件内容: "initializing" 或 "running <pid>", 由 worker 在阶段切换时改写
+extra_state_stage() {
+    sed -n '1p' "${extra_state_file}" 2>/dev/null | cut -d' ' -f1 | tr -d ' \t\r'
+}
+
+extra_state_pid() {
+    sed -n 's/^running[[:space:]][[:space:]]*\([0-9][0-9]*\).*/\1/p' "${extra_state_file}" 2>/dev/null | head -n 1
+}
+
 extra_clash_alive() {
     local d
     [ -n "${bin_name}" ] || return 0
@@ -432,27 +462,38 @@ extra_sync_cmdline_port() {
 extra_is_running() {
     local pid
     [ -f "${extra_pid_file}" ] || return 1
-    pid=$(cat "${extra_pid_file}" 2>/dev/null)
+    pid=$(sed -n '1p' "${extra_pid_file}" 2>/dev/null | tr -d ' \t\r')
+    # 空内容多半是写入中的瞬时状态, 不能当成脏数据删掉;
+    # 判断只看进程是否还在, 读到空就等下一轮 probe
+    [ -n "${pid}" ] || return 1
     case "${pid}" in
-        ''|*[!0-9]*) rm -f "${extra_pid_file}"; return 1 ;;
+        *[!0-9]*) rm -f "${extra_pid_file}"; return 1 ;;
     esac
-    kill -0 "${pid}" 2>/dev/null || { rm -f "${extra_pid_file}"; return 1; }
+    extra_alive "${pid}" || { rm -f "${extra_pid_file}"; return 1; }
+    extra_pid_matches "${pid}" "${extra_engine_name}" || { rm -f "${extra_pid_file}"; return 1; }
     return 0
 }
 
 extra_worker_running() {
     local pid
     [ -f "${extra_worker_pid_file}" ] || return 1
-    pid=$(cat "${extra_worker_pid_file}" 2>/dev/null)
+    pid=$(sed -n '1p' "${extra_worker_pid_file}" 2>/dev/null | tr -d ' \t\r')
+    [ -n "${pid}" ] || return 1
     case "${pid}" in
-        ''|*[!0-9]*) rm -f "${extra_worker_pid_file}"; return 1 ;;
+        *[!0-9]*) rm -f "${extra_worker_pid_file}"; return 1 ;;
     esac
-    kill -0 "${pid}" 2>/dev/null || { rm -f "${extra_worker_pid_file}"; return 1; }
+    extra_alive "${pid}" || { rm -f "${extra_worker_pid_file}"; return 1; }
+    # worker 的 pid 可能是被复用的无关进程, 只认启动它的 box.service shell;
+    # 状态文件必须同时存在, 否则界面会一直停在"正在初始化"
+    extra_pid_matches "${pid}" "box.service" || { rm -f "${extra_worker_pid_file}"; return 1; }
+    [ -f "${extra_state_file}" ] || { rm -f "${extra_worker_pid_file}"; return 1; }
     return 0
 }
 
 extra_worker() {
     local engine="$1" dir="$2" args generated pid rc version
+    # 退出时清掉自己的 pid 与状态, 否则残留文件在 PID 复用后会让界面一直显示正在初始化
+    trap 'rm -f "${extra_worker_pid_file}" "${extra_state_file}"' EXIT
     extra_log Info "外部引擎 ${engine} 初始化开始"
     extra_log Info "日志文件: ${extra_run_log}"
     extra_log Info "引擎输出: ${extra_out_log}"
@@ -497,7 +538,7 @@ extra_worker() {
     # 引擎自身的出站流量因此同样绕过透明代理, 不会被 TPROXY 回环劫持
     setuidgid "${box_user_group}" "${extra_bin}" ${args} < /dev/null >> "${extra_out_log}" 2>&1 &
     pid=$!
-    printf '%s' "${pid}" > "${extra_pid_file}"
+    extra_write_pid "${extra_pid_file}" "${pid}"
     extra_log Info "已拉起进程 (PID: ${pid}), 等待 3 秒确认存活..."
 
     sleep 3
@@ -518,6 +559,8 @@ extra_worker() {
         extra_log Info "启动成功, 默认参数已写入 ${extra_cmdline}"
     fi
     extra_log Info "${engine} 已启动 (PID: ${pid})"
+    # probe 以状态文件判定真实阶段: 初始化结束即改 running, 不再靠输入输出猜
+    printf 'running %s\n' "${pid}" > "${extra_state_file}" 2>/dev/null
 
     # clash 启动失败时不做联动, 避免引擎被误杀
     if extra_clash_alive; then
@@ -555,8 +598,11 @@ extra_start() {
         return 0
     fi
 
+    printf 'initializing\n' > "${extra_state_file}" 2>/dev/null
     ( extra_worker "${engine}" "${extra_dir}" ) >> "${extra_run_log}" 2>&1 &
-    printf '%s' "$!" > "${extra_worker_pid_file}"
+    extra_write_pid "${extra_worker_pid_file}" "$!"
+    # 没拿到 worker pid 时状态无从核对, 留着 initializing 会让界面永久停在初始化
+    [ -s "${extra_worker_pid_file}" ] || rm -f "${extra_state_file}"
     extra_log Info "外部引擎 ${engine} 已转入后台启动, 日志: ${extra_run_log}"
 }
 
@@ -581,6 +627,7 @@ extra_stop() {
     sleep 1
     pkill -9 -f "${extra_dir}/.download" 2>/dev/null
     pkill -9 -f "${extra_bin}" 2>/dev/null
+    rm -f "${extra_state_file}"
 }
 
 # 改写 engine= 行; 旧格式或文件缺失时重建为带可选清单的文件
@@ -686,12 +733,14 @@ extra_run_time() {
 }
 
 extra_status() {
-    local engine args
+    local engine args state_stage state_pid
     engine=$(extra_engine) || {
         extra_log Info "外部引擎: 未启用"
         return 0
     }
     extra_paths "${engine}"
+    state_stage=$(extra_state_stage)
+    state_pid=$(extra_state_pid)
 
     extra_log Info "外部引擎: ${engine}"
     if extra_bin_installed; then
@@ -712,10 +761,13 @@ extra_status() {
     fi
 
     if extra_is_running; then
-        extra_log Info "${engine} 运行中 (PID: $(cat "${extra_pid_file}"))"
+        extra_log Info "${engine} 运行中 (PID: $(sed -n '1p' "${extra_pid_file}" 2>/dev/null | tr -d ' \t\r'))"
         extra_log Info "${engine} 运行时长: $(extra_run_time)"
-    elif extra_worker_running; then
-        extra_log Info "${engine} 正在初始化 (PID: $(cat "${extra_worker_pid_file}"))"
+    elif [ -n "${state_pid}" ] && extra_alive "${state_pid}"; then
+        extra_log Info "${engine} 运行中 (PID: ${state_pid})"
+        extra_log Info "${engine} 运行时长: $(extra_run_time)"
+    elif [ "${state_stage}" = "initializing" ] && extra_worker_running; then
+        extra_log Info "${engine} 正在初始化 (PID: $(sed -n '1p' "${extra_worker_pid_file}" 2>/dev/null | tr -d ' \t\r'))"
     else
         extra_log Warn "${engine} 未运行"
     fi
@@ -724,7 +776,7 @@ extra_status() {
 
 # 供 WebUI 状态页读取, 只输出 key=value, 不写日志
 extra_probe() {
-    local engine pid version
+    local engine pid version state_stage state_pid
 
     engine=$(extra_engine) || {
         printf 'engine=clash\n'
@@ -732,18 +784,26 @@ extra_probe() {
         return 0
     }
     extra_paths "${engine}"
+    state_stage=$(extra_state_stage)
+    state_pid=$(extra_state_pid)
     printf 'engine=%s\n' "${engine}"
     version=$(extra_local_version) || version=""
     [ -n "${version}" ] && printf 'engine_version=%s\n' "${version}"
 
     if extra_is_running; then
-        pid=$(cat "${extra_pid_file}" 2>/dev/null)
+        pid=$(sed -n '1p' "${extra_pid_file}" 2>/dev/null | tr -d ' \t\r')
         printf 'engine_state=running\n'
         printf 'engine_pid=%s\n' "${pid}"
         printf 'engine_etime=%s\n' "$(extra_run_time)"
-    elif extra_worker_running; then
+    elif [ -n "${state_pid}" ] && extra_alive "${state_pid}"; then
+        # pid 文件缺失/损坏时按状态文件恢复, 避免引擎在跑却显示别的状态
+        extra_write_pid "${extra_pid_file}" "${state_pid}"
+        printf 'engine_state=running\n'
+        printf 'engine_pid=%s\n' "${state_pid}"
+        printf 'engine_etime=%s\n' "$(extra_run_time)"
+    elif [ "${state_stage}" = "initializing" ] && extra_worker_running; then
         printf 'engine_state=initializing\n'
-        printf 'engine_pid=%s\n' "$(cat "${extra_worker_pid_file}" 2>/dev/null)"
+        printf 'engine_pid=%s\n' "$(sed -n '1p' "${extra_worker_pid_file}" 2>/dev/null | tr -d ' \t\r')"
     elif extra_bin_installed; then
         printf 'engine_state=stopped\n'
     else
