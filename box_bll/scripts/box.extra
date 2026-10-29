@@ -15,6 +15,14 @@ extra_log() {
     log "$1" "[extra] $2"
 }
 
+# 判断引擎是否已安装: 安装脚本会把 extra 目录下的文件统一成 0644, 不能只看执行位;
+# 文件存在但缺执行位时顺手补上, 避免界面误报"未安装"
+extra_bin_installed() {
+    [ -f "${extra_bin}" ] || return 1
+    [ -x "${extra_bin}" ] || chmod 0755 "${extra_bin}" 2>/dev/null
+    return 0
+}
+
 # 把引擎自身输出最近 n 行直接写入当前输出 (worker 的 stdout 即运行日志)
 extra_log_tail() {
     local n="$1" file="${2:-${extra_out_log}}" line
@@ -639,12 +647,12 @@ extra_update() {
     fi
 
     current=$(extra_local_version) || current=""
-    if [ -x "${extra_bin}" ] && [ -n "${current}" ] && [ "${current}" = "${latest}" ]; then
+    if extra_bin_installed && [ -n "${current}" ] && [ "${current}" = "${latest}" ]; then
         extra_log Info "已是最新版本 ${latest}, 无需更新"
         return 0
     fi
 
-    if [ -x "${extra_bin}" ]; then
+    if extra_bin_installed; then
         if [ -n "${current}" ]; then
             extra_log Info "发现新版本: ${current} -> ${latest}"
         else
@@ -684,7 +692,7 @@ extra_status() {
     extra_paths "${engine}"
 
     extra_log Info "外部引擎: ${engine}"
-    if [ -x "${extra_bin}" ]; then
+    if extra_bin_installed; then
         if [ -f "${extra_dir}/version" ]; then
             extra_log Info "二进制版本: $(cat "${extra_dir}/version" 2>/dev/null)"
         else
@@ -734,7 +742,7 @@ extra_probe() {
     elif extra_worker_running; then
         printf 'engine_state=initializing\n'
         printf 'engine_pid=%s\n' "$(cat "${extra_worker_pid_file}" 2>/dev/null)"
-    elif [ -x "${extra_bin}" ]; then
+    elif extra_bin_installed; then
         printf 'engine_state=stopped\n'
     else
         printf 'engine_state=missing\n'

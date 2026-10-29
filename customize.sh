@@ -308,4 +308,9 @@ set_perm "$service_dir/Surfing_service.sh" 0 0 0700
 
 chmod ugo+x "$BOX_BLL_PATH/scripts/"*
 
+# 上面的 set_perm_recursive 把 extra 下文件统一成 0644, 引擎二进制需要恢复执行位
+for ENGINE in aether usque warpscout; do
+  [ -f "$BOX_BLL_PATH/extra/$ENGINE/$ENGINE" ] && chmod 0755 "$BOX_BLL_PATH/extra/$ENGINE/$ENGINE"
+done
+
 rm -f customize.sh

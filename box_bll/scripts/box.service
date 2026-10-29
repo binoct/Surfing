@@ -312,7 +312,7 @@ case "$1" in
         else
             echo "版本: 未知"
         fi
-        if [ -x "${extra_bin}" ]; then
+        if extra_bin_installed; then
             echo "二进制: ${extra_bin}"
         else
             echo "二进制: ${extra_bin} (不存在)"
